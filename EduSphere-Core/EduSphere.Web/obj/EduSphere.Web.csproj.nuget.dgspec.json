@@ -1,0 +1,70 @@
+{
+  "format": 1,
+  "restore": {
+    "/home/anil/workspace/project_20260830_040258/EduSphere-Core/EduSphere.Web/EduSphere.Web.csproj": {}
+  },
+  "projects": {
+    "/home/anil/workspace/project_20260830_040258/EduSphere-Core/EduSphere.Web/EduSphere.Web.csproj": {
+      "version": "1.0.0",
+      "restore": {
+        "projectUniqueName": "/home/anil/workspace/project_20260830_040258/EduSphere-Core/EduSphere.Web/EduSphere.Web.csproj",
+        "projectName": "EduSphere.Web",
+        "projectPath": "/home/anil/workspace/project_20260830_040258/EduSphere-Core/EduSphere.Web/EduSphere.Web.csproj",
+        "packagesPath": "/home/anil/.nuget/packages/",
+        "outputPath": "/home/anil/workspace/project_20260830_040258/EduSphere-Core/EduSphere.Web/obj/",
+        "projectStyle": "PackageReference",
+        "configFilePaths": [
+          "/home/anil/.nuget/NuGet/NuGet.Config"
+        ],
+        "originalTargetFrameworks": [
+          "net9.0"
+        ],
+        "sources": {
+          "https://api.nuget.org/v3/index.json": {}
+        },
+        "frameworks": {
+          "net9.0": {
+            "targetAlias": "net9.0",
+            "projectReferences": {}
+          }
+        },
+        "warningProperties": {
+          "warnAsError": [
+            "NU1605"
+          ]
+        },
+        "restoreAuditProperties": {
+          "enableAudit": "true",
+          "auditLevel": "low",
+          "auditMode": "direct"
+        },
+        "SdkAnalysisLevel": "9.0.300"
+      },
+      "frameworks": {
+        "net9.0": {
+          "targetAlias": "net9.0",
+          "imports": [
+            "net461",
+            "net462",
+            "net47",
+            "net471",
+            "net472",
+            "net48",
+            "net481"
+          ],
+          "assetTargetFallback": true,
+          "warn": true,
+          "frameworkReferences": {
+            "Microsoft.AspNetCore.App": {
+              "privateAssets": "none"
+            },
+            "Microsoft.NETCore.App": {
+              "privateAssets": "all"
+            }
+          },
+          "runtimeIdentifierGraphPath": "/usr/share/dotnet/sdk/9.0.317/PortableRuntimeIdentifierGraph.json"
+        }
+      }
+    }
+  }
+}
