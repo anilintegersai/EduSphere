@@ -3,7 +3,17 @@
 @{
     ViewData["Title"] = "Subjects";
 }
-<h1 class="h3 mb-3">Subjects</h1>
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Academic core</span>
+        <h1>Subjects</h1>
+        <p>Maintain the subject catalog that supports syllabus planning, assessment, and future AI paper generation.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Items.Count subjects</span>
+    }
+</section>
 
 @if (!Model.HasTenant)
 {
@@ -11,9 +21,9 @@
 }
 else
 {
-    <div class="row g-4">
+    <div class="row g-4 workspace-grid">
         <div class="col-lg-4">
-            <div class="card"><div class="card-header">@(Model.IsEditing ? "Edit" : "New") subject</div>
+            <div class="card form-card"><div class="card-header"><span>@(Model.IsEditing ? "Edit" : "New") subject</span><span class="stage-tag">Catalog</span></div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="Save">
                         <div asp-validation-summary="All" class="text-danger small"></div>
@@ -25,18 +35,22 @@ else
                         <div class="mb-3">
                             <label asp-for="Input.CourseId" class="form-label"></label>
                             <select asp-for="Input.CourseId" class="form-select">
-                                <option value="">— none —</option>
+                                <option value="">None</option>
                                 @foreach (var c in Model.Courses) { <option value="@c.Id">@c.Name</option> }
                             </select>
                         </div>
-                        <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
-                        @if (Model.IsEditing) { <a asp-page="/Academic/Subjects" class="btn btn-outline-secondary">Cancel</a> }
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                            @if (Model.IsEditing) { <a asp-page="/Academic/Subjects" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
         <div class="col-lg-8">
-            <div class="table-responsive">
+            <div class="card data-card">
+                <div class="card-header"><span>Subject Directory</span><span class="count-pill">@Model.Items.Count records</span></div>
+                <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead><tr><th>Code</th><th>Name</th><th>Type</th><th>Credits</th><th>Course</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
@@ -45,14 +59,17 @@ else
                         <tr>
                             <td><code>@s.Code</code></td><td>@s.Name</td><td>@s.Type</td><td>@s.Credits</td><td>@Model.CourseName(s.CourseId)</td>
                             <td class="text-end">
-                                <a asp-page="/Academic/Subjects" asp-route-editId="@s.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@s.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                <span class="action-stack">
+                                    <a asp-page="/Academic/Subjects" asp-route-editId="@s.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@s.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                </span>
                             </td>
                         </tr>
                     }
-                    @if (Model.Items.Count == 0) { <tr><td colspan="6" class="text-center text-muted">None yet.</td></tr> }
+                    @if (Model.Items.Count == 0) { <tr><td colspan="6" class="text-center empty-state">None yet.</td></tr> }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>

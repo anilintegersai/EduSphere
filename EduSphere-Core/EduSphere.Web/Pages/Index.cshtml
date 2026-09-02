@@ -6,18 +6,50 @@
 
 @if (!Model.IsAuthenticated)
 {
-    <div class="px-3 py-5 text-center">
-        <h1 class="display-5 fw-semibold">EduSphere</h1>
-        <p class="lead text-muted">Multi-tenant education management platform.</p>
-        <a class="btn btn-primary btn-lg mt-2" asp-page="/Account/Login">Sign in</a>
-    </div>
+    <section class="auth-shell">
+        <div class="auth-story">
+            <div>
+                <span class="eyebrow">EduSphere</span>
+                <h1>Multi-tenant academic operations, ready for scale.</h1>
+                <p>Run tenants, branches, academic structure, and secure admin workflows from one production-oriented console.</p>
+            </div>
+            <div class="auth-proof-grid">
+                <div class="auth-proof">
+                    <strong>SaaS</strong>
+                    <span>Tenant-aware foundation with isolated academic data.</span>
+                </div>
+                <div class="auth-proof">
+                    <strong>API</strong>
+                    <span>Versioned endpoints for admin and integration clients.</span>
+                </div>
+                <div class="auth-proof">
+                    <strong>AI</strong>
+                    <span>Architecture prepared for question-paper generation.</span>
+                </div>
+            </div>
+        </div>
+        <div class="auth-card">
+            <span class="eyebrow">Secure console</span>
+            <h1>Welcome back</h1>
+            <p>Access the EduSphere workspace with your administrator account.</p>
+            <a class="btn btn-primary btn-lg w-100" asp-page="/Account/Login">Sign in</a>
+        </div>
+    </section>
 }
 else
 {
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h1 class="h3 mb-0">Dashboard</h1>
-        <span class="text-muted">Signed in as <strong>@User.Identity?.Name</strong></span>
-    </div>
+    <section class="page-hero">
+        <div>
+            <span class="eyebrow">Platform Console</span>
+            <h1>Dashboard</h1>
+            <p>Track the foundation that is live today: tenant operations, branch management, and academic master data.</p>
+        </div>
+        <div class="hero-status">
+            <small class="text-muted">Current workspace</small>
+            <strong><span class="status-dot"></span>@(Model.HasTenant ? Model.CurrentTenant : "Platform scope")</strong>
+            <span class="text-muted small">Signed in as @User.Identity?.Name</span>
+        </div>
+    </section>
 
     @if (Model.IsSuper && !Model.HasTenant)
     {
@@ -25,7 +57,7 @@ else
             Select a tenant from the switcher in the top bar to manage its branches and academic structure.
             @if (Model.TenantCount == 0)
             {
-                <span>No tenants exist yet — <a asp-page="/Tenants/Index">create one</a> to get started.</span>
+                <span>No tenants exist yet. <a asp-page="/Tenants/Index">Create one</a> to get started.</span>
             }
         </div>
     }
@@ -33,49 +65,114 @@ else
     <div class="row g-3">
         @if (Model.IsSuper)
         {
-            <div class="col-6 col-md-3">
-                <div class="card text-bg-light h-100"><div class="card-body">
-                    <div class="text-muted small text-uppercase">Tenants</div>
-                    <div class="display-6">@Model.TenantCount</div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card metric-card metric-card-blue h-100"><div class="card-body">
+                    <div>
+                        <div class="metric-label">Tenants</div>
+                        <div class="metric-value">@Model.TenantCount</div>
+                    </div>
+                    <div class="metric-hint">Institutions in the platform registry</div>
                     <a asp-page="/Tenants/Index" class="stretched-link"></a>
                 </div></div>
             </div>
         }
         @if (Model.HasTenant)
         {
-            <div class="col-6 col-md-3">
-                <div class="card text-bg-light h-100"><div class="card-body">
-                    <div class="text-muted small text-uppercase">Branches</div>
-                    <div class="display-6">@Model.BranchCount</div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card metric-card metric-card-teal h-100"><div class="card-body">
+                    <div>
+                        <div class="metric-label">Branches</div>
+                        <div class="metric-value">@Model.BranchCount</div>
+                    </div>
+                    <div class="metric-hint">Campuses configured for this tenant</div>
                     <a asp-page="/Branches/Index" class="stretched-link"></a>
                 </div></div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="card text-bg-light h-100"><div class="card-body">
-                    <div class="text-muted small text-uppercase">Courses</div>
-                    <div class="display-6">@Model.CourseCount</div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card metric-card metric-card-gold h-100"><div class="card-body">
+                    <div>
+                        <div class="metric-label">Courses</div>
+                        <div class="metric-value">@Model.CourseCount</div>
+                    </div>
+                    <div class="metric-hint">Programs available for enrollment</div>
                     <a asp-page="/Academic/Courses" class="stretched-link"></a>
                 </div></div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="card text-bg-light h-100"><div class="card-body">
-                    <div class="text-muted small text-uppercase">Subjects</div>
-                    <div class="display-6">@Model.SubjectCount</div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card metric-card metric-card-rose h-100"><div class="card-body">
+                    <div>
+                        <div class="metric-label">Subjects</div>
+                        <div class="metric-value">@Model.SubjectCount</div>
+                    </div>
+                    <div class="metric-hint">Subject catalog prepared for syllabus</div>
                     <a asp-page="/Academic/Subjects" class="stretched-link"></a>
                 </div></div>
             </div>
-            <div class="col-6 col-md-3">
-                <div class="card text-bg-light h-100"><div class="card-body">
-                    <div class="text-muted small text-uppercase">Academic Years</div>
-                    <div class="display-6">@Model.AcademicYearCount</div>
+            <div class="col-12 col-sm-6 col-xl-3">
+                <div class="card metric-card metric-card-green h-100"><div class="card-body">
+                    <div>
+                        <div class="metric-label">Academic Years</div>
+                        <div class="metric-value">@Model.AcademicYearCount</div>
+                    </div>
+                    <div class="metric-hint">Calendar periods available for batches</div>
                     <a asp-page="/Academic/AcademicYears" class="stretched-link"></a>
                 </div></div>
             </div>
         }
     </div>
 
-    @if (Model.HasTenant)
-    {
-        <p class="text-muted mt-3">Current tenant: <strong>@Model.CurrentTenant</strong></p>
-    }
+    <div class="row g-4 mt-1">
+        <div class="col-xl-8">
+            <section class="panel-card h-100">
+                <h2 class="panel-title">Implementation Readiness</h2>
+                <p class="panel-subtitle">Current source compared with the foundation and academic-core requirements.</p>
+                <ul class="readiness-list mt-3">
+                    <li class="readiness-item">
+                        <span class="readiness-index">1</span>
+                        <span class="readiness-copy">
+                            <strong>Tenant-safe foundation</strong>
+                            <span>Tenant resolution, role policies, query filters, and unit tests are present.</span>
+                        </span>
+                        <span class="stage-tag">Live</span>
+                    </li>
+                    <li class="readiness-item">
+                        <span class="readiness-index">2</span>
+                        <span class="readiness-copy">
+                            <strong>Core masters</strong>
+                            <span>Branches, academic years, departments, courses, batches, sections, subjects, and syllabus units have Razor pages and APIs.</span>
+                        </span>
+                        <span class="stage-tag">Live</span>
+                    </li>
+                    <li class="readiness-item">
+                        <span class="readiness-index">3</span>
+                        <span class="readiness-copy">
+                            <strong>Enterprise modules</strong>
+                            <span>Admissions, people, attendance, exams, AI paper generation, fees, transport, library, hostel, and reporting remain future build phases.</span>
+                        </span>
+                        <span class="stage-tag">Next</span>
+                    </li>
+                </ul>
+            </section>
+        </div>
+        <div class="col-xl-4">
+            <section class="panel-card h-100">
+                <h2 class="panel-title">Architecture Track</h2>
+                <p class="panel-subtitle">Modular monolith progress against the documented target.</p>
+                <div class="roadmap-grid">
+                    <div class="roadmap-item">
+                        <strong>Clean layers</strong>
+                        <span>Domain, Application, Infrastructure, Web, and unit tests are separated.</span>
+                    </div>
+                    <div class="roadmap-item">
+                        <strong>Database portability</strong>
+                        <span>EF Core provider selection exists for SQL Server and PostgreSQL; MySQL and SQLite are still missing.</span>
+                    </div>
+                    <div class="roadmap-item">
+                        <strong>Product polish</strong>
+                        <span>The shell now presents the app like an enterprise SaaS console.</span>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
 }

@@ -1,5 +1,9 @@
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
+@{
+    var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
+    var isSignedIn = SignInManager.IsSignedIn(User);
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,28 +14,40 @@
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/EduSphere.Web.styles.css" asp-append-version="true" />
 </head>
-<body>
-    <header>
-        <nav class="navbar navbar-expand-lg navbar-dark bg-primary border-bottom box-shadow mb-3">
-            <div class="container-fluid">
-                <a class="navbar-brand fw-semibold" asp-area="" asp-page="/Index">EduSphere</a>
-                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+<body class="app-body">
+    <header class="app-header">
+        <nav class="navbar navbar-expand-xl app-navbar">
+            <div class="container-fluid px-3 px-lg-4 px-xxl-5">
+                <a class="navbar-brand app-brand" asp-area="" asp-page="/Index" aria-label="EduSphere home">
+                    <span class="brand-mark">E</span>
+                    <span class="brand-copy">
+                        <span class="brand-title">EduSphere</span>
+                        <span class="brand-subtitle">Academic Cloud</span>
+                    </span>
+                </a>
+                <button class="navbar-toggler app-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
                         aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
                 </button>
                 <div class="navbar-collapse collapse" id="mainNav">
-                    @if (SignInManager.IsSignedIn(User))
+                    @if (isSignedIn)
                     {
-                        <ul class="navbar-nav me-auto">
-                            <li class="nav-item"><a class="nav-link" asp-page="/Index">Dashboard</a></li>
+                        <ul class="navbar-nav app-nav me-auto mb-3 mb-xl-0">
+                            <li class="nav-item">
+                                <a class="nav-link @(currentPage == "/Index" ? "active" : "")" asp-page="/Index">Dashboard</a>
+                            </li>
                             @if (User.IsInRole(Roles.SuperAdmin))
                             {
-                                <li class="nav-item"><a class="nav-link" asp-page="/Tenants/Index">Tenants</a></li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Tenants", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Tenants/Index">Tenants</a>
+                                </li>
                             }
-                            <li class="nav-item"><a class="nav-link" asp-page="/Branches/Index">Branches</a></li>
+                            <li class="nav-item">
+                                <a class="nav-link @(currentPage.StartsWith("/Branches", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Branches/Index">Branches</a>
+                            </li>
                             <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Academic</a>
-                                <ul class="dropdown-menu">
+                                <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Academic", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Academic</a>
+                                <ul class="dropdown-menu app-dropdown">
                                     <li><a class="dropdown-item" asp-page="/Academic/AcademicYears">Academic Years</a></li>
                                     <li><a class="dropdown-item" asp-page="/Academic/Departments">Departments</a></li>
                                     <li><a class="dropdown-item" asp-page="/Academic/Courses">Courses</a></li>
@@ -42,30 +58,32 @@
                                 </ul>
                             </li>
                         </ul>
-                        <div class="d-flex align-items-center">
+                        <div class="navbar-tools">
                             <partial name="_TenantSwitcherPartial" />
                             <partial name="_LoginPartial" />
                         </div>
                     }
                     else
                     {
-                        <ul class="navbar-nav ms-auto">
+                        <div class="navbar-tools ms-auto">
                             <partial name="_LoginPartial" />
-                        </ul>
+                        </div>
                     }
                 </div>
             </div>
         </nav>
     </header>
-    <div class="container-fluid px-4">
-        <main role="main" class="pb-3">
+    <div class="container-fluid app-shell px-3 px-lg-4 px-xxl-5">
+        <main role="main" class="app-main">
             @RenderBody()
         </main>
     </div>
 
-    <footer class="border-top footer text-muted mt-4">
-        <div class="container-fluid px-4">
-            &copy; 2026 - EduSphere
+    <footer class="app-footer">
+        <div class="container-fluid px-3 px-lg-4 px-xxl-5">
+            <span>&copy; 2026 EduSphere</span>
+            <span class="footer-dot"></span>
+            <span>Multi-tenant education management</span>
         </div>
     </footer>
 

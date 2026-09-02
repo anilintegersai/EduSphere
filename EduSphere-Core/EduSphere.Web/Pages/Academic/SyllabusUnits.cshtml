@@ -3,7 +3,17 @@
 @{
     ViewData["Title"] = "Syllabus Units";
 }
-<h1 class="h3 mb-3">Syllabus Units</h1>
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Academic core</span>
+        <h1>Syllabus Units</h1>
+        <p>Break subjects into ordered teaching units with descriptions and estimated hours.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Items.Count units</span>
+    }
+</section>
 
 @if (!Model.HasTenant)
 {
@@ -11,9 +21,9 @@
 }
 else
 {
-    <div class="row g-4">
+    <div class="row g-4 workspace-grid">
         <div class="col-lg-4">
-            <div class="card"><div class="card-header">@(Model.IsEditing ? "Edit" : "New") syllabus unit</div>
+            <div class="card form-card"><div class="card-header"><span>@(Model.IsEditing ? "Edit" : "New") syllabus unit</span><span class="stage-tag">Syllabus</span></div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="Save">
                         <div asp-validation-summary="All" class="text-danger small"></div>
@@ -21,7 +31,7 @@ else
                         <div class="mb-2">
                             <label asp-for="Input.SubjectId" class="form-label"></label>
                             <select asp-for="Input.SubjectId" class="form-select">
-                                <option value="">— select subject —</option>
+                                <option value="">Select subject</option>
                                 @foreach (var s in Model.Subjects) { <option value="@s.Id">@s.Name</option> }
                             </select>
                             <span asp-validation-for="Input.SubjectId" class="text-danger small"></span>
@@ -32,14 +42,18 @@ else
                         </div>
                         <div class="mb-2"><label asp-for="Input.EstimatedHours" class="form-label"></label><input asp-for="Input.EstimatedHours" type="number" class="form-control" /></div>
                         <div class="mb-3"><label asp-for="Input.Description" class="form-label"></label><textarea asp-for="Input.Description" class="form-control" rows="2"></textarea></div>
-                        <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
-                        @if (Model.IsEditing) { <a asp-page="/Academic/SyllabusUnits" class="btn btn-outline-secondary">Cancel</a> }
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                            @if (Model.IsEditing) { <a asp-page="/Academic/SyllabusUnits" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
         <div class="col-lg-8">
-            <div class="table-responsive">
+            <div class="card data-card">
+                <div class="card-header"><span>Syllabus Unit Directory</span><span class="count-pill">@Model.Items.Count records</span></div>
+                <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead><tr><th>Subject</th><th>#</th><th>Title</th><th>Hours</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
@@ -48,14 +62,17 @@ else
                         <tr>
                             <td>@Model.SubjectName(u.SubjectId)</td><td>@u.Order</td><td>@u.Title</td><td>@u.EstimatedHours</td>
                             <td class="text-end">
-                                <a asp-page="/Academic/SyllabusUnits" asp-route-editId="@u.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@u.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                <span class="action-stack">
+                                    <a asp-page="/Academic/SyllabusUnits" asp-route-editId="@u.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@u.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                </span>
                             </td>
                         </tr>
                     }
-                    @if (Model.Items.Count == 0) { <tr><td colspan="5" class="text-center text-muted">None yet.</td></tr> }
+                    @if (Model.Items.Count == 0) { <tr><td colspan="5" class="text-center empty-state">None yet.</td></tr> }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>

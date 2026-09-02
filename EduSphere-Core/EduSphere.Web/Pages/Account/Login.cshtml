@@ -4,9 +4,32 @@
     ViewData["Title"] = "Sign in";
 }
 
-<div class="row justify-content-center">
-    <div class="col-md-5">
-        <h1 class="h3 mb-3">Sign in to EduSphere</h1>
+<section class="auth-shell">
+    <div class="auth-story">
+        <div>
+            <span class="eyebrow">EduSphere</span>
+            <h1>Education operations with tenant discipline built in.</h1>
+            <p>Secure access for platform administrators, tenant teams, and academic operations staff.</p>
+        </div>
+        <div class="auth-proof-grid">
+            <div class="auth-proof">
+                <strong>Roles</strong>
+                <span>SuperAdmin and TenantAdmin policies are wired into the console.</span>
+            </div>
+            <div class="auth-proof">
+                <strong>Scope</strong>
+                <span>Tenant context flows through Razor pages and APIs.</span>
+            </div>
+            <div class="auth-proof">
+                <strong>Core</strong>
+                <span>Academic setup starts from branches, years, courses, and subjects.</span>
+            </div>
+        </div>
+    </div>
+    <div class="auth-card">
+        <span class="eyebrow">Administrator access</span>
+        <h1>Sign in to EduSphere</h1>
+        <p>Use your platform or tenant administrator account.</p>
 
         @if (!string.IsNullOrEmpty(Model.ErrorMessage))
         {
@@ -37,7 +60,7 @@
             <button type="submit" class="btn btn-primary w-100">Sign in</button>
         </form>
     </div>
-</div>
+</section>
 
 @section Scripts {
     <partial name="_ValidationScriptsPartial" />

@@ -4,12 +4,22 @@
     ViewData["Title"] = "Tenants";
 }
 
-<h1 class="h3 mb-3">Tenants</h1>
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Platform operations</span>
+        <h1>Tenants</h1>
+        <p>Create institutions, manage domain identity, and control whether a tenant can operate in the SaaS platform.</p>
+    </div>
+    <span class="count-pill">@Model.Tenants.Count tenants</span>
+</section>
 
-<div class="row g-4">
+<div class="row g-4 workspace-grid">
     <div class="col-lg-4">
-        <div class="card">
-            <div class="card-header">@(Model.IsEditing ? "Edit tenant" : "New tenant")</div>
+        <div class="card form-card">
+            <div class="card-header">
+                <span>@(Model.IsEditing ? "Edit tenant" : "New tenant")</span>
+                <span class="stage-tag">Registry</span>
+            </div>
             <div class="card-body">
                 <form method="post" asp-page-handler="Save">
                     <div asp-validation-summary="All" class="text-danger small"></div>
@@ -32,18 +42,25 @@
                         <label asp-for="Input.Description" class="form-label"></label>
                         <textarea asp-for="Input.Description" class="form-control" rows="2"></textarea>
                     </div>
-                    <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
-                    @if (Model.IsEditing)
-                    {
-                        <a asp-page="/Tenants/Index" class="btn btn-outline-secondary">Cancel</a>
-                    }
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                        @if (Model.IsEditing)
+                        {
+                            <a asp-page="/Tenants/Index" class="btn btn-outline-secondary">Cancel</a>
+                        }
+                    </div>
                 </form>
             </div>
         </div>
     </div>
 
     <div class="col-lg-8">
-        <div class="table-responsive">
+        <div class="card data-card">
+            <div class="card-header">
+                <span>Tenant Registry</span>
+                <span class="count-pill">@Model.Tenants.Count records</span>
+            </div>
+            <div class="table-responsive">
             <table class="table table-hover align-middle">
                 <thead><tr><th>Name</th><th>Identifier</th><th>Domain</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
                 <tbody>
@@ -52,41 +69,44 @@
                     <tr>
                         <td>@t.Name</td>
                         <td><code>@t.TenantIdentifier</code></td>
-                        <td>@(t.CustomDomain ?? "—")</td>
+                        <td>@(t.CustomDomain ?? "-")</td>
                         <td>
                             @if (t.IsActive)
-                            { <span class="badge text-bg-success">Active</span> }
+                            { <span class="status-badge status-badge-success">Active</span> }
                             else
-                            { <span class="badge text-bg-secondary">Suspended</span> }
+                            { <span class="status-badge status-badge-muted">Suspended</span> }
                         </td>
                         <td class="text-end">
-                            <form method="post" asp-page="/SwitchTenant" class="d-inline">
-                                <input type="hidden" name="identifier" value="@t.TenantIdentifier" />
-                                <input type="hidden" name="returnUrl" value="/" />
-                                <button class="btn btn-sm btn-outline-primary" title="Work in this tenant">Use</button>
-                            </form>
-                            <a asp-page="/Tenants/Index" asp-route-editId="@t.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                            @if (t.IsActive)
-                            {
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@t.Id" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-danger">Suspend</button>
+                            <span class="action-stack">
+                                <form method="post" asp-page="/SwitchTenant" class="d-inline">
+                                    <input type="hidden" name="identifier" value="@t.TenantIdentifier" />
+                                    <input type="hidden" name="returnUrl" value="/" />
+                                    <button class="btn btn-sm btn-outline-primary" title="Work in this tenant">Use</button>
                                 </form>
-                            }
-                            else
-                            {
-                                <form method="post" asp-page-handler="Activate" asp-route-id="@t.Id" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-success">Activate</button>
-                                </form>
-                            }
+                                <a asp-page="/Tenants/Index" asp-route-editId="@t.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                @if (t.IsActive)
+                                {
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@t.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-danger">Suspend</button>
+                                    </form>
+                                }
+                                else
+                                {
+                                    <form method="post" asp-page-handler="Activate" asp-route-id="@t.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-success">Activate</button>
+                                    </form>
+                                }
+                            </span>
                         </td>
                     </tr>
                 }
                 @if (Model.Tenants.Count == 0)
                 {
-                    <tr><td colspan="5" class="text-center text-muted">No tenants yet.</td></tr>
+                    <tr><td colspan="5" class="text-center empty-state">No tenants yet.</td></tr>
                 }
                 </tbody>
             </table>
+            </div>
         </div>
     </div>
 </div>

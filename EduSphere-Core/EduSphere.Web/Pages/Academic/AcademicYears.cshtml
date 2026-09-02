@@ -3,7 +3,17 @@
 @{
     ViewData["Title"] = "Academic Years";
 }
-<h1 class="h3 mb-3">Academic Years</h1>
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Academic core</span>
+        <h1>Academic Years</h1>
+        <p>Define calendar periods that organize batches, schedules, attendance, exams, and reports.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Items.Count years</span>
+    }
+</section>
 
 @if (!Model.HasTenant)
 {
@@ -11,9 +21,9 @@
 }
 else
 {
-    <div class="row g-4">
+    <div class="row g-4 workspace-grid">
         <div class="col-lg-4">
-            <div class="card"><div class="card-header">@(Model.IsEditing ? "Edit" : "New") academic year</div>
+            <div class="card form-card"><div class="card-header"><span>@(Model.IsEditing ? "Edit" : "New") academic year</span><span class="stage-tag">Calendar</span></div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="Save">
                         <div asp-validation-summary="All" class="text-danger small"></div>
@@ -31,14 +41,18 @@ else
                             <input asp-for="Input.IsCurrent" class="form-check-input" />
                             <label asp-for="Input.IsCurrent" class="form-check-label"></label>
                         </div>
-                        <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
-                        @if (Model.IsEditing) { <a asp-page="/Academic/AcademicYears" class="btn btn-outline-secondary">Cancel</a> }
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                            @if (Model.IsEditing) { <a asp-page="/Academic/AcademicYears" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
         <div class="col-lg-8">
-            <div class="table-responsive">
+            <div class="card data-card">
+                <div class="card-header"><span>Academic Year Directory</span><span class="count-pill">@Model.Items.Count records</span></div>
+                <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead><tr><th>Name</th><th>Start</th><th>End</th><th>Current</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
@@ -46,16 +60,19 @@ else
                     {
                         <tr>
                             <td>@y.Name</td><td>@y.StartDate.ToString("yyyy-MM-dd")</td><td>@y.EndDate.ToString("yyyy-MM-dd")</td>
-                            <td>@(y.IsCurrent ? "Yes" : "")</td>
+                            <td>@if (y.IsCurrent) { <span class="status-badge status-badge-success">Current</span> }</td>
                             <td class="text-end">
-                                <a asp-page="/Academic/AcademicYears" asp-route-editId="@y.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@y.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                <span class="action-stack">
+                                    <a asp-page="/Academic/AcademicYears" asp-route-editId="@y.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@y.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                </span>
                             </td>
                         </tr>
                     }
-                    @if (Model.Items.Count == 0) { <tr><td colspan="5" class="text-center text-muted">None yet.</td></tr> }
+                    @if (Model.Items.Count == 0) { <tr><td colspan="5" class="text-center empty-state">None yet.</td></tr> }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>

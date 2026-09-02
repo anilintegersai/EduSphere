@@ -4,7 +4,17 @@
     ViewData["Title"] = "Branches";
 }
 
-<h1 class="h3 mb-3">Branches</h1>
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Campus management</span>
+        <h1>Branches</h1>
+        <p>Manage physical campuses for the selected tenant, including branch codes and regional address information.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Branches.Count branches</span>
+    }
+</section>
 
 @if (!Model.HasTenant)
 {
@@ -12,10 +22,13 @@
 }
 else
 {
-    <div class="row g-4">
+    <div class="row g-4 workspace-grid">
         <div class="col-lg-4">
-            <div class="card">
-                <div class="card-header">@(Model.IsEditing ? "Edit branch" : "New branch")</div>
+            <div class="card form-card">
+                <div class="card-header">
+                    <span>@(Model.IsEditing ? "Edit branch" : "New branch")</span>
+                    <span class="stage-tag">Campus</span>
+                </div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="Save">
                         <div asp-validation-summary="All" class="text-danger small"></div>
@@ -42,18 +55,25 @@ else
                             <div class="col mb-3"><label asp-for="Input.Country" class="form-label"></label><input asp-for="Input.Country" class="form-control" /></div>
                             <div class="col mb-3"><label asp-for="Input.Pincode" class="form-label"></label><input asp-for="Input.Pincode" class="form-control" /></div>
                         </div>
-                        <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
-                        @if (Model.IsEditing)
-                        {
-                            <a asp-page="/Branches/Index" class="btn btn-outline-secondary">Cancel</a>
-                        }
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                            @if (Model.IsEditing)
+                            {
+                                <a asp-page="/Branches/Index" class="btn btn-outline-secondary">Cancel</a>
+                            }
+                        </div>
                     </form>
                 </div>
             </div>
         </div>
 
         <div class="col-lg-8">
-            <div class="table-responsive">
+            <div class="card data-card">
+                <div class="card-header">
+                    <span>Branch Directory</span>
+                    <span class="count-pill">@Model.Branches.Count records</span>
+                </div>
+                <div class="table-responsive">
                 <table class="table table-hover align-middle">
                     <thead><tr><th>Name</th><th>Code</th><th>City</th><th>State</th><th class="text-end">Actions</th></tr></thead>
                     <tbody>
@@ -62,22 +82,25 @@ else
                         <tr>
                             <td>@b.Name</td>
                             <td><code>@b.Code</code></td>
-                            <td>@(b.City ?? "—")</td>
-                            <td>@(b.State ?? "—")</td>
+                            <td>@(b.City ?? "-")</td>
+                            <td>@(b.State ?? "-")</td>
                             <td class="text-end">
-                                <a asp-page="/Branches/Index" asp-route-editId="@b.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
-                                <form method="post" asp-page-handler="Delete" asp-route-id="@b.Id" class="d-inline">
-                                    <button class="btn btn-sm btn-outline-danger">Remove</button>
-                                </form>
+                                <span class="action-stack">
+                                    <a asp-page="/Branches/Index" asp-route-editId="@b.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                    <form method="post" asp-page-handler="Delete" asp-route-id="@b.Id" class="d-inline">
+                                        <button class="btn btn-sm btn-outline-danger">Remove</button>
+                                    </form>
+                                </span>
                             </td>
                         </tr>
                     }
                     @if (Model.Branches.Count == 0)
                     {
-                        <tr><td colspan="5" class="text-center text-muted">No branches yet.</td></tr>
+                        <tr><td colspan="5" class="text-center empty-state">No branches yet.</td></tr>
                     }
                     </tbody>
                 </table>
+                </div>
             </div>
         </div>
     </div>
