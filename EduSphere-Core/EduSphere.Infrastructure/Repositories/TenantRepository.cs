@@ -4,27 +4,17 @@ using Microsoft.EntityFrameworkCore;
 
 namespace EduSphere.Infrastructure.Repositories;
 
-public class TenantRepository : ITenantRepository
+public class TenantRepository : GenericRepository<Tenant>, ITenantRepository
 {
-    private readonly TenantDbContext _context;
-
-    public TenantRepository(TenantDbContext context)
+    public TenantRepository(TenantDbContext context) : base(context)
     {
-        _context = context ?? throw new ArgumentNullException(nameof(context));
     }
 
-    public async Task<Tenant?> GetTenantByIdentifierAsync(string tenantIdentifier)
-        => await _context.Tenants.FirstOrDefaultAsync(t => t.TenantIdentifier == tenantIdentifier);
+    // Tenant is the tenancy root and is not itself tenant-filtered, so these
+    // lookups run without a resolved tenant in scope (used during resolution).
+    public async Task<Tenant?> GetByIdentifierAsync(string tenantIdentifier)
+        => await Context.Tenants.FirstOrDefaultAsync(t => t.TenantIdentifier == tenantIdentifier);
 
-    public async Task<IEnumerable<Tenant>> GetAllTenantsAsync()
-        => await _context.Tenants.ToListAsync();
-
-    public async Task AddTenantAsync(Tenant tenant)
-        => await _context.Tenants.AddAsync(tenant);
-
-    public void UpdateTenantAsync(Tenant tenant)
-        => _context.Tenants.Update(tenant);
-
-    public async Task<bool> TenantExistsAsync(string tenantIdentifier)
-        => await _context.Tenants.AnyAsync(t => t.TenantIdentifier == tenantIdentifier);
+    public async Task<Tenant?> GetByCustomDomainAsync(string host)
+        => await Context.Tenants.FirstOrDefaultAsync(t => t.CustomDomain == host);
 }

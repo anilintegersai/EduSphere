@@ -56,7 +56,6 @@ public class TenantDbContextResolver : ITenantDbContextResolver
     private string SimulateTenantConnectionString(string mainConnectionString, string tenantIdentifier)
     {
         // Example: Host=localhost;Database=EduSphere;Username=postgres;Password=pass
-        var uri = new Uri(mainConnectionString);
         var builder = new Npgsql.NpgsqlConnectionStringBuilder(mainConnectionString);
         builder.Database = $"edusphere_{tenantIdentifier}"; // Tenant-specific database name
         return builder.ToString();

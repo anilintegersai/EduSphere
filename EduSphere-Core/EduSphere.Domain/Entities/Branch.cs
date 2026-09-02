@@ -1,9 +1,10 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EduSphere.Domain.MultiTenancy;
 
 namespace EduSphere.Domain.Entities;
 
-public class Branch
+public class Branch : ITenantEntity
 {
     [Key]
     [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
@@ -13,9 +14,11 @@ public class Branch
     [StringLength(200)]
     public string Name { get; set; } = null!;
 
-    [Required]
     [StringLength(50)]
-    public string BoardType { get; set; } = null!; // CBSE, ICSE, State, etc.
+    public string? Code { get; set; } // Branch/campus code
+
+    [StringLength(50)]
+    public string? BoardType { get; set; } // CBSE, ICSE, State, etc.
 
     [StringLength(255)]
     public string? Address { get; set; }
@@ -25,6 +28,9 @@ public class Branch
 
     [StringLength(50)]
     public string? State { get; set; }
+
+    [StringLength(50)]
+    public string? Country { get; set; } = "India";
 
     [StringLength(20)]
     public string? Pincode { get; set; }

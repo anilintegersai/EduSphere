@@ -1,10 +1,81 @@
-﻿@page
+@page
 @model IndexModel
 @{
-    ViewData["Title"] = "Home page";
+    ViewData["Title"] = "Dashboard";
 }
 
-<div class="text-center">
-    <h1 class="display-4">Welcome</h1>
-    <p>Learn about <a href="https://learn.microsoft.com/aspnet/core">building Web apps with ASP.NET Core</a>.</p>
-</div>
+@if (!Model.IsAuthenticated)
+{
+    <div class="px-3 py-5 text-center">
+        <h1 class="display-5 fw-semibold">EduSphere</h1>
+        <p class="lead text-muted">Multi-tenant education management platform.</p>
+        <a class="btn btn-primary btn-lg mt-2" asp-page="/Account/Login">Sign in</a>
+    </div>
+}
+else
+{
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <h1 class="h3 mb-0">Dashboard</h1>
+        <span class="text-muted">Signed in as <strong>@User.Identity?.Name</strong></span>
+    </div>
+
+    @if (Model.IsSuper && !Model.HasTenant)
+    {
+        <div class="alert alert-info">
+            Select a tenant from the switcher in the top bar to manage its branches and academic structure.
+            @if (Model.TenantCount == 0)
+            {
+                <span>No tenants exist yet — <a asp-page="/Tenants/Index">create one</a> to get started.</span>
+            }
+        </div>
+    }
+
+    <div class="row g-3">
+        @if (Model.IsSuper)
+        {
+            <div class="col-6 col-md-3">
+                <div class="card text-bg-light h-100"><div class="card-body">
+                    <div class="text-muted small text-uppercase">Tenants</div>
+                    <div class="display-6">@Model.TenantCount</div>
+                    <a asp-page="/Tenants/Index" class="stretched-link"></a>
+                </div></div>
+            </div>
+        }
+        @if (Model.HasTenant)
+        {
+            <div class="col-6 col-md-3">
+                <div class="card text-bg-light h-100"><div class="card-body">
+                    <div class="text-muted small text-uppercase">Branches</div>
+                    <div class="display-6">@Model.BranchCount</div>
+                    <a asp-page="/Branches/Index" class="stretched-link"></a>
+                </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-bg-light h-100"><div class="card-body">
+                    <div class="text-muted small text-uppercase">Courses</div>
+                    <div class="display-6">@Model.CourseCount</div>
+                    <a asp-page="/Academic/Courses" class="stretched-link"></a>
+                </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-bg-light h-100"><div class="card-body">
+                    <div class="text-muted small text-uppercase">Subjects</div>
+                    <div class="display-6">@Model.SubjectCount</div>
+                    <a asp-page="/Academic/Subjects" class="stretched-link"></a>
+                </div></div>
+            </div>
+            <div class="col-6 col-md-3">
+                <div class="card text-bg-light h-100"><div class="card-body">
+                    <div class="text-muted small text-uppercase">Academic Years</div>
+                    <div class="display-6">@Model.AcademicYearCount</div>
+                    <a asp-page="/Academic/AcademicYears" class="stretched-link"></a>
+                </div></div>
+            </div>
+        }
+    </div>
+
+    @if (Model.HasTenant)
+    {
+        <p class="text-muted mt-3">Current tenant: <strong>@Model.CurrentTenant</strong></p>
+    }
+}

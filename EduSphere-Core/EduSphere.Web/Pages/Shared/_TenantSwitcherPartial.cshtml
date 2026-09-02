@@ -1,0 +1,26 @@
+@inject ITenantService TenantService
+@inject ITenantContext TenantContext
+@{
+    var isSuper = User.IsInRole(Roles.SuperAdmin);
+    var tenants = isSuper ? (await TenantService.GetAllTenantsAsync()).OrderBy(t => t.Name).ToList() : new();
+    var current = TenantContext.TenantIdentifier;
+    var returnUrl = $"{Context.Request.Path}{Context.Request.QueryString}";
+}
+@if (isSuper)
+{
+    <form method="post" asp-page="/SwitchTenant" class="d-flex align-items-center me-3">
+        <input type="hidden" name="returnUrl" value="@returnUrl" />
+        <label class="text-muted small me-2 mb-0">Tenant:</label>
+        <select name="identifier" class="form-select form-select-sm" style="width:auto" onchange="this.form.submit()">
+            <option value="">— none —</option>
+            @foreach (var t in tenants)
+            {
+                <option value="@t.TenantIdentifier" selected="@(current == t.TenantIdentifier)">@t.Name (@t.TenantIdentifier)</option>
+            }
+        </select>
+    </form>
+}
+else if (TenantContext.HasTenant)
+{
+    <span class="navbar-text me-3 small">Tenant: <strong>@current</strong></span>
+}

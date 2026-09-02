@@ -15,7 +15,10 @@ public class Tenant
 
     [Required]
     [StringLength(100)]
-    public string TenantIdentifier { get; set; } = null!; // e.g., "school1", "college1"
+    public string TenantIdentifier { get; set; } = null!; // subdomain / header key, e.g. "school1"
+
+    [StringLength(255)]
+    public string? CustomDomain { get; set; } // e.g. "school.edu.in" for custom-domain resolution
 
     [StringLength(255)]
     public string? Description { get; set; }

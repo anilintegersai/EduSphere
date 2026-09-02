@@ -1,0 +1,63 @@
+@page
+@model EduSphere.Web.Pages.Academic.AcademicYearsModel
+@{
+    ViewData["Title"] = "Academic Years";
+}
+<h1 class="h3 mb-3">Academic Years</h1>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4">
+        <div class="col-lg-4">
+            <div class="card"><div class="card-header">@(Model.IsEditing ? "Edit" : "New") academic year</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Save">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="Input.Id" />
+                        <div class="mb-2">
+                            <label asp-for="Input.Name" class="form-label"></label>
+                            <input asp-for="Input.Name" class="form-control" placeholder="2026-2027" />
+                            <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col mb-2"><label asp-for="Input.StartDate" class="form-label"></label><input asp-for="Input.StartDate" type="date" class="form-control" /></div>
+                            <div class="col mb-2"><label asp-for="Input.EndDate" class="form-label"></label><input asp-for="Input.EndDate" type="date" class="form-control" /></div>
+                        </div>
+                        <div class="form-check mb-3">
+                            <input asp-for="Input.IsCurrent" class="form-check-input" />
+                            <label asp-for="Input.IsCurrent" class="form-check-label"></label>
+                        </div>
+                        <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                        @if (Model.IsEditing) { <a asp-page="/Academic/AcademicYears" class="btn btn-outline-secondary">Cancel</a> }
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-8">
+            <div class="table-responsive">
+                <table class="table table-hover align-middle">
+                    <thead><tr><th>Name</th><th>Start</th><th>End</th><th>Current</th><th class="text-end">Actions</th></tr></thead>
+                    <tbody>
+                    @foreach (var y in Model.Items)
+                    {
+                        <tr>
+                            <td>@y.Name</td><td>@y.StartDate.ToString("yyyy-MM-dd")</td><td>@y.EndDate.ToString("yyyy-MM-dd")</td>
+                            <td>@(y.IsCurrent ? "Yes" : "")</td>
+                            <td class="text-end">
+                                <a asp-page="/Academic/AcademicYears" asp-route-editId="@y.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@y.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Items.Count == 0) { <tr><td colspan="5" class="text-center text-muted">None yet.</td></tr> }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+}
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

@@ -1,6 +1,7 @@
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Interfaces;
+using Microsoft.Extensions.Logging;
 
 namespace EduSphere.Application.Services;
 
@@ -25,13 +26,13 @@ public class TenantService : ITenantService
         return await _unitOfWork.TenantRepository.GetByIdAsync(id);
     }
 
-    public async Task<Tenant> CreateTenantAsync(string name, string tenantIdentifier, string? description = null)
+    public async Task<Tenant> CreateTenantAsync(string name, string tenantIdentifier, string? description = null, string? customDomain = null)
     {
         // Check if tenant identifier already exists
         var existingTenant = await _unitOfWork.TenantRepository.GetFirstOrDefaultAsync(
             t => t.TenantIdentifier == tenantIdentifier
         );
-        
+
         if (existingTenant != null)
         {
             throw new InvalidOperationException($"Tenant with identifier '{tenantIdentifier}' already exists.");
@@ -42,6 +43,7 @@ public class TenantService : ITenantService
             Name = name,
             TenantIdentifier = tenantIdentifier,
             Description = description,
+            CustomDomain = customDomain,
             IsActive = true,
             CreatedAt = DateTime.UtcNow
         };

@@ -1,0 +1,94 @@
+@page
+@model EduSphere.Web.Pages.Tenants.IndexModel
+@{
+    ViewData["Title"] = "Tenants";
+}
+
+<h1 class="h3 mb-3">Tenants</h1>
+
+<div class="row g-4">
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">@(Model.IsEditing ? "Edit tenant" : "New tenant")</div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Save">
+                    <div asp-validation-summary="All" class="text-danger small"></div>
+                    <input type="hidden" asp-for="Input.Id" />
+                    <div class="mb-2">
+                        <label asp-for="Input.Name" class="form-label"></label>
+                        <input asp-for="Input.Name" class="form-control" />
+                        <span asp-validation-for="Input.Name" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-2">
+                        <label asp-for="Input.TenantIdentifier" class="form-label"></label>
+                        <input asp-for="Input.TenantIdentifier" class="form-control" readonly="@Model.IsEditing" />
+                        <span asp-validation-for="Input.TenantIdentifier" class="text-danger small"></span>
+                    </div>
+                    <div class="mb-2">
+                        <label asp-for="Input.CustomDomain" class="form-label"></label>
+                        <input asp-for="Input.CustomDomain" class="form-control" />
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="Input.Description" class="form-label"></label>
+                        <textarea asp-for="Input.Description" class="form-control" rows="2"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                    @if (Model.IsEditing)
+                    {
+                        <a asp-page="/Tenants/Index" class="btn btn-outline-secondary">Cancel</a>
+                    }
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-8">
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Name</th><th>Identifier</th><th>Domain</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var t in Model.Tenants)
+                {
+                    <tr>
+                        <td>@t.Name</td>
+                        <td><code>@t.TenantIdentifier</code></td>
+                        <td>@(t.CustomDomain ?? "—")</td>
+                        <td>
+                            @if (t.IsActive)
+                            { <span class="badge text-bg-success">Active</span> }
+                            else
+                            { <span class="badge text-bg-secondary">Suspended</span> }
+                        </td>
+                        <td class="text-end">
+                            <form method="post" asp-page="/SwitchTenant" class="d-inline">
+                                <input type="hidden" name="identifier" value="@t.TenantIdentifier" />
+                                <input type="hidden" name="returnUrl" value="/" />
+                                <button class="btn btn-sm btn-outline-primary" title="Work in this tenant">Use</button>
+                            </form>
+                            <a asp-page="/Tenants/Index" asp-route-editId="@t.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                            @if (t.IsActive)
+                            {
+                                <form method="post" asp-page-handler="Delete" asp-route-id="@t.Id" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-danger">Suspend</button>
+                                </form>
+                            }
+                            else
+                            {
+                                <form method="post" asp-page-handler="Activate" asp-route-id="@t.Id" class="d-inline">
+                                    <button class="btn btn-sm btn-outline-success">Activate</button>
+                                </form>
+                            }
+                        </td>
+                    </tr>
+                }
+                @if (Model.Tenants.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center text-muted">No tenants yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
