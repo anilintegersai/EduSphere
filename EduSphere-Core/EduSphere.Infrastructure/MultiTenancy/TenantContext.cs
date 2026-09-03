@@ -9,11 +9,11 @@ namespace EduSphere.Infrastructure.MultiTenancy;
 /// </summary>
 public class TenantContext : ITenantContext
 {
-    public int? TenantId { get; private set; }
+    public Guid? TenantId { get; private set; }
     public string? TenantIdentifier { get; private set; }
     public bool HasTenant => TenantId.HasValue;
 
-    public void SetTenant(int tenantId, string tenantIdentifier)
+    public void SetTenant(Guid tenantId, string tenantIdentifier)
     {
         TenantId = tenantId;
         TenantIdentifier = tenantIdentifier;

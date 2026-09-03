@@ -37,10 +37,10 @@ public class BranchesController : ApiControllerBase
         return Ok(ApiResponse<IEnumerable<BranchDto>>.Ok(branches.Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<BranchDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(Guid id)
     {
         var branch = await _branchService.GetBranchByIdAsync(id);
         return branch is null
@@ -63,10 +63,10 @@ public class BranchesController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<BranchDto>.Ok(Map(branch)));
     }
 
-    [HttpPut("{id:int}")]
+    [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateBranchRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBranchRequest request)
     {
         var updated = await _branchService.UpdateBranchAsync(
             id, request.Name, request.Code, request.Address,
@@ -75,16 +75,16 @@ public class BranchesController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Branch {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
+    [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(Guid id)
     {
         var deleted = await _branchService.DeleteBranchAsync(id);
         return deleted ? NoContent() : NotFound(ApiResponse<object>.Fail($"Branch {id} was not found."));
     }
 
-    private bool TryGetTenant(out int tenantId, out ApiResponse<object> error)
+    private bool TryGetTenant(out Guid tenantId, out ApiResponse<object> error)
     {
         if (_tenantContext.TenantId is { } id)
         {
@@ -93,7 +93,7 @@ public class BranchesController : ApiControllerBase
             return true;
         }
 
-        tenantId = 0;
+        tenantId = Guid.Empty;
         error = ApiResponse<object>.Fail("A tenant must be specified via the X-Tenant-ID header.");
         return false;
     }
@@ -110,7 +110,13 @@ public class BranchesController : ApiControllerBase
         Country = b.Country,
         Pincode = b.Pincode,
         IsActive = b.IsActive,
-        CreatedAt = b.CreatedAt,
-        UpdatedAt = b.UpdatedAt
+        IsDeleted = b.IsDeleted,
+        CreatedBy = b.CreatedBy,
+        CreatedOn = b.CreatedOn,
+        ModifiedBy = b.ModifiedBy,
+        ModifiedOn = b.ModifiedOn,
+        DeletedBy = b.DeletedBy,
+        DeletedOn = b.DeletedOn,
+        ConcurrencyToken = b.ConcurrencyToken
     };
 }

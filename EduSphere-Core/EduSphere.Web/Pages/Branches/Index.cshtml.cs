@@ -27,11 +27,11 @@ public class IndexModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(200)] public string Name { get; set; } = string.Empty;
         [Required, StringLength(50)] public string Code { get; set; } = string.Empty;
         [StringLength(255)] public string? Address { get; set; }
@@ -41,17 +41,17 @@ public class IndexModel : PageModel
         [StringLength(20)] public string? Pincode { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _branches.GetBranchByIdAsync(id) is { } b)
+        if (editId is Guid id && await _branches.GetBranchByIdAsync(id) is { } b)
             Input = Map(b);
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
-        if (_tenant.TenantId is not int tenantId)
+        if (_tenant.TenantId is not Guid tenantId)
             return RedirectToPage();
 
         if (!ModelState.IsValid)
@@ -60,7 +60,7 @@ public class IndexModel : PageModel
             return Page();
         }
 
-        if (Input.Id == 0)
+        if (Input.Id == Guid.Empty)
             await _branches.CreateBranchAsync(tenantId, Input.Name, Input.Code,
                 Input.Address ?? "", Input.City ?? "", Input.State ?? "", Input.Country ?? "India", Input.Pincode ?? "");
         else
@@ -70,7 +70,7 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _branches.DeleteBranchAsync(id);
         return RedirectToPage();
@@ -78,7 +78,7 @@ public class IndexModel : PageModel
 
     private async Task LoadAsync()
     {
-        if (_tenant.TenantId is int tenantId)
+        if (_tenant.TenantId is Guid tenantId)
             Branches = (await _branches.GetBranchesByTenantAsync(tenantId)).OrderBy(b => b.Name).ToList();
     }
 

@@ -1,5 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
+using EduSphere.Domain.Common;
 using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
@@ -13,11 +14,11 @@ namespace EduSphere.Domain.Entities;
 /// and is stamped on write), but intentionally excluded from the global tenant
 /// query filter so Identity can resolve users during authentication.
 /// </summary>
-public class ApplicationUser : IdentityUser<Guid>, ITenantEntity
+public class ApplicationUser : IdentityUser<Guid>, ITenantEntity, IAuditableEntity, IConcurrencyTrackedEntity
 {
-    public int TenantId { get; set; }
+    public Guid TenantId { get; set; }
 
-    public int? BranchId { get; set; }
+    public Guid? BranchId { get; set; }
     public Branch? Branch { get; set; }
 
     [PersonalData]
@@ -39,7 +40,10 @@ public class ApplicationUser : IdentityUser<Guid>, ITenantEntity
 
     public bool IsActive { get; set; } = true;
 
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public string? CreatedBy { get; set; }
+    public DateTime CreatedOn { get; set; }
+    public string? ModifiedBy { get; set; }
+    public DateTime? ModifiedOn { get; set; }
+    public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
     public DateTime? LastLoginAt { get; set; }
-    public DateTime? UpdatedAt { get; set; }
 }

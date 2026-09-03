@@ -20,11 +20,11 @@ public class IndexModel : PageModel
     [BindProperty]
     public InputModel Input { get; set; } = new();
 
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
 
         [Required, StringLength(100)]
         public string Name { get; set; } = string.Empty;
@@ -42,10 +42,10 @@ public class IndexModel : PageModel
         public string? Description { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         await LoadAsync();
-        if (editId is int id && await _tenants.GetTenantByIdAsync(id) is { } t)
+        if (editId is Guid id && await _tenants.GetTenantByIdAsync(id) is { } t)
             Input = Map(t);
     }
 
@@ -59,7 +59,7 @@ public class IndexModel : PageModel
 
         try
         {
-            if (Input.Id == 0)
+            if (Input.Id == Guid.Empty)
                 await _tenants.CreateTenantAsync(Input.Name, Input.TenantIdentifier, Input.Description, Input.CustomDomain);
             else
                 await _tenants.UpdateTenantAsync(Input.Id, Input.Name, Input.Description);
@@ -74,13 +74,13 @@ public class IndexModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _tenants.DeactivateTenantAsync(id);
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostActivateAsync(int id)
+    public async Task<IActionResult> OnPostActivateAsync(Guid id)
     {
         await _tenants.ActivateTenantAsync(id);
         return RedirectToPage();

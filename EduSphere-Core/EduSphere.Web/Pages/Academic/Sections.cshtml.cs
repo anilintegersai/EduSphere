@@ -28,42 +28,44 @@ public class SectionsModel : PageModel
     public IReadOnlyList<Batch> Batches { get; private set; } = new List<Batch>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
-    public string BatchName(int id) => Batches.FirstOrDefault(b => b.Id == id)?.Name ?? "—";
+    public string BatchName(Guid id) => Batches.FirstOrDefault(b => b.Id == id)?.Name ?? "—";
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(50)] public string Name { get; set; } = string.Empty;
         [Range(1, 100000)] public int Capacity { get; set; } = 30;
-        [Range(1, int.MaxValue)] [Display(Name = "Batch")] public int BatchId { get; set; }
+        [Required] [Display(Name = "Batch")] public Guid? BatchId { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, Name = e.Name, Capacity = e.Capacity, BatchId = e.BatchId };
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
         if (!HasTenant) return RedirectToPage();
-        if (await _batches.GetAsync(Input.BatchId) is null)
+        var batchId = Input.BatchId ?? Guid.Empty;
+
+        if (batchId == Guid.Empty || await _batches.GetAsync(batchId) is null)
             ModelState.AddModelError("Input.BatchId", "Selected batch was not found.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
-            await _svc.CreateAsync(new Section { Name = Input.Name, Capacity = Input.Capacity, BatchId = Input.BatchId });
+        if (Input.Id == Guid.Empty)
+            await _svc.CreateAsync(new Section { Name = Input.Name, Capacity = Input.Capacity, BatchId = batchId });
         else
-            await _svc.UpdateAsync(Input.Id, e => { e.Name = Input.Name; e.Capacity = Input.Capacity; e.BatchId = Input.BatchId; });
+            await _svc.UpdateAsync(Input.Id, e => { e.Name = Input.Name; e.Capacity = Input.Capacity; e.BatchId = batchId; });
 
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

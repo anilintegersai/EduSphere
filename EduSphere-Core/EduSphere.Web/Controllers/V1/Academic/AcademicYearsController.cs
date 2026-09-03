@@ -26,8 +26,8 @@ public class AcademicYearsController : ApiControllerBase
     public async Task<IActionResult> GetAll()
         => Ok(ApiResponse<IEnumerable<AcademicYearDto>>.Ok((await _service.ListAsync()).Select(Map)));
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var entity = await _service.GetAsync(id);
         return entity is null
@@ -48,8 +48,8 @@ public class AcademicYearsController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<AcademicYearDto>.Ok(Map(created)));
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateAcademicYearRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateAcademicYearRequest request)
     {
         var updated = await _service.UpdateAsync(id, e =>
         {
@@ -61,22 +61,17 @@ public class AcademicYearsController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Academic year {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
         => await _service.SoftDeleteAsync(id)
             ? NoContent()
             : NotFound(ApiResponse<object>.Fail($"Academic year {id} was not found."));
 
-    private static AcademicYearDto Map(AcademicYear e) => new()
+    private static AcademicYearDto Map(AcademicYear e) => new AcademicYearDto
     {
-        Id = e.Id,
-        TenantId = e.TenantId,
         Name = e.Name,
         StartDate = e.StartDate,
         EndDate = e.EndDate,
-        IsCurrent = e.IsCurrent,
-        IsActive = e.IsActive,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
-    };
+        IsCurrent = e.IsCurrent
+    }.WithMetadata(e);
 }

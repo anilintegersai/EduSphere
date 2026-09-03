@@ -1,17 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using EduSphere.Domain.Common;
 
 namespace EduSphere.Domain.Entities;
 
 /// <summary>
 /// Represents the Management body of an educational institution
 /// </summary>
-public class Management
+public class Management : EntityBase
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
     [Required]
     [StringLength(200)]
     public string Name { get; set; } = null!;
@@ -63,13 +59,8 @@ public class Management
     [Required]
     public bool IsActive { get; set; } = true;
 
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? UpdatedAt { get; set; }
-
     // Foreign key to Trust
-    public int? TrustId { get; set; }
+    public Guid? TrustId { get; set; }
     public Trust? Trust { get; set; }
 
     // Navigation properties

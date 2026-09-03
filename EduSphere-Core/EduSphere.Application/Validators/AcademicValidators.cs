@@ -56,8 +56,8 @@ public class CreateBatchRequestValidator : AbstractValidator<CreateBatchRequest>
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(100);
         RuleFor(x => x.Capacity).GreaterThan(0);
-        RuleFor(x => x.CourseId).GreaterThan(0);
-        RuleFor(x => x.AcademicYearId).GreaterThan(0);
+        RuleFor(x => x.CourseId).NotEmpty();
+        RuleFor(x => x.AcademicYearId).NotEmpty();
     }
 }
 
@@ -72,7 +72,7 @@ public class CreateSectionRequestValidator : AbstractValidator<CreateSectionRequ
     {
         RuleFor(x => x.Name).NotEmpty().MaximumLength(50);
         RuleFor(x => x.Capacity).GreaterThan(0);
-        RuleFor(x => x.BatchId).GreaterThan(0);
+        RuleFor(x => x.BatchId).NotEmpty();
     }
 }
 
@@ -101,7 +101,7 @@ public class CreateSyllabusUnitRequestValidator : AbstractValidator<CreateSyllab
 {
     public CreateSyllabusUnitRequestValidator()
     {
-        RuleFor(x => x.SubjectId).GreaterThan(0);
+        RuleFor(x => x.SubjectId).NotEmpty();
         RuleFor(x => x.Order).GreaterThanOrEqualTo(0);
         RuleFor(x => x.Title).NotEmpty().MaximumLength(200);
         RuleFor(x => x.Description).MaximumLength(1000);

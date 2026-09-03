@@ -28,44 +28,46 @@ public class SyllabusUnitsModel : PageModel
     public IReadOnlyList<Subject> Subjects { get; private set; } = new List<Subject>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
-    public string SubjectName(int id) => Subjects.FirstOrDefault(s => s.Id == id)?.Name ?? "—";
+    public string SubjectName(Guid id) => Subjects.FirstOrDefault(s => s.Id == id)?.Name ?? "—";
 
     public class InputModel
     {
-        public int Id { get; set; }
-        [Range(1, int.MaxValue)] [Display(Name = "Subject")] public int SubjectId { get; set; }
+        public Guid Id { get; set; }
+        [Required] [Display(Name = "Subject")] public Guid? SubjectId { get; set; }
         [Range(0, 1000)] public int Order { get; set; }
         [Required, StringLength(200)] public string Title { get; set; } = string.Empty;
         [StringLength(1000)] public string? Description { get; set; }
         [Range(0, 10000)] [Display(Name = "Estimated hours")] public int EstimatedHours { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, SubjectId = e.SubjectId, Order = e.Order, Title = e.Title, Description = e.Description, EstimatedHours = e.EstimatedHours };
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
         if (!HasTenant) return RedirectToPage();
-        if (await _subjects.GetAsync(Input.SubjectId) is null)
+        var subjectId = Input.SubjectId ?? Guid.Empty;
+
+        if (subjectId == Guid.Empty || await _subjects.GetAsync(subjectId) is null)
             ModelState.AddModelError("Input.SubjectId", "Selected subject was not found.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
-            await _svc.CreateAsync(new SyllabusUnit { SubjectId = Input.SubjectId, Order = Input.Order, Title = Input.Title, Description = Input.Description, EstimatedHours = Input.EstimatedHours });
+        if (Input.Id == Guid.Empty)
+            await _svc.CreateAsync(new SyllabusUnit { SubjectId = subjectId, Order = Input.Order, Title = Input.Title, Description = Input.Description, EstimatedHours = Input.EstimatedHours });
         else
             await _svc.UpdateAsync(Input.Id, e => { e.Order = Input.Order; e.Title = Input.Title; e.Description = Input.Description; e.EstimatedHours = Input.EstimatedHours; });
 
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

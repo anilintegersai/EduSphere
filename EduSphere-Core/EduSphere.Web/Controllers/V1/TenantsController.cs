@@ -30,10 +30,10 @@ public class TenantsController : ApiControllerBase
         return Ok(ApiResponse<IEnumerable<TenantDto>>.Ok(tenants.Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
+    [HttpGet("{id:guid}")]
     [ProducesResponseType(typeof(ApiResponse<TenantDto>), StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> GetById(int id)
+    public async Task<IActionResult> GetById(Guid id)
     {
         var tenant = await _tenantService.GetTenantByIdAsync(id);
         return tenant is null
@@ -58,19 +58,19 @@ public class TenantsController : ApiControllerBase
         }
     }
 
-    [HttpPut("{id:int}")]
+    [HttpPut("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateTenantRequest request)
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateTenantRequest request)
     {
         var updated = await _tenantService.UpdateTenantAsync(id, request.Name, request.Description);
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Tenant {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
+    [HttpDelete("{id:guid}")]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
-    public async Task<IActionResult> Delete(int id)
+    public async Task<IActionResult> Delete(Guid id)
     {
         var deleted = await _tenantService.DeleteTenantAsync(id);
         return deleted ? NoContent() : NotFound(ApiResponse<object>.Fail($"Tenant {id} was not found."));
@@ -84,7 +84,13 @@ public class TenantsController : ApiControllerBase
         CustomDomain = t.CustomDomain,
         Description = t.Description,
         IsActive = t.IsActive,
-        CreatedAt = t.CreatedAt,
-        UpdatedAt = t.UpdatedAt
+        IsDeleted = t.IsDeleted,
+        CreatedBy = t.CreatedBy,
+        CreatedOn = t.CreatedOn,
+        ModifiedBy = t.ModifiedBy,
+        ModifiedOn = t.ModifiedOn,
+        DeletedBy = t.DeletedBy,
+        DeletedOn = t.DeletedOn,
+        ConcurrencyToken = t.ConcurrencyToken
     };
 }

@@ -9,7 +9,7 @@ public interface IGenericRepository<T> where T : class
         Func<IQueryable<T>, IQueryable<T>>? include = null);
 
     Task<T?> GetByIdAsync(
-        int id,
+        Guid id,
         Func<IQueryable<T>, IQueryable<T>>? include = null);
 
     Task<T?> GetFirstOrDefaultAsync(

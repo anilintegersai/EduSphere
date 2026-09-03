@@ -26,14 +26,14 @@ public class GenericRepository<T> : IGenericRepository<T> where T : class
     }
 
     public virtual async Task<T?> GetByIdAsync(
-        int id,
+        Guid id,
         Func<IQueryable<T>, IQueryable<T>>? include = null)
     {
         // Use a LINQ query (not DbSet.Find) so global query filters — including the
         // tenant filter — are honored and a by-id lookup can't cross tenant boundaries.
         IQueryable<T> query = DbSet;
         if (include != null) query = include(query);
-        return await query.FirstOrDefaultAsync(e => EF.Property<int>(e, "Id") == id);
+        return await query.FirstOrDefaultAsync(e => EF.Property<Guid>(e, "Id") == id);
     }
 
     public virtual async Task<T?> GetFirstOrDefaultAsync(

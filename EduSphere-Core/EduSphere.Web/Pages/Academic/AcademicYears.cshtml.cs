@@ -25,22 +25,22 @@ public class AcademicYearsModel : PageModel
     public IReadOnlyList<AcademicYear> Items { get; private set; } = new List<AcademicYear>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(50)] public string Name { get; set; } = string.Empty;
         [DataType(DataType.Date)] public DateOnly StartDate { get; set; } = DateOnly.FromDateTime(DateTime.Today);
         [DataType(DataType.Date)] public DateOnly EndDate { get; set; } = DateOnly.FromDateTime(DateTime.Today.AddYears(1));
         [Display(Name = "Current year")] public bool IsCurrent { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, Name = e.Name, StartDate = e.StartDate, EndDate = e.EndDate, IsCurrent = e.IsCurrent };
     }
 
@@ -51,7 +51,7 @@ public class AcademicYearsModel : PageModel
             ModelState.AddModelError("Input.EndDate", "End date must be after the start date.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
+        if (Input.Id == Guid.Empty)
             await _svc.CreateAsync(new AcademicYear { Name = Input.Name, StartDate = Input.StartDate, EndDate = Input.EndDate, IsCurrent = Input.IsCurrent });
         else
             await _svc.UpdateAsync(Input.Id, e => { e.Name = Input.Name; e.StartDate = Input.StartDate; e.EndDate = Input.EndDate; e.IsCurrent = Input.IsCurrent; });
@@ -59,7 +59,7 @@ public class AcademicYearsModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

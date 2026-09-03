@@ -7,5 +7,5 @@ namespace EduSphere.Domain.MultiTenancy;
 /// </summary>
 public interface ITenantEntity
 {
-    int TenantId { get; set; }
+    Guid TenantId { get; set; }
 }

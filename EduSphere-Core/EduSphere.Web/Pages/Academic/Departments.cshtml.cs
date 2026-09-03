@@ -25,21 +25,21 @@ public class DepartmentsModel : PageModel
     public IReadOnlyList<Department> Items { get; private set; } = new List<Department>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(100)] public string Name { get; set; } = string.Empty;
         [Required, StringLength(30)] public string Code { get; set; } = string.Empty;
         [StringLength(255)] public string? Description { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, Name = e.Name, Code = e.Code, Description = e.Description };
     }
 
@@ -48,7 +48,7 @@ public class DepartmentsModel : PageModel
         if (!HasTenant) return RedirectToPage();
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
+        if (Input.Id == Guid.Empty)
             await _svc.CreateAsync(new Department { Name = Input.Name, Code = Input.Code, Description = Input.Description });
         else
             await _svc.UpdateAsync(Input.Id, e => { e.Name = Input.Name; e.Code = Input.Code; e.Description = Input.Description; });
@@ -56,7 +56,7 @@ public class DepartmentsModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

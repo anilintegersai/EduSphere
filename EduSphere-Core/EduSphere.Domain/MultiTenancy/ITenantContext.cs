@@ -8,10 +8,10 @@ namespace EduSphere.Domain.MultiTenancy;
 /// </summary>
 public interface ITenantContext
 {
-    int? TenantId { get; }
+    Guid? TenantId { get; }
     string? TenantIdentifier { get; }
     bool HasTenant { get; }
 
-    void SetTenant(int tenantId, string tenantIdentifier);
+    void SetTenant(Guid tenantId, string tenantIdentifier);
     void Clear();
 }

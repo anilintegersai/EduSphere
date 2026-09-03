@@ -3,11 +3,13 @@ using Asp.Versioning;
 using EduSphere.Application.Common;
 using EduSphere.Application.Validators;
 using EduSphere.Domain.Constants;
+using EduSphere.Domain.Common;
 using EduSphere.Domain.Entities;
 using EduSphere.Infrastructure;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Data;
 using EduSphere.Web.Middleware;
+using EduSphere.Web.Security;
 using EduSphere.Web.Swagger;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -42,6 +44,8 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("DefaultConnection not found in configuration.");
 var databaseProvider = builder.Configuration["Database:Provider"] ?? "SqlServer";
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddInfrastructureServices(connectionString, databaseProvider);
 builder.Services.AddApplicationServices();
 

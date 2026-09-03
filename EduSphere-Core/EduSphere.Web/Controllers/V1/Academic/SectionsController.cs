@@ -28,14 +28,14 @@ public class SectionsController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? batchId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? batchId)
     {
         var items = await _service.ListAsync(batchId is null ? null : s => s.BatchId == batchId);
         return Ok(ApiResponse<IEnumerable<SectionDto>>.Ok(items.Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var entity = await _service.GetAsync(id);
         return entity is null
@@ -59,8 +59,8 @@ public class SectionsController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<SectionDto>.Ok(Map(created)));
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateSectionRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSectionRequest request)
     {
         if (await _batches.GetAsync(request.BatchId) is null)
             return BadRequest(ApiResponse<object>.Fail($"Batch {request.BatchId} was not found in this tenant."));
@@ -75,22 +75,17 @@ public class SectionsController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Section {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
         => await _service.SoftDeleteAsync(id)
             ? NoContent()
             : NotFound(ApiResponse<object>.Fail($"Section {id} was not found."));
 
-    private static SectionDto Map(Section e) => new()
+    private static SectionDto Map(Section e) => new SectionDto
     {
-        Id = e.Id,
-        TenantId = e.TenantId,
         Name = e.Name,
         Capacity = e.Capacity,
         BatchId = e.BatchId,
-        ClassTeacherUserId = e.ClassTeacherUserId,
-        IsActive = e.IsActive,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
-    };
+        ClassTeacherUserId = e.ClassTeacherUserId
+    }.WithMetadata(e);
 }

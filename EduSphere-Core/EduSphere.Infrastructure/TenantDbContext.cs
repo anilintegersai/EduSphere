@@ -1,4 +1,5 @@
 using System.Reflection;
+using EduSphere.Domain.Common;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.MultiTenancy;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
@@ -11,11 +12,16 @@ namespace EduSphere.Infrastructure;
 public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, Guid>
 {
     private readonly ITenantContext _tenantContext;
+    private readonly ICurrentUserContext _currentUserContext;
 
-    public TenantDbContext(DbContextOptions<TenantDbContext> options, ITenantContext tenantContext)
+    public TenantDbContext(
+        DbContextOptions<TenantDbContext> options,
+        ITenantContext tenantContext,
+        ICurrentUserContext? currentUserContext = null)
         : base(options)
     {
         _tenantContext = tenantContext;
+        _currentUserContext = currentUserContext ?? SystemCurrentUserContext.Instance;
     }
 
     public DbSet<Tenant> Tenants { get; set; }
@@ -57,16 +63,38 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
         ConfigureAcademicStructure(modelBuilder);
 
-        // Global tenant query filter for every tenant-owned entity EXCEPT ApplicationUser.
+        // Global tenant and soft-delete query filters for tenant-owned domain entities.
         // Identity's UserManager/SignInManager must resolve users (including a host-level
         // SuperAdmin) independent of the resolved tenant, so users are scoped at the
         // authorization/application layer rather than by an automatic read filter.
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
             var clr = entityType.ClrType;
-            if (typeof(ITenantEntity).IsAssignableFrom(clr) && clr != typeof(ApplicationUser))
+            if (typeof(IAuditableEntity).IsAssignableFrom(clr))
             {
-                ConfigureTenantFilterMethod
+                ConfigureAuditMethod
+                    .MakeGenericMethod(clr)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+
+            if (typeof(IConcurrencyTrackedEntity).IsAssignableFrom(clr))
+            {
+                ConfigureConcurrencyMethod
+                    .MakeGenericMethod(clr)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+
+            if (typeof(ITenantEntity).IsAssignableFrom(clr) &&
+                typeof(ISoftDeletable).IsAssignableFrom(clr) &&
+                clr != typeof(ApplicationUser))
+            {
+                ConfigureTenantSoftDeleteFilterMethod
+                    .MakeGenericMethod(clr)
+                    .Invoke(this, new object[] { modelBuilder });
+            }
+            else if (typeof(ISoftDeletable).IsAssignableFrom(clr) && clr != typeof(ApplicationUser))
+            {
+                ConfigureSoftDeleteFilterMethod
                     .MakeGenericMethod(clr)
                     .Invoke(this, new object[] { modelBuilder });
             }
@@ -84,21 +112,54 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             }).ToArray());
     }
 
-    private static readonly MethodInfo ConfigureTenantFilterMethod =
-        typeof(TenantDbContext).GetMethod(nameof(ConfigureTenantFilter),
+    private static readonly MethodInfo ConfigureTenantSoftDeleteFilterMethod =
+        typeof(TenantDbContext).GetMethod(nameof(ConfigureTenantSoftDeleteFilter),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly MethodInfo ConfigureSoftDeleteFilterMethod =
+        typeof(TenantDbContext).GetMethod(nameof(ConfigureSoftDeleteFilter),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly MethodInfo ConfigureAuditMethod =
+        typeof(TenantDbContext).GetMethod(nameof(ConfigureAudit),
+            BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+    private static readonly MethodInfo ConfigureConcurrencyMethod =
+        typeof(TenantDbContext).GetMethod(nameof(ConfigureConcurrency),
             BindingFlags.NonPublic | BindingFlags.Instance)!;
 
     // Referencing the injected context instance keeps the value parameterized:
     // EF re-reads _tenantContext.TenantId per query rather than baking it into the model.
-    private void ConfigureTenantFilter<TEntity>(ModelBuilder modelBuilder)
-        where TEntity : class, ITenantEntity
+    private void ConfigureTenantSoftDeleteFilter<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : class, ITenantEntity, ISoftDeletable
     {
-        modelBuilder.Entity<TEntity>().HasQueryFilter(e => e.TenantId == _tenantContext.TenantId);
+        modelBuilder.Entity<TEntity>().HasQueryFilter(e =>
+            e.TenantId == _tenantContext.TenantId &&
+            !e.IsDeleted);
+    }
+
+    private void ConfigureSoftDeleteFilter<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : class, ISoftDeletable
+    {
+        modelBuilder.Entity<TEntity>().HasQueryFilter(e => !e.IsDeleted);
+    }
+
+    private void ConfigureAudit<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : class, IAuditableEntity
+    {
+        modelBuilder.Entity<TEntity>().Property(e => e.CreatedBy).HasMaxLength(128);
+        modelBuilder.Entity<TEntity>().Property(e => e.ModifiedBy).HasMaxLength(128);
+    }
+
+    private void ConfigureConcurrency<TEntity>(ModelBuilder modelBuilder)
+        where TEntity : class, IConcurrencyTrackedEntity
+    {
+        modelBuilder.Entity<TEntity>().Property(e => e.ConcurrencyToken).IsConcurrencyToken();
     }
 
     private static void ConfigureAcademicStructure(ModelBuilder modelBuilder)
     {
-        // Relationships — all Restrict so soft delete (IsActive) governs lifecycle and
+        // Relationships — all Restrict so soft delete governs lifecycle and
         // SQL Server never sees multiple/cyclic cascade paths.
         modelBuilder.Entity<Course>()
             .HasOne(c => c.Department).WithMany()
@@ -137,26 +198,47 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
     public override int SaveChanges()
     {
-        ApplyTenantOnSave();
+        ApplyWritePolicies();
         return base.SaveChanges();
     }
 
     public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default)
     {
-        ApplyTenantOnSave();
+        ApplyWritePolicies();
         return base.SaveChangesAsync(cancellationToken);
     }
 
-    private void ApplyTenantOnSave()
+    private void ApplyWritePolicies()
     {
         var tenantId = _tenantContext.TenantId;
+        var now = DateTime.UtcNow;
+        var userId = string.IsNullOrWhiteSpace(_currentUserContext.UserId)
+            ? "system"
+            : _currentUserContext.UserId;
+
+        foreach (var entry in ChangeTracker.Entries().Where(e => e.State == EntityState.Deleted).ToList())
+        {
+            if (entry.Entity is not ISoftDeletable softDeletable)
+                continue;
+
+            entry.State = EntityState.Modified;
+            softDeletable.IsDeleted = true;
+            softDeletable.DeletedOn = now;
+            softDeletable.DeletedBy = userId;
+        }
+
+        foreach (EntityEntry<IGuidEntity> entry in ChangeTracker.Entries<IGuidEntity>())
+        {
+            if (entry.State == EntityState.Added && entry.Entity.Id == Guid.Empty)
+                entry.Entity.Id = Guid.NewGuid();
+        }
 
         foreach (EntityEntry<ITenantEntity> entry in ChangeTracker.Entries<ITenantEntity>())
         {
             switch (entry.State)
             {
                 case EntityState.Added:
-                    if (entry.Entity.TenantId == 0 && tenantId.HasValue)
+                    if (entry.Entity.TenantId == Guid.Empty && tenantId.HasValue)
                         entry.Entity.TenantId = tenantId.Value;
                     break;
 
@@ -166,5 +248,46 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
                     break;
             }
         }
+
+        foreach (EntityEntry<IAuditableEntity> entry in ChangeTracker.Entries<IAuditableEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    entry.Entity.CreatedOn = entry.Entity.CreatedOn == default ? now : entry.Entity.CreatedOn;
+                    entry.Entity.CreatedBy ??= userId;
+                    entry.Entity.ModifiedOn = null;
+                    entry.Entity.ModifiedBy = null;
+                    break;
+
+                case EntityState.Modified:
+                    entry.Property(nameof(IAuditableEntity.CreatedOn)).IsModified = false;
+                    entry.Property(nameof(IAuditableEntity.CreatedBy)).IsModified = false;
+                    entry.Entity.ModifiedOn = now;
+                    entry.Entity.ModifiedBy = userId;
+                    break;
+            }
+        }
+
+        foreach (EntityEntry<IConcurrencyTrackedEntity> entry in ChangeTracker.Entries<IConcurrencyTrackedEntity>())
+        {
+            switch (entry.State)
+            {
+                case EntityState.Added:
+                    if (entry.Entity.ConcurrencyToken == Guid.Empty)
+                        entry.Entity.ConcurrencyToken = Guid.NewGuid();
+                    break;
+
+                case EntityState.Modified:
+                    entry.Entity.ConcurrencyToken = Guid.NewGuid();
+                    break;
+            }
+        }
+    }
+
+    private sealed class SystemCurrentUserContext : ICurrentUserContext
+    {
+        public static readonly SystemCurrentUserContext Instance = new();
+        public string UserId => "system";
     }
 }

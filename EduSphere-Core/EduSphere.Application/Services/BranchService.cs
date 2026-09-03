@@ -16,20 +16,20 @@ public class BranchService : IBranchService
         _logger = logger;
     }
 
-    public async Task<IEnumerable<Branch>> GetBranchesByTenantAsync(int tenantId)
+    public async Task<IEnumerable<Branch>> GetBranchesByTenantAsync(Guid tenantId)
     {
         return await _unitOfWork.BranchRepository.GetAllAsync(
             b => b.TenantId == tenantId
         );
     }
 
-    public async Task<Branch?> GetBranchByIdAsync(int id)
+    public async Task<Branch?> GetBranchByIdAsync(Guid id)
     {
         return await _unitOfWork.BranchRepository.GetByIdAsync(id);
     }
 
     public async Task<Branch> CreateBranchAsync(
-        int tenantId,
+        Guid tenantId,
         string name,
         string code,
         string address,
@@ -48,8 +48,7 @@ public class BranchService : IBranchService
             State = state,
             Country = country,
             Pincode = pincode,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         await _unitOfWork.BranchRepository.AddAsync(branch);
@@ -60,7 +59,7 @@ public class BranchService : IBranchService
     }
 
     public async Task<bool> UpdateBranchAsync(
-        int id,
+        Guid id,
         string name,
         string code,
         string address,
@@ -82,14 +81,13 @@ public class BranchService : IBranchService
         branch.State = state;
         branch.Country = country;
         branch.Pincode = pincode;
-        branch.UpdatedAt = DateTime.UtcNow;
         
         await _unitOfWork.CommitAsync();
         _logger.LogInformation("Branch updated: {BranchId}", id);
         return true;
     }
 
-    public async Task<bool> DeleteBranchAsync(int id)
+    public async Task<bool> DeleteBranchAsync(Guid id)
     {
         var branch = await _unitOfWork.BranchRepository.GetByIdAsync(id);
         if (branch == null)
@@ -97,9 +95,7 @@ public class BranchService : IBranchService
             return false;
         }
 
-        // Soft delete
-        branch.IsActive = false;
-        branch.UpdatedAt = DateTime.UtcNow;
+        branch.IsDeleted = true;
         
         await _unitOfWork.CommitAsync();
         _logger.LogInformation("Branch deleted: {BranchId}", id);

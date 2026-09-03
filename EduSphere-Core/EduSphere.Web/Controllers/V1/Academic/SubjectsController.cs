@@ -28,14 +28,14 @@ public class SubjectsController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? courseId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? courseId)
     {
         var items = await _service.ListAsync(courseId is null ? null : s => s.CourseId == courseId);
         return Ok(ApiResponse<IEnumerable<SubjectDto>>.Ok(items.Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var entity = await _service.GetAsync(id);
         return entity is null
@@ -46,7 +46,7 @@ public class SubjectsController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateSubjectRequest request)
     {
-        if (request.CourseId is int courseId && await _courses.GetAsync(courseId) is null)
+        if (request.CourseId is Guid courseId && await _courses.GetAsync(courseId) is null)
             return BadRequest(ApiResponse<object>.Fail($"Course {courseId} was not found in this tenant."));
 
         var created = await _service.CreateAsync(new Subject
@@ -60,10 +60,10 @@ public class SubjectsController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<SubjectDto>.Ok(Map(created)));
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateSubjectRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSubjectRequest request)
     {
-        if (request.CourseId is int courseId && await _courses.GetAsync(courseId) is null)
+        if (request.CourseId is Guid courseId && await _courses.GetAsync(courseId) is null)
             return BadRequest(ApiResponse<object>.Fail($"Course {courseId} was not found in this tenant."));
 
         var updated = await _service.UpdateAsync(id, e =>
@@ -77,23 +77,18 @@ public class SubjectsController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Subject {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
         => await _service.SoftDeleteAsync(id)
             ? NoContent()
             : NotFound(ApiResponse<object>.Fail($"Subject {id} was not found."));
 
-    private static SubjectDto Map(Subject e) => new()
+    private static SubjectDto Map(Subject e) => new SubjectDto
     {
-        Id = e.Id,
-        TenantId = e.TenantId,
         Code = e.Code,
         Name = e.Name,
         Type = e.Type,
         Credits = e.Credits,
-        CourseId = e.CourseId,
-        IsActive = e.IsActive,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
-    };
+        CourseId = e.CourseId
+    }.WithMetadata(e);
 }

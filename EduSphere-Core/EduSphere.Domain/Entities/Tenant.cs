@@ -1,14 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using EduSphere.Domain.Common;
 
 namespace EduSphere.Domain.Entities;
 
-public class Tenant
+public class Tenant : EntityBase
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
     [Required]
     [StringLength(100)]
     public string Name { get; set; } = null!;
@@ -25,11 +21,6 @@ public class Tenant
 
     [Required]
     public bool IsActive { get; set; } = true;
-
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? UpdatedAt { get; set; }
 
     // Navigation property for branches
     public ICollection<Branch> Branches { get; set; } = new List<Branch>();

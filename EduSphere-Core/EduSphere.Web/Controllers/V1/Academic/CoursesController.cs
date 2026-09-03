@@ -28,14 +28,14 @@ public class CoursesController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? departmentId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? departmentId)
     {
         var items = await _service.ListAsync(departmentId is null ? null : c => c.DepartmentId == departmentId);
         return Ok(ApiResponse<IEnumerable<CourseDto>>.Ok(items.Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var entity = await _service.GetAsync(id);
         return entity is null
@@ -46,7 +46,7 @@ public class CoursesController : ApiControllerBase
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] CreateCourseRequest request)
     {
-        if (request.DepartmentId is int deptId && await _departments.GetAsync(deptId) is null)
+        if (request.DepartmentId is Guid deptId && await _departments.GetAsync(deptId) is null)
             return BadRequest(ApiResponse<object>.Fail($"Department {deptId} was not found in this tenant."));
 
         var created = await _service.CreateAsync(new Course
@@ -61,10 +61,10 @@ public class CoursesController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<CourseDto>.Ok(Map(created)));
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateCourseRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateCourseRequest request)
     {
-        if (request.DepartmentId is int deptId && await _departments.GetAsync(deptId) is null)
+        if (request.DepartmentId is Guid deptId && await _departments.GetAsync(deptId) is null)
             return BadRequest(ApiResponse<object>.Fail($"Department {deptId} was not found in this tenant."));
 
         var updated = await _service.UpdateAsync(id, e =>
@@ -79,24 +79,19 @@ public class CoursesController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Course {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
         => await _service.SoftDeleteAsync(id)
             ? NoContent()
             : NotFound(ApiResponse<object>.Fail($"Course {id} was not found."));
 
-    private static CourseDto Map(Course e) => new()
+    private static CourseDto Map(Course e) => new CourseDto
     {
-        Id = e.Id,
-        TenantId = e.TenantId,
         Code = e.Code,
         Name = e.Name,
         Type = e.Type,
         DurationMonths = e.DurationMonths,
         DepartmentId = e.DepartmentId,
-        Description = e.Description,
-        IsActive = e.IsActive,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
-    };
+        Description = e.Description
+    }.WithMetadata(e);
 }

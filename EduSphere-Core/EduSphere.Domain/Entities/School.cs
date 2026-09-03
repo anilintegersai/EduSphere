@@ -1,17 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using EduSphere.Domain.Common;
 
 namespace EduSphere.Domain.Entities;
 
 /// <summary>
 /// Represents a School (Primary/Secondary/High School)
 /// </summary>
-public class School
+public class School : EntityBase
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
     [Required]
     [StringLength(200)]
     public string Name { get; set; } = null!;
@@ -70,16 +66,11 @@ public class School
     [Required]
     public bool IsActive { get; set; } = true;
 
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? UpdatedAt { get; set; }
-
     // Foreign keys
-    public int? TrustId { get; set; }
-    public int? ManagementId { get; set; }
-    public int? UniversityId { get; set; }
-    public int? CollegeId { get; set; }
+    public Guid? TrustId { get; set; }
+    public Guid? ManagementId { get; set; }
+    public Guid? UniversityId { get; set; }
+    public Guid? CollegeId { get; set; }
 
     public Trust? Trust { get; set; }
     public Management? Management { get; set; }

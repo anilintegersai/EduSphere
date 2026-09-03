@@ -29,36 +29,36 @@ public class SubjectsModel : PageModel
     public IReadOnlyList<Course> Courses { get; private set; } = new List<Course>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
-    public string CourseName(int? id) => Courses.FirstOrDefault(c => c.Id == id)?.Name ?? "—";
+    public string CourseName(Guid? id) => Courses.FirstOrDefault(c => c.Id == id)?.Name ?? "—";
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(30)] public string Code { get; set; } = string.Empty;
         [Required, StringLength(150)] public string Name { get; set; } = string.Empty;
         public SubjectType Type { get; set; }
         [Range(0, 100)] public int Credits { get; set; } = 3;
-        [Display(Name = "Course")] public int? CourseId { get; set; }
+        [Display(Name = "Course")] public Guid? CourseId { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, Code = e.Code, Name = e.Name, Type = e.Type, Credits = e.Credits, CourseId = e.CourseId };
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
         if (!HasTenant) return RedirectToPage();
-        if (Input.CourseId is int courseId && await _courses.GetAsync(courseId) is null)
+        if (Input.CourseId is Guid courseId && await _courses.GetAsync(courseId) is null)
             ModelState.AddModelError("Input.CourseId", "Selected course was not found.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
+        if (Input.Id == Guid.Empty)
             await _svc.CreateAsync(new Subject { Code = Input.Code, Name = Input.Name, Type = Input.Type, Credits = Input.Credits, CourseId = Input.CourseId });
         else
             await _svc.UpdateAsync(Input.Id, e => { e.Code = Input.Code; e.Name = Input.Name; e.Type = Input.Type; e.Credits = Input.Credits; e.CourseId = Input.CourseId; });
@@ -66,7 +66,7 @@ public class SubjectsModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

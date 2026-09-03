@@ -1,17 +1,13 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
+using EduSphere.Domain.Common;
 
 namespace EduSphere.Domain.Entities;
 
 /// <summary>
 /// Represents an Educational Trust/Management body in India
 /// </summary>
-public class Trust
+public class Trust : EntityBase
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
     [Required]
     [StringLength(200)]
     public string Name { get; set; } = null!;
@@ -58,11 +54,6 @@ public class Trust
 
     [Required]
     public bool IsActive { get; set; } = true;
-
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? UpdatedAt { get; set; }
 
     public DateTime? DeactivatedAt { get; set; }
 

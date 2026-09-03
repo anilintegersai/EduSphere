@@ -28,14 +28,14 @@ public class SyllabusUnitsController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? subjectId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? subjectId)
     {
         var items = await _service.ListAsync(subjectId is null ? null : u => u.SubjectId == subjectId);
         return Ok(ApiResponse<IEnumerable<SyllabusUnitDto>>.Ok(items.OrderBy(u => u.Order).Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var entity = await _service.GetAsync(id);
         return entity is null
@@ -60,8 +60,8 @@ public class SyllabusUnitsController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<SyllabusUnitDto>.Ok(Map(created)));
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateSyllabusUnitRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateSyllabusUnitRequest request)
     {
         var updated = await _service.UpdateAsync(id, e =>
         {
@@ -73,23 +73,18 @@ public class SyllabusUnitsController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Syllabus unit {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
         => await _service.SoftDeleteAsync(id)
             ? NoContent()
             : NotFound(ApiResponse<object>.Fail($"Syllabus unit {id} was not found."));
 
-    private static SyllabusUnitDto Map(SyllabusUnit e) => new()
+    private static SyllabusUnitDto Map(SyllabusUnit e) => new SyllabusUnitDto
     {
-        Id = e.Id,
-        TenantId = e.TenantId,
         SubjectId = e.SubjectId,
         Order = e.Order,
         Title = e.Title,
         Description = e.Description,
-        EstimatedHours = e.EstimatedHours,
-        IsActive = e.IsActive,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
-    };
+        EstimatedHours = e.EstimatedHours
+    }.WithMetadata(e);
 }

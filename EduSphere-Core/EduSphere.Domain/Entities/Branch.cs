@@ -1,15 +1,10 @@
 using System.ComponentModel.DataAnnotations;
-using System.ComponentModel.DataAnnotations.Schema;
-using EduSphere.Domain.MultiTenancy;
+using EduSphere.Domain.Common;
 
 namespace EduSphere.Domain.Entities;
 
-public class Branch : ITenantEntity
+public class Branch : TenantEntityBase
 {
-    [Key]
-    [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-    public int Id { get; set; }
-
     [Required]
     [StringLength(200)]
     public string Name { get; set; } = null!;
@@ -38,12 +33,6 @@ public class Branch : ITenantEntity
     [Required]
     public bool IsActive { get; set; } = true;
 
-    [Required]
-    public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
-
-    public DateTime? UpdatedAt { get; set; }
-
     // Foreign key to Tenant
-    public int TenantId { get; set; }
     public Tenant Tenant { get; set; } = null!;
 }

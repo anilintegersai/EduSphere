@@ -29,37 +29,37 @@ public class CoursesModel : PageModel
     public IReadOnlyList<Department> Departments { get; private set; } = new List<Department>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
-    public string DepartmentName(int? id) => Departments.FirstOrDefault(d => d.Id == id)?.Name ?? "—";
+    public string DepartmentName(Guid? id) => Departments.FirstOrDefault(d => d.Id == id)?.Name ?? "—";
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(30)] public string Code { get; set; } = string.Empty;
         [Required, StringLength(150)] public string Name { get; set; } = string.Empty;
         public CourseType Type { get; set; }
         [Range(1, 120)] [Display(Name = "Duration (months)")] public int DurationMonths { get; set; } = 12;
-        [Display(Name = "Department")] public int? DepartmentId { get; set; }
+        [Display(Name = "Department")] public Guid? DepartmentId { get; set; }
         [StringLength(500)] public string? Description { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, Code = e.Code, Name = e.Name, Type = e.Type, DurationMonths = e.DurationMonths, DepartmentId = e.DepartmentId, Description = e.Description };
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
         if (!HasTenant) return RedirectToPage();
-        if (Input.DepartmentId is int deptId && await _departments.GetAsync(deptId) is null)
+        if (Input.DepartmentId is Guid deptId && await _departments.GetAsync(deptId) is null)
             ModelState.AddModelError("Input.DepartmentId", "Selected department was not found.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
+        if (Input.Id == Guid.Empty)
             await _svc.CreateAsync(new Course { Code = Input.Code, Name = Input.Name, Type = Input.Type, DurationMonths = Input.DurationMonths, DepartmentId = Input.DepartmentId, Description = Input.Description });
         else
             await _svc.UpdateAsync(Input.Id, e => { e.Code = Input.Code; e.Name = Input.Name; e.Type = Input.Type; e.DurationMonths = Input.DurationMonths; e.DepartmentId = Input.DepartmentId; e.Description = Input.Description; });
@@ -67,7 +67,7 @@ public class CoursesModel : PageModel
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

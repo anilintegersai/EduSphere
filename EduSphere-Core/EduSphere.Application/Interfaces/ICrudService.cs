@@ -10,8 +10,8 @@ namespace EduSphere.Application.Interfaces;
 public interface ICrudService<T> where T : class
 {
     Task<IReadOnlyList<T>> ListAsync(Expression<Func<T, bool>>? predicate = null);
-    Task<T?> GetAsync(int id);
+    Task<T?> GetAsync(Guid id);
     Task<T> CreateAsync(T entity);
-    Task<bool> UpdateAsync(int id, Action<T> apply);
-    Task<bool> SoftDeleteAsync(int id);
+    Task<bool> UpdateAsync(Guid id, Action<T> apply);
+    Task<bool> SoftDeleteAsync(Guid id);
 }

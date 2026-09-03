@@ -21,7 +21,7 @@ public class TenantService : ITenantService
         return await _unitOfWork.TenantRepository.GetAllAsync();
     }
 
-    public async Task<Tenant?> GetTenantByIdAsync(int id)
+    public async Task<Tenant?> GetTenantByIdAsync(Guid id)
     {
         return await _unitOfWork.TenantRepository.GetByIdAsync(id);
     }
@@ -44,8 +44,7 @@ public class TenantService : ITenantService
             TenantIdentifier = tenantIdentifier,
             Description = description,
             CustomDomain = customDomain,
-            IsActive = true,
-            CreatedAt = DateTime.UtcNow
+            IsActive = true
         };
 
         await _unitOfWork.TenantRepository.AddAsync(tenant);
@@ -55,7 +54,7 @@ public class TenantService : ITenantService
         return tenant;
     }
 
-    public async Task<bool> UpdateTenantAsync(int id, string name, string? description = null)
+    public async Task<bool> UpdateTenantAsync(Guid id, string name, string? description = null)
     {
         var tenant = await _unitOfWork.TenantRepository.GetByIdAsync(id);
         if (tenant == null)
@@ -65,14 +64,13 @@ public class TenantService : ITenantService
 
         tenant.Name = name;
         tenant.Description = description;
-        tenant.UpdatedAt = DateTime.UtcNow;
         
         await _unitOfWork.CommitAsync();
         _logger.LogInformation("Tenant updated: {TenantId}", id);
         return true;
     }
 
-    public async Task<bool> DeleteTenantAsync(int id)
+    public async Task<bool> DeleteTenantAsync(Guid id)
     {
         var tenant = await _unitOfWork.TenantRepository.GetByIdAsync(id);
         if (tenant == null)
@@ -80,16 +78,14 @@ public class TenantService : ITenantService
             return false;
         }
 
-        // Soft delete
-        tenant.IsActive = false;
-        tenant.UpdatedAt = DateTime.UtcNow;
+        tenant.IsDeleted = true;
         
         await _unitOfWork.CommitAsync();
         _logger.LogInformation("Tenant deleted: {TenantId}", id);
         return true;
     }
 
-    public async Task<bool> ActivateTenantAsync(int id)
+    public async Task<bool> ActivateTenantAsync(Guid id)
     {
         var tenant = await _unitOfWork.TenantRepository.GetByIdAsync(id);
         if (tenant == null)
@@ -98,14 +94,13 @@ public class TenantService : ITenantService
         }
 
         tenant.IsActive = true;
-        tenant.UpdatedAt = DateTime.UtcNow;
         
         await _unitOfWork.CommitAsync();
         _logger.LogInformation("Tenant activated: {TenantId}", id);
         return true;
     }
 
-    public async Task<bool> DeactivateTenantAsync(int id)
+    public async Task<bool> DeactivateTenantAsync(Guid id)
     {
         var tenant = await _unitOfWork.TenantRepository.GetByIdAsync(id);
         if (tenant == null)
@@ -114,7 +109,6 @@ public class TenantService : ITenantService
         }
 
         tenant.IsActive = false;
-        tenant.UpdatedAt = DateTime.UtcNow;
         
         await _unitOfWork.CommitAsync();
         _logger.LogInformation("Tenant deactivated: {TenantId}", id);

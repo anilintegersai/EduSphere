@@ -31,46 +31,49 @@ public class BatchesModel : PageModel
     public IReadOnlyList<AcademicYear> Years { get; private set; } = new List<AcademicYear>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
-    public bool IsEditing => Input.Id != 0;
+    public bool IsEditing => Input.Id != Guid.Empty;
 
-    public string CourseName(int id) => Courses.FirstOrDefault(c => c.Id == id)?.Name ?? "—";
-    public string YearName(int id) => Years.FirstOrDefault(y => y.Id == id)?.Name ?? "—";
+    public string CourseName(Guid id) => Courses.FirstOrDefault(c => c.Id == id)?.Name ?? "—";
+    public string YearName(Guid id) => Years.FirstOrDefault(y => y.Id == id)?.Name ?? "—";
 
     public class InputModel
     {
-        public int Id { get; set; }
+        public Guid Id { get; set; }
         [Required, StringLength(100)] public string Name { get; set; } = string.Empty;
         [Range(1, 100000)] public int Capacity { get; set; } = 60;
-        [Range(1, int.MaxValue)] [Display(Name = "Course")] public int CourseId { get; set; }
-        [Range(1, int.MaxValue)] [Display(Name = "Academic year")] public int AcademicYearId { get; set; }
+        [Required] [Display(Name = "Course")] public Guid? CourseId { get; set; }
+        [Required] [Display(Name = "Academic year")] public Guid? AcademicYearId { get; set; }
     }
 
-    public async Task OnGetAsync(int? editId)
+    public async Task OnGetAsync(Guid? editId)
     {
         if (!HasTenant) return;
         await LoadAsync();
-        if (editId is int id && await _svc.GetAsync(id) is { } e)
+        if (editId is Guid id && await _svc.GetAsync(id) is { } e)
             Input = new InputModel { Id = e.Id, Name = e.Name, Capacity = e.Capacity, CourseId = e.CourseId, AcademicYearId = e.AcademicYearId };
     }
 
     public async Task<IActionResult> OnPostSaveAsync()
     {
         if (!HasTenant) return RedirectToPage();
-        if (await _courses.GetAsync(Input.CourseId) is null)
+        var courseId = Input.CourseId ?? Guid.Empty;
+        var academicYearId = Input.AcademicYearId ?? Guid.Empty;
+
+        if (courseId == Guid.Empty || await _courses.GetAsync(courseId) is null)
             ModelState.AddModelError("Input.CourseId", "Selected course was not found.");
-        if (await _years.GetAsync(Input.AcademicYearId) is null)
+        if (academicYearId == Guid.Empty || await _years.GetAsync(academicYearId) is null)
             ModelState.AddModelError("Input.AcademicYearId", "Selected academic year was not found.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        if (Input.Id == 0)
-            await _svc.CreateAsync(new Batch { Name = Input.Name, Capacity = Input.Capacity, CourseId = Input.CourseId, AcademicYearId = Input.AcademicYearId });
+        if (Input.Id == Guid.Empty)
+            await _svc.CreateAsync(new Batch { Name = Input.Name, Capacity = Input.Capacity, CourseId = courseId, AcademicYearId = academicYearId });
         else
-            await _svc.UpdateAsync(Input.Id, e => { e.Name = Input.Name; e.Capacity = Input.Capacity; e.CourseId = Input.CourseId; e.AcademicYearId = Input.AcademicYearId; });
+            await _svc.UpdateAsync(Input.Id, e => { e.Name = Input.Name; e.Capacity = Input.Capacity; e.CourseId = courseId; e.AcademicYearId = academicYearId; });
 
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostDeleteAsync(int id)
+    public async Task<IActionResult> OnPostDeleteAsync(Guid id)
     {
         await _svc.SoftDeleteAsync(id);
         return RedirectToPage();

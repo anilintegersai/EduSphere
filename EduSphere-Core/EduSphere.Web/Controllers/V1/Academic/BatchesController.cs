@@ -33,7 +33,7 @@ public class BatchesController : ApiControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] int? courseId, [FromQuery] int? academicYearId)
+    public async Task<IActionResult> GetAll([FromQuery] Guid? courseId, [FromQuery] Guid? academicYearId)
     {
         var items = await _service.ListAsync(b =>
             (courseId == null || b.CourseId == courseId) &&
@@ -41,8 +41,8 @@ public class BatchesController : ApiControllerBase
         return Ok(ApiResponse<IEnumerable<BatchDto>>.Ok(items.Select(Map)));
     }
 
-    [HttpGet("{id:int}")]
-    public async Task<IActionResult> GetById(int id)
+    [HttpGet("{id:guid}")]
+    public async Task<IActionResult> GetById(Guid id)
     {
         var entity = await _service.GetAsync(id);
         return entity is null
@@ -66,8 +66,8 @@ public class BatchesController : ApiControllerBase
         return StatusCode(StatusCodes.Status201Created, ApiResponse<BatchDto>.Ok(Map(created)));
     }
 
-    [HttpPut("{id:int}")]
-    public async Task<IActionResult> Update(int id, [FromBody] UpdateBatchRequest request)
+    [HttpPut("{id:guid}")]
+    public async Task<IActionResult> Update(Guid id, [FromBody] UpdateBatchRequest request)
     {
         var error = await ValidateReferences(request.CourseId, request.AcademicYearId);
         if (error is not null) return error;
@@ -82,13 +82,13 @@ public class BatchesController : ApiControllerBase
         return updated ? NoContent() : NotFound(ApiResponse<object>.Fail($"Batch {id} was not found."));
     }
 
-    [HttpDelete("{id:int}")]
-    public async Task<IActionResult> Delete(int id)
+    [HttpDelete("{id:guid}")]
+    public async Task<IActionResult> Delete(Guid id)
         => await _service.SoftDeleteAsync(id)
             ? NoContent()
             : NotFound(ApiResponse<object>.Fail($"Batch {id} was not found."));
 
-    private async Task<IActionResult?> ValidateReferences(int courseId, int academicYearId)
+    private async Task<IActionResult?> ValidateReferences(Guid courseId, Guid academicYearId)
     {
         if (await _courses.GetAsync(courseId) is null)
             return BadRequest(ApiResponse<object>.Fail($"Course {courseId} was not found in this tenant."));
@@ -97,16 +97,11 @@ public class BatchesController : ApiControllerBase
         return null;
     }
 
-    private static BatchDto Map(Batch e) => new()
+    private static BatchDto Map(Batch e) => new BatchDto
     {
-        Id = e.Id,
-        TenantId = e.TenantId,
         Name = e.Name,
         Capacity = e.Capacity,
         CourseId = e.CourseId,
-        AcademicYearId = e.AcademicYearId,
-        IsActive = e.IsActive,
-        CreatedAt = e.CreatedAt,
-        UpdatedAt = e.UpdatedAt
-    };
+        AcademicYearId = e.AcademicYearId
+    }.WithMetadata(e);
 }

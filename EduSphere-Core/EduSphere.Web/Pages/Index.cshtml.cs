@@ -51,7 +51,7 @@ public class IndexModel : PageModel
         if (IsSuper)
             TenantCount = (await _tenants.GetAllTenantsAsync()).Count();
 
-        if (_tenant.TenantId is int tenantId)
+        if (_tenant.TenantId is Guid tenantId)
         {
             BranchCount = (await _branches.GetBranchesByTenantAsync(tenantId)).Count();
             AcademicYearCount = (await _years.ListAsync()).Count;
