@@ -40,6 +40,9 @@ public class JwtTokenService : IJwtTokenService
             new("name", user.FullName),
             new("tenant_id", user.TenantId.ToString()),
         };
+        if (user.BranchId.HasValue)
+            claims.Add(new Claim("branch_id", user.BranchId.Value.ToString()));
+
         claims.AddRange(roles.Select(role => new Claim("role", role)));
 
         var token = new JwtSecurityToken(

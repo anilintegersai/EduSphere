@@ -6,7 +6,9 @@ using EduSphere.Infrastructure.MultiTenancy;
 using EduSphere.Infrastructure.Repositories;
 using EduSphere.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Pomelo.EntityFrameworkCore.MySql.Infrastructure;
 
 namespace EduSphere.Infrastructure;
 
@@ -25,9 +27,24 @@ public static class DependencyInjectionExtensions
         return services;
     }
 
+    public static IServiceCollection AddInfrastructureServices(this IServiceCollection services, IConfiguration configuration)
+    {
+        var databaseOptions = DatabaseProviderOptions.FromConfiguration(configuration);
+        return services.AddInfrastructureServices(databaseOptions);
+    }
+
     public static IServiceCollection AddInfrastructureServices(
         this IServiceCollection services, string connectionString, string provider = "SqlServer")
     {
+        var databaseOptions = DatabaseProviderOptions.Create(connectionString, provider);
+        return services.AddInfrastructureServices(databaseOptions);
+    }
+
+    private static IServiceCollection AddInfrastructureServices(
+        this IServiceCollection services, DatabaseProviderOptions databaseOptions)
+    {
+        services.AddSingleton(databaseOptions);
+
         // Request-scoped ambient tenant, populated by the tenant resolution middleware.
         services.AddScoped<ITenantContext, TenantContext>();
 
@@ -36,7 +53,7 @@ public static class DependencyInjectionExtensions
         // wiring stays isolated here in Infrastructure.
         services.AddDbContext<TenantDbContext>(options =>
         {
-            ConfigureProvider(options, connectionString, provider);
+            ConfigureProvider(options, databaseOptions);
             // Branch and its principal Tenant sit on opposite sides of the tenant filter,
             // so the filtered-required-navigation heuristic warning is a false positive here.
             options.ConfigureWarnings(w =>
@@ -55,6 +72,9 @@ public static class DependencyInjectionExtensions
         // JWT token issuance for API clients
         services.AddScoped<IJwtTokenService, JwtTokenService>();
 
+        // Centralized migration strategy: None, Validate, or Migrate.
+        services.AddSingleton<IDatabaseMigrationService, DatabaseMigrationService>();
+
         return services;
     }
 
@@ -63,23 +83,40 @@ public static class DependencyInjectionExtensions
     /// selects a provider is what keeps the rest of the codebase database-agnostic.
     /// </summary>
     public static void ConfigureProvider(DbContextOptionsBuilder options, string connectionString, string provider)
+        => ConfigureProvider(options, DatabaseProviderOptions.Create(connectionString, provider));
+
+    public static void ConfigureProvider(DbContextOptionsBuilder options, DatabaseProviderOptions databaseOptions)
     {
-        switch (provider?.Trim().ToLowerInvariant())
+        switch (databaseOptions.Provider)
         {
-            case "sqlserver":
-            case "mssql":
-                options.UseSqlServer(connectionString, sql => sql.EnableRetryOnFailure());
+            case DatabaseProvider.SqlServer:
+                options.UseSqlServer(databaseOptions.ConnectionString, sql => sql.EnableRetryOnFailure());
                 break;
 
-            case "postgres":
-            case "postgresql":
-            case "npgsql":
-                options.UseNpgsql(connectionString);
+            case DatabaseProvider.PostgreSql:
+                options.UseNpgsql(databaseOptions.ConnectionString, sql => sql.EnableRetryOnFailure());
+                break;
+
+            case DatabaseProvider.MySql:
+                options.UseMySql(
+                    databaseOptions.ConnectionString,
+                    ResolveMySqlServerVersion(databaseOptions),
+                    sql => sql.EnableRetryOnFailure());
+                break;
+
+            case DatabaseProvider.Sqlite:
+                options.UseSqlite(databaseOptions.ConnectionString);
                 break;
 
             default:
-                throw new InvalidOperationException(
-                    $"Unsupported database provider '{provider}'. Supported: SqlServer, Postgres.");
+                throw new InvalidOperationException($"Unsupported database provider '{databaseOptions.Provider}'.");
         }
+    }
+
+    private static ServerVersion ResolveMySqlServerVersion(DatabaseProviderOptions databaseOptions)
+    {
+        return databaseOptions.MySqlServerKind == MySqlServerKind.MariaDb
+            ? new MariaDbServerVersion(databaseOptions.MySqlServerVersion)
+            : new MySqlServerVersion(databaseOptions.MySqlServerVersion);
     }
 }

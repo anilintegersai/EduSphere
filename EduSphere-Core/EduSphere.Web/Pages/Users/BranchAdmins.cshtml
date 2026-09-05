@@ -1,0 +1,116 @@
+@page
+@model EduSphere.Web.Pages.Users.BranchAdminsModel
+@{
+    ViewData["Title"] = "Branch Admins";
+}
+
+<section class="page-hero compact-hero">
+    <div>
+        <span class="eyebrow">Access Control</span>
+        <h1>Branch Admins</h1>
+        <p>Create branch-scoped administrators for operational work inside a tenant.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.Notice))
+{
+    <div class="alert alert-warning">@Model.Notice</div>
+}
+
+@if (TempData["StatusMessage"] is string status)
+{
+    <div class="alert alert-success">@status</div>
+}
+
+@if (Model.HasTenant)
+{
+    <div class="row g-4">
+        <div class="col-12 col-xl-4">
+            <div class="card app-card">
+                <div class="card-header">Create Branch Admin</div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Create" class="stacked-form">
+                        <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                        <div class="mb-3">
+                            <label asp-for="Input.BranchId" class="form-label"></label>
+                            <select asp-for="Input.BranchId" class="form-select">
+                                <option value="">Select branch</option>
+                                @foreach (var branch in Model.Branches)
+                                {
+                                    <option value="@branch.Id">@branch.Name (@branch.Code)</option>
+                                }
+                            </select>
+                            <span asp-validation-for="Input.BranchId" class="text-danger small"></span>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label asp-for="Input.FirstName" class="form-label"></label>
+                                <input asp-for="Input.FirstName" class="form-control" />
+                                <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.LastName" class="form-label"></label>
+                                <input asp-for="Input.LastName" class="form-control" />
+                                <span asp-validation-for="Input.LastName" class="text-danger small"></span>
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Input.Email" class="form-label"></label>
+                            <input asp-for="Input.Email" class="form-control" />
+                            <span asp-validation-for="Input.Email" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Input.PhoneNumber" class="form-label"></label>
+                            <input asp-for="Input.PhoneNumber" class="form-control" />
+                            <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="Input.Password" class="form-label"></label>
+                            <input asp-for="Input.Password" class="form-control" />
+                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
+                        </div>
+                        <button type="submit" class="btn btn-primary w-100">Create Branch Admin</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-12 col-xl-8">
+            <div class="card app-card">
+                <div class="card-header"><span>Branch Admin Directory</span><span class="count-pill">@Model.Items.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table align-middle mb-0">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Branch</th>
+                                <th>Status</th>
+                                <th class="text-end">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var item in Model.Items)
+                        {
+                            <tr>
+                                <td>@item.Name</td>
+                                <td>@item.Email</td>
+                                <td>@item.BranchName <span class="text-muted small">@item.BranchCode</span></td>
+                                <td><span class="badge @(item.IsActive ? "text-bg-success" : "text-bg-secondary")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                                <td class="text-end">
+                                    <form method="post" asp-page-handler="ToggleActive" asp-route-id="@item.Id" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">@(item.IsActive ? "Deactivate" : "Activate")</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

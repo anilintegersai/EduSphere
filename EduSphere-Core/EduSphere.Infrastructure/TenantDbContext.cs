@@ -36,6 +36,42 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<SyllabusUnit> SyllabusUnits { get; set; }
 
+    // Students / Teachers (Module 4)
+    public DbSet<StudentProfile> StudentProfiles { get; set; }
+    public DbSet<StudentGuardian> StudentGuardians { get; set; }
+    public DbSet<TeacherProfile> TeacherProfiles { get; set; }
+    public DbSet<TeacherSubjectAssignment> TeacherSubjectAssignments { get; set; }
+    public DbSet<ProfileDocument> ProfileDocuments { get; set; }
+
+    // Admissions / Attendance / Timetable (Module 5-9)
+    public DbSet<AdmissionApplication> AdmissionApplications { get; set; }
+    public DbSet<AdmissionDocument> AdmissionDocuments { get; set; }
+    public DbSet<AdmissionReview> AdmissionReviews { get; set; }
+    public DbSet<Enrollment> Enrollments { get; set; }
+    public DbSet<PromotionRecord> PromotionRecords { get; set; }
+    public DbSet<AttendanceSession> AttendanceSessions { get; set; }
+    public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+    public DbSet<AttendancePolicy> AttendancePolicies { get; set; }
+    public DbSet<LeaveApplication> LeaveApplications { get; set; }
+    public DbSet<AttendanceAlert> AttendanceAlerts { get; set; }
+    public DbSet<Room> Rooms { get; set; }
+    public DbSet<TimeSlot> TimeSlots { get; set; }
+    public DbSet<Timetable> Timetables { get; set; }
+    public DbSet<TimetableEntry> TimetableEntries { get; set; }
+
+    // Examinations / Results / Question Bank (Module 10-11)
+    public DbSet<Exam> Exams { get; set; }
+    public DbSet<ExamSchedule> ExamSchedules { get; set; }
+    public DbSet<GradingScheme> GradingSchemes { get; set; }
+    public DbSet<GradingSchemeBand> GradingSchemeBands { get; set; }
+    public DbSet<QuestionBankItem> QuestionBankItems { get; set; }
+    public DbSet<QuestionPaper> QuestionPapers { get; set; }
+    public DbSet<QuestionPaperSection> QuestionPaperSections { get; set; }
+    public DbSet<QuestionPaperQuestion> QuestionPaperQuestions { get; set; }
+    public DbSet<QuestionPaperVersion> QuestionPaperVersions { get; set; }
+    public DbSet<MarkEntry> MarkEntries { get; set; }
+    public DbSet<Result> Results { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Configures the ASP.NET Core Identity schema (AspNetUsers, AspNetRoles, ...).
@@ -62,6 +98,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<ApplicationUser>().HasIndex(u => u.TenantId);
 
         ConfigureAcademicStructure(modelBuilder);
+        ConfigurePeopleProfiles(modelBuilder);
+        ConfigureOperations(modelBuilder);
+        ConfigureExaminations(modelBuilder);
 
         // Global tenant and soft-delete query filters for tenant-owned domain entities.
         // Identity's UserManager/SignInManager must resolve users (including a host-level
@@ -194,6 +233,442 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<Batch>().HasIndex(b => b.AcademicYearId);
         modelBuilder.Entity<Section>().HasIndex(s => s.BatchId);
         modelBuilder.Entity<SyllabusUnit>().HasIndex(u => u.SubjectId);
+    }
+
+    private static void ConfigurePeopleProfiles(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<StudentProfile>()
+            .HasOne(s => s.User).WithMany()
+            .HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentProfile>()
+            .HasOne(s => s.Branch).WithMany()
+            .HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentProfile>()
+            .HasOne(s => s.Section).WithMany()
+            .HasForeignKey(s => s.SectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TeacherProfile>()
+            .HasOne(t => t.User).WithMany()
+            .HasForeignKey(t => t.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherProfile>()
+            .HasOne(t => t.Branch).WithMany()
+            .HasForeignKey(t => t.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherProfile>()
+            .Property(t => t.ExperienceYears)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<StudentGuardian>()
+            .HasOne(g => g.StudentProfile).WithMany(s => s.Guardians)
+            .HasForeignKey(g => g.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentGuardian>()
+            .HasOne(g => g.ParentUser).WithMany()
+            .HasForeignKey(g => g.ParentUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TeacherSubjectAssignment>()
+            .HasOne(a => a.TeacherProfile).WithMany(t => t.SubjectAssignments)
+            .HasForeignKey(a => a.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherSubjectAssignment>()
+            .HasOne(a => a.Subject).WithMany()
+            .HasForeignKey(a => a.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherSubjectAssignment>()
+            .HasOne(a => a.Section).WithMany()
+            .HasForeignKey(a => a.SectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentProfile>().HasIndex(s => new { s.TenantId, s.AdmissionNumber }).IsUnique();
+        modelBuilder.Entity<StudentProfile>().HasIndex(s => s.BranchId);
+        modelBuilder.Entity<StudentProfile>().HasIndex(s => s.SectionId);
+        modelBuilder.Entity<StudentProfile>().HasIndex(s => s.UserId);
+
+        modelBuilder.Entity<TeacherProfile>().HasIndex(t => new { t.TenantId, t.EmployeeNumber }).IsUnique();
+        modelBuilder.Entity<TeacherProfile>().HasIndex(t => t.BranchId);
+        modelBuilder.Entity<TeacherProfile>().HasIndex(t => t.UserId);
+
+        modelBuilder.Entity<StudentGuardian>().HasIndex(g => g.StudentProfileId);
+        modelBuilder.Entity<StudentGuardian>().HasIndex(g => g.ParentUserId);
+
+        modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.TeacherProfileId);
+        modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.SubjectId);
+        modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.SectionId);
+
+        modelBuilder.Entity<ProfileDocument>().HasIndex(d => new { d.OwnerType, d.OwnerId });
+    }
+
+    private static void ConfigureOperations(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.Branch).WithMany()
+            .HasForeignKey(a => a.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.AcademicYear).WithMany()
+            .HasForeignKey(a => a.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.Course).WithMany()
+            .HasForeignKey(a => a.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.Batch).WithMany()
+            .HasForeignKey(a => a.BatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.Section).WithMany()
+            .HasForeignKey(a => a.SectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdmissionDocument>()
+            .HasOne(d => d.AdmissionApplication).WithMany(a => a.Documents)
+            .HasForeignKey(d => d.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionDocument>()
+            .HasOne(d => d.VerifiedByUser).WithMany()
+            .HasForeignKey(d => d.VerifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdmissionReview>()
+            .HasOne(r => r.AdmissionApplication).WithMany(a => a.Reviews)
+            .HasForeignKey(r => r.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionReview>()
+            .HasOne(r => r.ReviewedByUser).WithMany()
+            .HasForeignKey(r => r.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.AdmissionApplication).WithMany()
+            .HasForeignKey(e => e.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.AcademicYear).WithMany()
+            .HasForeignKey(e => e.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.Course).WithMany()
+            .HasForeignKey(e => e.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.Batch).WithMany()
+            .HasForeignKey(e => e.BatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Enrollment>()
+            .HasOne(e => e.Section).WithMany()
+            .HasForeignKey(e => e.SectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<PromotionRecord>()
+            .HasOne(p => p.StudentProfile).WithMany()
+            .HasForeignKey(p => p.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PromotionRecord>()
+            .HasOne(p => p.FromAcademicYear).WithMany()
+            .HasForeignKey(p => p.FromAcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PromotionRecord>()
+            .HasOne(p => p.ToAcademicYear).WithMany()
+            .HasForeignKey(p => p.ToAcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PromotionRecord>()
+            .HasOne(p => p.FromSection).WithMany()
+            .HasForeignKey(p => p.FromSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PromotionRecord>()
+            .HasOne(p => p.ToSection).WithMany()
+            .HasForeignKey(p => p.ToSectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendanceSession>()
+            .HasOne(s => s.Branch).WithMany()
+            .HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceSession>()
+            .HasOne(s => s.Section).WithMany()
+            .HasForeignKey(s => s.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceSession>()
+            .HasOne(s => s.Subject).WithMany()
+            .HasForeignKey(s => s.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceSession>()
+            .HasOne(s => s.TimetableEntry).WithMany()
+            .HasForeignKey(s => s.TimetableEntryId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceSession>()
+            .HasOne(s => s.MarkedByUser).WithMany()
+            .HasForeignKey(s => s.MarkedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendanceRecord>()
+            .HasOne(r => r.AttendanceSession).WithMany(s => s.Records)
+            .HasForeignKey(r => r.AttendanceSessionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceRecord>()
+            .HasOne(r => r.StudentProfile).WithMany()
+            .HasForeignKey(r => r.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceRecord>()
+            .HasOne(r => r.MarkedByUser).WithMany()
+            .HasForeignKey(r => r.MarkedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendancePolicy>()
+            .HasOne(p => p.Branch).WithMany()
+            .HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendancePolicy>()
+            .Property(p => p.MinimumPercentage)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<LeaveApplication>()
+            .HasOne(l => l.StudentProfile).WithMany()
+            .HasForeignKey(l => l.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LeaveApplication>()
+            .HasOne(l => l.ReviewedByUser).WithMany()
+            .HasForeignKey(l => l.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AttendanceAlert>()
+            .HasOne(a => a.StudentProfile).WithMany()
+            .HasForeignKey(a => a.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceAlert>()
+            .HasOne(a => a.AttendancePolicy).WithMany()
+            .HasForeignKey(a => a.AttendancePolicyId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceAlert>()
+            .Property(a => a.AttendancePercentage)
+            .HasPrecision(5, 2);
+        modelBuilder.Entity<AttendanceAlert>()
+            .Property(a => a.ThresholdPercentage)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<Room>()
+            .HasOne(r => r.Branch).WithMany()
+            .HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TimeSlot>()
+            .HasOne(t => t.Branch).WithMany()
+            .HasForeignKey(t => t.BranchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Timetable>()
+            .HasOne(t => t.Branch).WithMany()
+            .HasForeignKey(t => t.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Timetable>()
+            .HasOne(t => t.AcademicYear).WithMany()
+            .HasForeignKey(t => t.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Timetable>()
+            .HasOne(t => t.Section).WithMany()
+            .HasForeignKey(t => t.SectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TimetableEntry>()
+            .HasOne(e => e.Timetable).WithMany(t => t.Entries)
+            .HasForeignKey(e => e.TimetableId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableEntry>()
+            .HasOne(e => e.Section).WithMany()
+            .HasForeignKey(e => e.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableEntry>()
+            .HasOne(e => e.Subject).WithMany()
+            .HasForeignKey(e => e.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableEntry>()
+            .HasOne(e => e.TeacherProfile).WithMany()
+            .HasForeignKey(e => e.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableEntry>()
+            .HasOne(e => e.TimeSlot).WithMany()
+            .HasForeignKey(e => e.TimeSlotId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableEntry>()
+            .HasOne(e => e.Room).WithMany()
+            .HasForeignKey(e => e.RoomId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => new { a.TenantId, a.ApplicationNumber }).IsUnique();
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.BranchId);
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.CourseId);
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.BatchId);
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.SectionId);
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.Status);
+        modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.AdmissionApplicationId);
+        modelBuilder.Entity<AdmissionReview>().HasIndex(r => r.AdmissionApplicationId);
+        modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.EnrollmentNumber }).IsUnique();
+        modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.AcademicYearId }).IsUnique();
+        modelBuilder.Entity<PromotionRecord>().HasIndex(p => p.StudentProfileId);
+
+        modelBuilder.Entity<AttendanceSession>().HasIndex(s => new { s.TenantId, s.SectionId, s.AttendanceDate });
+        modelBuilder.Entity<AttendanceSession>().HasIndex(s => s.SubjectId);
+        modelBuilder.Entity<AttendanceRecord>().HasIndex(r => new { r.TenantId, r.AttendanceSessionId, r.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<AttendancePolicy>().HasIndex(p => new { p.TenantId, p.Name }).IsUnique();
+        modelBuilder.Entity<LeaveApplication>().HasIndex(l => new { l.TenantId, l.StudentProfileId, l.FromDate });
+        modelBuilder.Entity<AttendanceAlert>().HasIndex(a => new { a.TenantId, a.StudentProfileId, a.Status });
+
+        modelBuilder.Entity<Room>().HasIndex(r => new { r.TenantId, r.BranchId, r.Code }).IsUnique();
+        modelBuilder.Entity<TimeSlot>().HasIndex(t => new { t.TenantId, t.BranchId, t.DayOfWeek, t.PeriodNumber }).IsUnique();
+        modelBuilder.Entity<Timetable>().HasIndex(t => new { t.TenantId, t.SectionId, t.EffectiveFrom });
+        modelBuilder.Entity<TimetableEntry>().HasIndex(e => new { e.TimetableId, e.SectionId, e.TimeSlotId }).IsUnique();
+        modelBuilder.Entity<TimetableEntry>().HasIndex(e => new { e.TimetableId, e.TeacherProfileId, e.TimeSlotId }).IsUnique();
+        modelBuilder.Entity<TimetableEntry>().HasIndex(e => new { e.TimetableId, e.RoomId, e.TimeSlotId });
+    }
+
+    private static void ConfigureExaminations(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Exam>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Exam>()
+            .HasOne(e => e.AcademicYear).WithMany()
+            .HasForeignKey(e => e.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Exam>()
+            .Property(e => e.WeightagePercentage)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<ExamSchedule>()
+            .HasOne(s => s.Exam).WithMany(e => e.Schedules)
+            .HasForeignKey(s => s.ExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSchedule>()
+            .HasOne(s => s.Section).WithMany()
+            .HasForeignKey(s => s.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSchedule>()
+            .HasOne(s => s.Subject).WithMany()
+            .HasForeignKey(s => s.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSchedule>()
+            .HasOne(s => s.TeacherProfile).WithMany()
+            .HasForeignKey(s => s.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSchedule>()
+            .HasOne(s => s.Room).WithMany()
+            .HasForeignKey(s => s.RoomId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSchedule>()
+            .Property(s => s.MaximumMarks)
+            .HasPrecision(7, 2);
+        modelBuilder.Entity<ExamSchedule>()
+            .Property(s => s.PassingMarks)
+            .HasPrecision(7, 2);
+
+        modelBuilder.Entity<GradingScheme>()
+            .HasOne(g => g.Branch).WithMany()
+            .HasForeignKey(g => g.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<GradingScheme>()
+            .HasOne(g => g.Course).WithMany()
+            .HasForeignKey(g => g.CourseId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<GradingSchemeBand>()
+            .HasOne(b => b.GradingScheme).WithMany(g => g.Bands)
+            .HasForeignKey(b => b.GradingSchemeId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<GradingSchemeBand>()
+            .Property(b => b.MinimumPercentage)
+            .HasPrecision(5, 2);
+        modelBuilder.Entity<GradingSchemeBand>()
+            .Property(b => b.MaximumPercentage)
+            .HasPrecision(5, 2);
+        modelBuilder.Entity<GradingSchemeBand>()
+            .Property(b => b.GradePoint)
+            .HasPrecision(4, 2);
+
+        modelBuilder.Entity<QuestionBankItem>()
+            .HasOne(q => q.Branch).WithMany()
+            .HasForeignKey(q => q.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionBankItem>()
+            .HasOne(q => q.Subject).WithMany()
+            .HasForeignKey(q => q.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionBankItem>()
+            .HasOne(q => q.SyllabusUnit).WithMany()
+            .HasForeignKey(q => q.SyllabusUnitId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionBankItem>()
+            .HasOne(q => q.AuthorTeacherProfile).WithMany()
+            .HasForeignKey(q => q.AuthorTeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionBankItem>()
+            .HasOne(q => q.ApprovedByUser).WithMany()
+            .HasForeignKey(q => q.ApprovedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionBankItem>()
+            .Property(q => q.Marks)
+            .HasPrecision(7, 2);
+
+        modelBuilder.Entity<QuestionPaper>()
+            .HasOne(p => p.Branch).WithMany()
+            .HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaper>()
+            .HasOne(p => p.Subject).WithMany()
+            .HasForeignKey(p => p.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaper>()
+            .HasOne(p => p.Exam).WithMany()
+            .HasForeignKey(p => p.ExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaper>()
+            .HasOne(p => p.ExamSchedule).WithMany(s => s.QuestionPapers)
+            .HasForeignKey(p => p.ExamScheduleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaper>()
+            .HasOne(p => p.ApprovedByUser).WithMany()
+            .HasForeignKey(p => p.ApprovedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaper>()
+            .Property(p => p.TotalMarks)
+            .HasPrecision(7, 2);
+
+        modelBuilder.Entity<QuestionPaperSection>()
+            .HasOne(s => s.QuestionPaper).WithMany(p => p.Sections)
+            .HasForeignKey(s => s.QuestionPaperId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaperSection>()
+            .Property(s => s.Marks)
+            .HasPrecision(7, 2);
+
+        modelBuilder.Entity<QuestionPaperQuestion>()
+            .HasOne(q => q.QuestionPaperSection).WithMany(s => s.Questions)
+            .HasForeignKey(q => q.QuestionPaperSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaperQuestion>()
+            .HasOne(q => q.QuestionBankItem).WithMany()
+            .HasForeignKey(q => q.QuestionBankItemId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaperQuestion>()
+            .Property(q => q.Marks)
+            .HasPrecision(7, 2);
+
+        modelBuilder.Entity<QuestionPaperVersion>()
+            .HasOne(v => v.QuestionPaper).WithMany(p => p.Versions)
+            .HasForeignKey(v => v.QuestionPaperId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaperVersion>()
+            .HasOne(v => v.CreatedByUser).WithMany()
+            .HasForeignKey(v => v.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<MarkEntry>()
+            .HasOne(m => m.ExamSchedule).WithMany(s => s.MarkEntries)
+            .HasForeignKey(m => m.ExamScheduleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkEntry>()
+            .HasOne(m => m.StudentProfile).WithMany()
+            .HasForeignKey(m => m.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkEntry>()
+            .HasOne(m => m.EnteredByUser).WithMany()
+            .HasForeignKey(m => m.EnteredByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkEntry>()
+            .Property(m => m.MarksObtained)
+            .HasPrecision(7, 2);
+        modelBuilder.Entity<MarkEntry>()
+            .Property(m => m.GradePoint)
+            .HasPrecision(4, 2);
+
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.Exam).WithMany(e => e.Results)
+            .HasForeignKey(r => r.ExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.StudentProfile).WithMany()
+            .HasForeignKey(r => r.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.Branch).WithMany()
+            .HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.AcademicYear).WithMany()
+            .HasForeignKey(r => r.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.Course).WithMany()
+            .HasForeignKey(r => r.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.Batch).WithMany()
+            .HasForeignKey(r => r.BatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.Section).WithMany()
+            .HasForeignKey(r => r.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .HasOne(r => r.PublishedByUser).WithMany()
+            .HasForeignKey(r => r.PublishedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Result>()
+            .Property(r => r.TotalMarks)
+            .HasPrecision(9, 2);
+        modelBuilder.Entity<Result>()
+            .Property(r => r.MarksObtained)
+            .HasPrecision(9, 2);
+        modelBuilder.Entity<Result>()
+            .Property(r => r.Percentage)
+            .HasPrecision(5, 2);
+        modelBuilder.Entity<Result>()
+            .Property(r => r.GradePoint)
+            .HasPrecision(4, 2);
+
+        modelBuilder.Entity<Exam>().HasIndex(e => new { e.TenantId, e.BranchId, e.AcademicYearId, e.Name }).IsUnique();
+        modelBuilder.Entity<Exam>().HasIndex(e => e.Status);
+        modelBuilder.Entity<ExamSchedule>().HasIndex(s => new { s.TenantId, s.ExamId, s.SectionId, s.SubjectId }).IsUnique();
+        modelBuilder.Entity<ExamSchedule>().HasIndex(s => new { s.ExamDate, s.StartsAt });
+        modelBuilder.Entity<ExamSchedule>().HasIndex(s => s.RoomId);
+        modelBuilder.Entity<GradingScheme>().HasIndex(g => new { g.TenantId, g.BranchId, g.Name }).IsUnique();
+        modelBuilder.Entity<GradingSchemeBand>().HasIndex(b => new { b.GradingSchemeId, b.Grade }).IsUnique();
+        modelBuilder.Entity<GradingSchemeBand>().HasIndex(b => new { b.GradingSchemeId, b.SortOrder });
+        modelBuilder.Entity<QuestionBankItem>().HasIndex(q => new { q.TenantId, q.BranchId, q.SubjectId });
+        modelBuilder.Entity<QuestionBankItem>().HasIndex(q => new { q.SubjectId, q.SyllabusUnitId });
+        modelBuilder.Entity<QuestionPaper>().HasIndex(p => new { p.TenantId, p.BranchId, p.SubjectId });
+        modelBuilder.Entity<QuestionPaper>().HasIndex(p => p.ExamScheduleId);
+        modelBuilder.Entity<QuestionPaperSection>().HasIndex(s => new { s.QuestionPaperId, s.Code }).IsUnique();
+        modelBuilder.Entity<QuestionPaperSection>().HasIndex(s => new { s.QuestionPaperId, s.SortOrder });
+        modelBuilder.Entity<QuestionPaperQuestion>().HasIndex(q => new { q.QuestionPaperSectionId, q.SortOrder });
+        modelBuilder.Entity<QuestionPaperQuestion>().HasIndex(q => q.QuestionBankItemId);
+        modelBuilder.Entity<QuestionPaperVersion>().HasIndex(v => new { v.QuestionPaperId, v.VersionNumber }).IsUnique();
+        modelBuilder.Entity<MarkEntry>().HasIndex(m => new { m.TenantId, m.ExamScheduleId, m.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.ExamId, r.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.BranchId, r.Status });
     }
 
     public override int SaveChanges()

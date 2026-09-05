@@ -25,6 +25,7 @@ artifacts/
 # Local secrets — real connection strings / keys live here, never in the repo.
 # Use appsettings.Development.json.example as the template.
 **/appsettings.Development.json
+**/App_Data/DataProtectionKeys/
 
 # OS
 .DS_Store

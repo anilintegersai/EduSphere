@@ -3,6 +3,10 @@
 @{
     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isSignedIn = SignInManager.IsSignedIn(User);
+    var canManageTenants = User.IsInRole(Roles.SuperAdmin);
+    var canManageTenantWorkspace = canManageTenants || User.IsInRole(Roles.TenantAdmin);
+    var canManageBranchWorkspace = canManageTenantWorkspace || User.IsInRole(Roles.BranchAdmin);
+    var canMarkAttendance = canManageBranchWorkspace || User.IsInRole(Roles.Principal) || User.IsInRole(Roles.Teacher);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -36,27 +40,63 @@
                             <li class="nav-item">
                                 <a class="nav-link @(currentPage == "/Index" ? "active" : "")" asp-page="/Index">Dashboard</a>
                             </li>
-                            @if (User.IsInRole(Roles.SuperAdmin))
+                            @if (canManageTenants)
                             {
                                 <li class="nav-item">
                                     <a class="nav-link @(currentPage.StartsWith("/Tenants", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Tenants/Index">Tenants</a>
                                 </li>
                             }
-                            <li class="nav-item">
-                                <a class="nav-link @(currentPage.StartsWith("/Branches", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Branches/Index">Branches</a>
-                            </li>
-                            <li class="nav-item dropdown">
-                                <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Academic", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Academic</a>
-                                <ul class="dropdown-menu app-dropdown">
-                                    <li><a class="dropdown-item" asp-page="/Academic/AcademicYears">Academic Years</a></li>
-                                    <li><a class="dropdown-item" asp-page="/Academic/Departments">Departments</a></li>
-                                    <li><a class="dropdown-item" asp-page="/Academic/Courses">Courses</a></li>
-                                    <li><a class="dropdown-item" asp-page="/Academic/Batches">Batches</a></li>
-                                    <li><a class="dropdown-item" asp-page="/Academic/Sections">Sections</a></li>
-                                    <li><a class="dropdown-item" asp-page="/Academic/Subjects">Subjects</a></li>
-                                    <li><a class="dropdown-item" asp-page="/Academic/SyllabusUnits">Syllabus Units</a></li>
-                                </ul>
-                            </li>
+                            @if (canManageTenantWorkspace)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Branches", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Branches/Index">Branches</a>
+                                </li>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Academic", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Academic</a>
+                                    <ul class="dropdown-menu app-dropdown">
+                                        <li><a class="dropdown-item" asp-page="/Academic/AcademicYears">Academic Years</a></li>
+                                        <li><a class="dropdown-item" asp-page="/Academic/Departments">Departments</a></li>
+                                        <li><a class="dropdown-item" asp-page="/Academic/Courses">Courses</a></li>
+                                        <li><a class="dropdown-item" asp-page="/Academic/Batches">Batches</a></li>
+                                        <li><a class="dropdown-item" asp-page="/Academic/Sections">Sections</a></li>
+                                        <li><a class="dropdown-item" asp-page="/Academic/Subjects">Subjects</a></li>
+                                        <li><a class="dropdown-item" asp-page="/Academic/SyllabusUnits">Syllabus Units</a></li>
+                                    </ul>
+                                </li>
+                            }
+                            @if (canManageBranchWorkspace)
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/People", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">People</a>
+                                    <ul class="dropdown-menu app-dropdown">
+                                        <li><a class="dropdown-item" asp-page="/People/Students">Students</a></li>
+                                        <li><a class="dropdown-item" asp-page="/People/Teachers">Teachers</a></li>
+                                        @if (canManageTenantWorkspace)
+                                        {
+                                            <li><hr class="dropdown-divider" /></li>
+                                            <li><a class="dropdown-item" asp-page="/Users/BranchAdmins">Branch Admins</a></li>
+                                        }
+                                    </ul>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Admissions/Applications">Admissions</a>
+                                </li>
+                            }
+                            @if (canMarkAttendance)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Attendance", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Attendance/Mark">Attendance</a>
+                                </li>
+                            }
+                            @if (canManageBranchWorkspace)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Timetable", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Timetable/Schedule">Timetable</a>
+                                </li>
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Examinations/Exams">Exams</a>
+                                </li>
+                            }
                         </ul>
                         <div class="navbar-tools">
                             <partial name="_TenantSwitcherPartial" />

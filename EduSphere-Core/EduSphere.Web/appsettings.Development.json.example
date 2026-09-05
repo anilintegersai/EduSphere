@@ -6,7 +6,22 @@
       "Microsoft.AspNetCore": "Warning"
     }
   },
+  "DataProtection": {
+    "KeysPath": "App_Data/DataProtectionKeys"
+  },
+  "Database": {
+    "Provider": "SqlServer",
+    "ConnectionStringName": "DefaultConnection",
+    "MigrationStrategy": "None",
+    "MySql": {
+      "ServerType": "MySql",
+      "ServerVersion": "8.0.36"
+    }
+  },
   "ConnectionStrings": {
-    "DefaultConnection": "Server=YOUR_SERVER;Database=EduSphere;User Id=YOUR_USER;Password=YOUR_PASSWORD;TrustServerCertificate=True;MultipleActiveResultSets=True"
+    "DefaultConnection": "Server=YOUR_SERVER;Database=EduSphere;User Id=YOUR_USER;Password=YOUR_PASSWORD;Encrypt=False;TrustServerCertificate=True;MultipleActiveResultSets=True",
+    "PostgreSql": "Host=YOUR_SERVER;Database=edusphere;Username=YOUR_USER;Password=YOUR_PASSWORD",
+    "MySql": "Server=YOUR_SERVER;Database=edusphere;User=YOUR_USER;Password=YOUR_PASSWORD;",
+    "Sqlite": "Data Source=edusphere.db"
   }
 }

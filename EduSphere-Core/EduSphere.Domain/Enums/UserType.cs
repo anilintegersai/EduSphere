@@ -16,5 +16,6 @@ public enum UserType
     Parent = 6,
     Accountant = 7,
     Librarian = 8,
-    Staff = 9
+    Staff = 9,
+    BranchAdmin = 10
 }

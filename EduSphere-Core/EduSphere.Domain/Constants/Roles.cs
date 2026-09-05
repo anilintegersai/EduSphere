@@ -8,6 +8,7 @@ public static class Roles
 {
     public const string SuperAdmin = "SuperAdmin";
     public const string TenantAdmin = "TenantAdmin";
+    public const string BranchAdmin = "BranchAdmin";
     public const string Principal = "Principal";
     public const string Teacher = "Teacher";
     public const string Student = "Student";
@@ -17,6 +18,7 @@ public static class Roles
     {
         [SuperAdmin] = Guid.Parse("11111111-1111-1111-1111-111111111111"),
         [TenantAdmin] = Guid.Parse("22222222-2222-2222-2222-222222222222"),
+        [BranchAdmin] = Guid.Parse("77777777-7777-7777-7777-777777777777"),
         [Principal] = Guid.Parse("33333333-3333-3333-3333-333333333333"),
         [Teacher] = Guid.Parse("44444444-4444-4444-4444-444444444444"),
         [Student] = Guid.Parse("55555555-5555-5555-5555-555555555555"),

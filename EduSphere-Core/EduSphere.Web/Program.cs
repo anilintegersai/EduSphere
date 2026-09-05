@@ -13,6 +13,7 @@ using EduSphere.Web.Security;
 using EduSphere.Web.Swagger;
 using FluentValidation;
 using FluentValidation.AspNetCore;
+using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -20,6 +21,26 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 
 var builder = WebApplication.CreateBuilder(args);
+
+builder.Logging.ClearProviders();
+builder.Logging.AddConsole();
+builder.Logging.AddDebug();
+
+var dataProtectionKeysPath = builder.Configuration["DataProtection:KeysPath"];
+if (builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(dataProtectionKeysPath))
+{
+    dataProtectionKeysPath = string.IsNullOrWhiteSpace(dataProtectionKeysPath)
+        ? Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys")
+        : dataProtectionKeysPath;
+
+    if (!Path.IsPathRooted(dataProtectionKeysPath))
+        dataProtectionKeysPath = Path.Combine(builder.Environment.ContentRootPath, dataProtectionKeysPath);
+
+    Directory.CreateDirectory(dataProtectionKeysPath);
+    builder.Services.AddDataProtection()
+        .PersistKeysToFileSystem(new DirectoryInfo(dataProtectionKeysPath))
+        .SetApplicationName("EduSphere");
+}
 
 // ---- Presentation ----
 builder.Services.AddRazorPages();
@@ -41,12 +62,10 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 });
 
 // ---- Persistence, application services, tenancy ----
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
-    ?? throw new InvalidOperationException("DefaultConnection not found in configuration.");
-var databaseProvider = builder.Configuration["Database:Provider"] ?? "SqlServer";
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
-builder.Services.AddInfrastructureServices(connectionString, databaseProvider);
+builder.Services.AddScoped<IBranchAccessService, BranchAccessService>();
+builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 
 // ---- Validation ----
@@ -115,6 +134,16 @@ builder.Services.AddAuthorization(options =>
 {
     options.AddPolicy(AuthorizationPolicies.SuperAdmin, p => p.RequireRole(Roles.SuperAdmin));
     options.AddPolicy(AuthorizationPolicies.TenantAdmin, p => p.RequireRole(Roles.SuperAdmin, Roles.TenantAdmin));
+    options.AddPolicy(AuthorizationPolicies.BranchAdmin, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin));
+    options.AddPolicy(AuthorizationPolicies.AttendanceMarker, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.Principal,
+        Roles.Teacher));
 });
 
 // ---- OpenAPI / Swagger ----
@@ -139,6 +168,8 @@ builder.Services.AddSwaggerGen(options =>
 });
 
 var app = builder.Build();
+
+await app.Services.ApplyDatabaseMigrationStrategyAsync();
 
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())

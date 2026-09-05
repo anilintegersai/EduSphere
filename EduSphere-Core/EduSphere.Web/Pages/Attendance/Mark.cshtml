@@ -1,0 +1,187 @@
+@page
+@model EduSphere.Web.Pages.Attendance.MarkModel
+@{
+    ViewData["Title"] = "Attendance";
+}
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Attendance</span>
+        <h1>Mark Attendance</h1>
+        <p>Create daily, period-wise, or subject-wise sessions and mark student attendance.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Sessions.Count sessions</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Your tenant workspace is not resolved.</div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(Model.Notice))
+    {
+        <div class="alert alert-info">@Model.Notice</div>
+    }
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card mb-4">
+                <div class="card-header"><span>@(Model.IsEditingSession ? "Edit" : "New") session</span><span class="stage-tag">Session</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveSession">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="SessionInput.Id" />
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.BranchId" class="form-label"></label>
+                                <select asp-for="SessionInput.BranchId" class="form-select">
+                                    <option value="">Select branch</option>
+                                    @foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.SectionId" class="form-label"></label>
+                                <select asp-for="SessionInput.SectionId" class="form-select">
+                                    <option value="">Select section</option>
+                                    @foreach (var s in Model.Sections) { <option value="@s.Id">@s.Name</option> }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.SubjectId" class="form-label"></label>
+                                <select asp-for="SessionInput.SubjectId" class="form-select">
+                                    <option value="">Daily attendance</option>
+                                    @foreach (var s in Model.Subjects) { <option value="@s.Id">@s.Name</option> }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.AttendanceDate" class="form-label"></label>
+                                <input asp-for="SessionInput.AttendanceDate" type="date" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.SessionType" class="form-label"></label>
+                                <select asp-for="SessionInput.SessionType" asp-items="Html.GetEnumSelectList<AttendanceSessionType>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.PeriodNumber" class="form-label"></label>
+                                <input asp-for="SessionInput.PeriodNumber" type="number" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.StartsAt" class="form-label"></label>
+                                <input asp-for="SessionInput.StartsAt" type="time" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="SessionInput.EndsAt" class="form-label"></label>
+                                <input asp-for="SessionInput.EndsAt" type="time" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="SessionInput.Status" class="form-label"></label>
+                                <select asp-for="SessionInput.Status" asp-items="Html.GetEnumSelectList<AttendanceSessionStatus>()" class="form-select"></select>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="SessionInput.Notes" class="form-label"></label>
+                                <textarea asp-for="SessionInput.Notes" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditingSession ? "Save" : "Create")</button>
+                            @if (Model.IsEditingSession) { <a asp-page="/Attendance/Mark" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+            <div class="card form-card">
+                <div class="card-header"><span>@(Model.IsEditingRecord ? "Edit" : "Mark") student</span><span class="stage-tag">Record</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveRecord">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="RecordInput.Id" />
+                        <div class="mb-2">
+                            <label asp-for="RecordInput.AttendanceSessionId" class="form-label"></label>
+                            <select asp-for="RecordInput.AttendanceSessionId" class="form-select">
+                                <option value="">Select session</option>
+                                @foreach (var s in Model.Sessions) { <option value="@s.Id">@Model.SessionLabel(s.Id)</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="RecordInput.StudentProfileId" class="form-label"></label>
+                            <select asp-for="RecordInput.StudentProfileId" class="form-select">
+                                <option value="">Select student</option>
+                                @foreach (var s in Model.Students) { <option value="@s.Id">@s.FirstName @s.LastName</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="RecordInput.Status" class="form-label"></label>
+                            <select asp-for="RecordInput.Status" asp-items="Html.GetEnumSelectList<AttendanceStatus>()" class="form-select"></select>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="RecordInput.Remarks" class="form-label"></label>
+                            <textarea asp-for="RecordInput.Remarks" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditingRecord ? "Save" : "Mark")</button>
+                            @if (Model.IsEditingRecord) { <a asp-page="/Attendance/Mark" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-8">
+            <div class="card data-card mb-4">
+                <div class="card-header"><span>Attendance Sessions</span><span class="count-pill">@Model.Sessions.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Date</th><th>Section</th><th>Subject</th><th>Type</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.Sessions)
+                        {
+                            <tr>
+                                <td>@item.AttendanceDate</td>
+                                <td>@Model.SectionName(item.SectionId)</td>
+                                <td>@Model.SubjectName(item.SubjectId)</td>
+                                <td>@item.SessionType</td>
+                                <td><span class="stage-tag">@item.Status</span></td>
+                                <td class="text-end">
+                                    <span class="action-stack">
+                                        <a asp-page="/Attendance/Mark" asp-route-sessionEditId="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <form method="post" asp-page-handler="DeleteSession" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Sessions.Count == 0) { <tr><td colspan="6" class="text-center empty-state">No attendance sessions yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card data-card">
+                <div class="card-header"><span>Marked Records</span><span class="count-pill">@Model.Records.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Session</th><th>Student</th><th>Status</th><th>Marked</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.Records)
+                        {
+                            <tr>
+                                <td>@Model.SessionLabel(item.AttendanceSessionId)</td>
+                                <td>@Model.StudentName(item.StudentProfileId)</td>
+                                <td><span class="stage-tag">@item.Status</span></td>
+                                <td>@item.MarkedOn.ToLocalTime()</td>
+                                <td class="text-end">
+                                    <span class="action-stack">
+                                        <a asp-page="/Attendance/Mark" asp-route-recordEditId="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <form method="post" asp-page-handler="DeleteRecord" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Records.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No attendance records yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

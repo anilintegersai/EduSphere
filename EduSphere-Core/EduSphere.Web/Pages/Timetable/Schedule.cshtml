@@ -1,0 +1,210 @@
+@page
+@model EduSphere.Web.Pages.Timetable.ScheduleModel
+@{
+    ViewData["Title"] = "Timetable";
+}
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Timetable</span>
+        <h1>Schedule Builder</h1>
+        <p>Configure rooms, reusable time slots, section timetables, and teacher-subject allocations.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Entries.Count entries</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4 workspace-grid">
+        <div class="col-xxl-3 col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>@(Model.IsEditingRoom ? "Edit" : "New") room</span><span class="stage-tag">Room</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveRoom">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="RoomInput.Id" />
+                        <div class="mb-2">
+                            <label asp-for="RoomInput.BranchId" class="form-label"></label>
+                            <select asp-for="RoomInput.BranchId" class="form-select">
+                                <option value="">Select branch</option>
+                                @foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2"><label asp-for="RoomInput.Code" class="form-label"></label><input asp-for="RoomInput.Code" class="form-control" placeholder="A-101" /></div>
+                        <div class="mb-2"><label asp-for="RoomInput.Name" class="form-label"></label><input asp-for="RoomInput.Name" class="form-control" /></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="RoomInput.Type" class="form-label"></label><select asp-for="RoomInput.Type" asp-items="Html.GetEnumSelectList<RoomType>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="RoomInput.Capacity" class="form-label"></label><input asp-for="RoomInput.Capacity" type="number" class="form-control" /></div>
+                        </div>
+                        <div class="form-check mt-2"><input asp-for="RoomInput.IsActive" class="form-check-input" /><label asp-for="RoomInput.IsActive" class="form-check-label"></label></div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditingRoom ? "Save" : "Create")</button>
+                            @if (Model.IsEditingRoom) { <a asp-page="/Timetable/Schedule" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>@(Model.IsEditingSlot ? "Edit" : "New") slot</span><span class="stage-tag">Time</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveSlot">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="SlotInput.Id" />
+                        <div class="mb-2">
+                            <label asp-for="SlotInput.BranchId" class="form-label"></label>
+                            <select asp-for="SlotInput.BranchId" class="form-select">
+                                <option value="">Select branch</option>
+                                @foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2"><label asp-for="SlotInput.Name" class="form-label"></label><input asp-for="SlotInput.Name" class="form-control" placeholder="Period 1" /></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="SlotInput.DayOfWeek" class="form-label"></label><select asp-for="SlotInput.DayOfWeek" asp-items="Html.GetEnumSelectList<DayOfWeek>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="SlotInput.PeriodNumber" class="form-label"></label><input asp-for="SlotInput.PeriodNumber" type="number" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="SlotInput.StartsAt" class="form-label"></label><input asp-for="SlotInput.StartsAt" type="time" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="SlotInput.EndsAt" class="form-label"></label><input asp-for="SlotInput.EndsAt" type="time" class="form-control" /></div>
+                        </div>
+                        <div class="form-check mt-2"><input asp-for="SlotInput.IsBreak" class="form-check-input" /><label asp-for="SlotInput.IsBreak" class="form-check-label"></label></div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditingSlot ? "Save" : "Create")</button>
+                            @if (Model.IsEditingSlot) { <a asp-page="/Timetable/Schedule" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>@(Model.IsEditingTimetable ? "Edit" : "New") timetable</span><span class="stage-tag">Plan</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveTimetable">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="TimetableInput.Id" />
+                        <div class="mb-2"><label asp-for="TimetableInput.Name" class="form-label"></label><input asp-for="TimetableInput.Name" class="form-control" /></div>
+                        <div class="mb-2">
+                            <label asp-for="TimetableInput.BranchId" class="form-label"></label>
+                            <select asp-for="TimetableInput.BranchId" class="form-select">
+                                <option value="">Select branch</option>
+                                @foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="TimetableInput.AcademicYearId" class="form-label"></label>
+                            <select asp-for="TimetableInput.AcademicYearId" class="form-select">
+                                <option value="">Select year</option>
+                                @foreach (var y in Model.Years) { <option value="@y.Id">@y.Name</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="TimetableInput.SectionId" class="form-label"></label>
+                            <select asp-for="TimetableInput.SectionId" class="form-select">
+                                <option value="">Select section</option>
+                                @foreach (var s in Model.Sections) { <option value="@s.Id">@s.Name</option> }
+                            </select>
+                        </div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="TimetableInput.EffectiveFrom" class="form-label"></label><input asp-for="TimetableInput.EffectiveFrom" type="date" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="TimetableInput.EffectiveTo" class="form-label"></label><input asp-for="TimetableInput.EffectiveTo" type="date" class="form-control" /></div>
+                        </div>
+                        <div class="mt-2"><label asp-for="TimetableInput.Status" class="form-label"></label><select asp-for="TimetableInput.Status" asp-items="Html.GetEnumSelectList<TimetableStatus>()" class="form-select"></select></div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditingTimetable ? "Save" : "Create")</button>
+                            @if (Model.IsEditingTimetable) { <a asp-page="/Timetable/Schedule" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xxl-3 col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>@(Model.IsEditingEntry ? "Edit" : "New") entry</span><span class="stage-tag">Class</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveEntry">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="EntryInput.Id" />
+                        <div class="mb-2"><label asp-for="EntryInput.TimetableId" class="form-label"></label><select asp-for="EntryInput.TimetableId" class="form-select"><option value="">Select timetable</option>@foreach (var t in Model.Timetables) { <option value="@t.Id">@t.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="EntryInput.SectionId" class="form-label"></label><select asp-for="EntryInput.SectionId" class="form-select"><option value="">Select section</option>@foreach (var s in Model.Sections) { <option value="@s.Id">@s.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="EntryInput.SubjectId" class="form-label"></label><select asp-for="EntryInput.SubjectId" class="form-select"><option value="">Select subject</option>@foreach (var s in Model.Subjects) { <option value="@s.Id">@s.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="EntryInput.TeacherProfileId" class="form-label"></label><select asp-for="EntryInput.TeacherProfileId" class="form-select"><option value="">Select teacher</option>@foreach (var t in Model.Teachers) { <option value="@t.Id">@t.FirstName @t.LastName</option> }</select></div>
+                        <div class="mb-2"><label asp-for="EntryInput.TimeSlotId" class="form-label"></label><select asp-for="EntryInput.TimeSlotId" class="form-select"><option value="">Select slot</option>@foreach (var s in Model.TimeSlots) { <option value="@s.Id">@Model.SlotName(s.Id)</option> }</select></div>
+                        <div class="mb-2"><label asp-for="EntryInput.RoomId" class="form-label"></label><select asp-for="EntryInput.RoomId" class="form-select"><option value="">No room</option>@foreach (var r in Model.Rooms) { <option value="@r.Id">@r.Name</option> }</select></div>
+                        <div class="mb-3"><label asp-for="EntryInput.Notes" class="form-label"></label><textarea asp-for="EntryInput.Notes" class="form-control" rows="2"></textarea></div>
+                        <div class="form-actions">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditingEntry ? "Save" : "Create")</button>
+                            @if (Model.IsEditingEntry) { <a asp-page="/Timetable/Schedule" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-7">
+            <div class="card data-card">
+                <div class="card-header"><span>Timetable Entries</span><span class="count-pill">@Model.Entries.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Timetable</th><th>Slot</th><th>Section</th><th>Subject</th><th>Teacher</th><th>Room</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var entry in Model.Entries)
+                        {
+                            <tr>
+                                <td>@Model.TimetableName(entry.TimetableId)</td>
+                                <td>@Model.SlotName(entry.TimeSlotId)</td>
+                                <td>@Model.SectionName(entry.SectionId)</td>
+                                <td>@Model.SubjectName(entry.SubjectId)</td>
+                                <td>@Model.TeacherName(entry.TeacherProfileId)</td>
+                                <td>@Model.RoomName(entry.RoomId)</td>
+                                <td class="text-end">
+                                    <span class="action-stack">
+                                        <a asp-page="/Timetable/Schedule" asp-route-entryEditId="@entry.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <form method="post" asp-page-handler="DeleteEntry" asp-route-id="@entry.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Entries.Count == 0) { <tr><td colspan="7" class="text-center empty-state">No timetable entries yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="card data-card">
+                <div class="card-header"><span>Rooms and Slots</span><span class="count-pill">Setup</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Type</th><th>Name</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var room in Model.Rooms)
+                        {
+                            <tr>
+                                <td>Room</td><td>@room.Name</td><td>@room.Code / @room.Type</td>
+                                <td class="text-end"><span class="action-stack"><a asp-page="/Timetable/Schedule" asp-route-roomEditId="@room.Id" class="btn btn-sm btn-outline-secondary">Edit</a><form method="post" asp-page-handler="DeleteRoom" asp-route-id="@room.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></span></td>
+                            </tr>
+                        }
+                        @foreach (var slot in Model.TimeSlots)
+                        {
+                            <tr>
+                                <td>Slot</td><td>@slot.Name</td><td>@Model.SlotName(slot.Id)</td>
+                                <td class="text-end"><span class="action-stack"><a asp-page="/Timetable/Schedule" asp-route-slotEditId="@slot.Id" class="btn btn-sm btn-outline-secondary">Edit</a><form method="post" asp-page-handler="DeleteSlot" asp-route-id="@slot.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></span></td>
+                            </tr>
+                        }
+                        @if (Model.Rooms.Count == 0 && Model.TimeSlots.Count == 0) { <tr><td colspan="4" class="text-center empty-state">No rooms or slots yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

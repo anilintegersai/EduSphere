@@ -1,17 +1,22 @@
 using System.Net;
+using EduSphere.Domain.Constants;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Interfaces;
 using EduSphere.Domain.MultiTenancy;
+using Microsoft.AspNetCore.Identity;
 
 namespace EduSphere.Web.Middleware;
 
 /// <summary>
 /// Resolves the current tenant once per request and places it in the request-scoped
-/// <see cref="ITenantContext"/>. Strategies, in priority order:
+/// <see cref="ITenantContext"/>. Authenticated non-SuperAdmin users are pinned
+/// to their assigned tenant; SuperAdmin and anonymous requests use the ambient
+/// tenant strategies, in priority order:
 ///   1. Header      X-Tenant-ID: &lt;identifier&gt;         (API clients)
 ///   2. Subdomain   tenant1.&lt;BaseDomain&gt;               (requires MultiTenancy:BaseDomain)
 ///   3. Path        /t/{identifier}/...                  (fallback)
-///   4. Custom      full host matched against Tenant.CustomDomain
+///   4. Cookie      browser tenant switcher
+///   5. Custom      full host matched against Tenant.CustomDomain
 /// A database lookup only runs when one of the strategies yields a candidate, so
 /// requests to localhost / the apex domain never touch the database.
 /// </summary>
@@ -31,24 +36,16 @@ public class TenantResolutionMiddleware
         _baseDomain = configuration["MultiTenancy:BaseDomain"]?.Trim().TrimStart('.');
     }
 
-    public async Task InvokeAsync(HttpContext context, ITenantContext tenantContext, ITenantRepository tenantRepository)
+    public async Task InvokeAsync(
+        HttpContext context,
+        ITenantContext tenantContext,
+        ITenantRepository tenantRepository,
+        UserManager<ApplicationUser> userManager)
     {
         var host = context.Request.Host.Host;
-
-        var identifier = FromHeader(context)
-                         ?? FromSubdomain(host)
-                         ?? FromPath(context)
-                         ?? FromCookie(context); // browser sessions (tenant switcher)
-
-        Tenant? tenant = null;
-        if (!string.IsNullOrWhiteSpace(identifier))
-        {
-            tenant = await tenantRepository.GetByIdentifierAsync(identifier);
-        }
-        else if (IsCustomDomainCandidate(host))
-        {
-            tenant = await tenantRepository.GetByCustomDomainAsync(host);
-        }
+        Tenant? tenant = IsAuthenticatedNonSuperAdmin(context)
+            ? await ResolveAssignedTenantAsync(context, tenantRepository, userManager)
+            : await ResolveAmbientTenantAsync(context, tenantRepository, host);
 
         if (tenant is { IsActive: true })
         {
@@ -58,10 +55,49 @@ public class TenantResolutionMiddleware
         }
         else if (tenant is { IsActive: false })
         {
-            _logger.LogWarning("Tenant '{Identifier}' is suspended; request left without tenant context.", identifier);
+            _logger.LogWarning(
+                "Tenant '{Identifier}' is suspended; request left without tenant context.",
+                tenant.TenantIdentifier);
         }
 
         await _next(context);
+    }
+
+    private static bool IsAuthenticatedNonSuperAdmin(HttpContext context)
+        => context.User.Identity?.IsAuthenticated == true &&
+           !context.User.IsInRole(Roles.SuperAdmin);
+
+    private async Task<Tenant?> ResolveAmbientTenantAsync(
+        HttpContext context,
+        ITenantRepository tenantRepository,
+        string host)
+    {
+        var identifier = FromHeader(context)
+                         ?? FromSubdomain(host)
+                         ?? FromPath(context)
+                         ?? FromCookie(context); // browser sessions (tenant switcher)
+
+        if (!string.IsNullOrWhiteSpace(identifier))
+            return await tenantRepository.GetByIdentifierAsync(identifier);
+
+        return IsCustomDomainCandidate(host)
+            ? await tenantRepository.GetByCustomDomainAsync(host)
+            : null;
+    }
+
+    private static async Task<Tenant?> ResolveAssignedTenantAsync(
+        HttpContext context,
+        ITenantRepository tenantRepository,
+        UserManager<ApplicationUser> userManager)
+    {
+        var tenantIdClaim = context.User.FindFirst("tenant_id")?.Value;
+        if (Guid.TryParse(tenantIdClaim, out var tenantId) && tenantId != Guid.Empty)
+            return await tenantRepository.GetByIdAsync(tenantId);
+
+        var user = await userManager.GetUserAsync(context.User);
+        return user is not null && user.TenantId != Guid.Empty
+            ? await tenantRepository.GetByIdAsync(user.TenantId)
+            : null;
     }
 
     private static string? FromHeader(HttpContext context)

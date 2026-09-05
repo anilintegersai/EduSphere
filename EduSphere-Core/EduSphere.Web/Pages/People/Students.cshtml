@@ -1,0 +1,151 @@
+@page
+@model EduSphere.Web.Pages.People.StudentsModel
+@{
+    ViewData["Title"] = "Students";
+}
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">People registry</span>
+        <h1>Students</h1>
+        <p>Maintain student profiles, admission identifiers, section placement, and emergency contact details.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Items.Count students</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card">
+                <div class="card-header"><span>@(Model.IsEditing ? "Edit" : "New") student</span><span class="stage-tag">Profile</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Save">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <input type="hidden" asp-for="Input.Id" />
+                        <div class="row g-2">
+                            <div class="col-md-6">
+                                <label asp-for="Input.AdmissionNumber" class="form-label"></label>
+                                <input asp-for="Input.AdmissionNumber" class="form-control" />
+                                <span asp-validation-for="Input.AdmissionNumber" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.RollNumber" class="form-label"></label>
+                                <input asp-for="Input.RollNumber" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.FirstName" class="form-label"></label>
+                                <input asp-for="Input.FirstName" class="form-control" />
+                                <span asp-validation-for="Input.FirstName" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.LastName" class="form-label"></label>
+                                <input asp-for="Input.LastName" class="form-control" />
+                                <span asp-validation-for="Input.LastName" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-12">
+                                <label asp-for="Input.MiddleName" class="form-label"></label>
+                                <input asp-for="Input.MiddleName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.BranchId" class="form-label"></label>
+                                <select asp-for="Input.BranchId" class="form-select">
+                                    <option value="">Select branch</option>
+                                    @foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }
+                                </select>
+                                <span asp-validation-for="Input.BranchId" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.SectionId" class="form-label"></label>
+                                <select asp-for="Input.SectionId" class="form-select">
+                                    <option value="">Unassigned</option>
+                                    @foreach (var s in Model.Sections) { <option value="@s.Id">@s.Name</option> }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.DateOfBirth" class="form-label"></label>
+                                <input asp-for="Input.DateOfBirth" type="date" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.AdmissionDate" class="form-label"></label>
+                                <input asp-for="Input.AdmissionDate" type="date" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="Input.Gender" class="form-label"></label>
+                                <select asp-for="Input.Gender" asp-items="Html.GetEnumSelectList<Gender>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="Input.BloodGroup" class="form-label"></label>
+                                <select asp-for="Input.BloodGroup" asp-items="Html.GetEnumSelectList<BloodGroup>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="Input.Status" class="form-label"></label>
+                                <select asp-for="Input.Status" asp-items="Html.GetEnumSelectList<StudentStatus>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.Email" class="form-label"></label>
+                                <input asp-for="Input.Email" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.PhoneNumber" class="form-label"></label>
+                                <input asp-for="Input.PhoneNumber" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.EmergencyContactName" class="form-label"></label>
+                                <input asp-for="Input.EmergencyContactName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="Input.EmergencyContactPhone" class="form-label"></label>
+                                <input asp-for="Input.EmergencyContactPhone" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="Input.Address" class="form-label"></label>
+                                <textarea asp-for="Input.Address" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">@(Model.IsEditing ? "Save" : "Create")</button>
+                            @if (Model.IsEditing) { <a asp-page="/People/Students" class="btn btn-outline-secondary">Cancel</a> }
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-8">
+            <div class="card data-card">
+                <div class="card-header"><span>Student Directory</span><span class="count-pill">@Model.Items.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Admission</th><th>Name</th><th>Branch</th><th>Section</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var s in Model.Items)
+                        {
+                            <tr>
+                                <td><code>@s.AdmissionNumber</code></td>
+                                <td>@s.FirstName @s.LastName</td>
+                                <td>@Model.BranchName(s.BranchId)</td>
+                                <td>@Model.SectionName(s.SectionId)</td>
+                                <td><span class="stage-tag">@s.Status</span></td>
+                                <td class="text-end">
+                                    <span class="action-stack">
+                                        <a asp-page="/People/Students" asp-route-editId="@s.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <form method="post" asp-page-handler="Delete" asp-route-id="@s.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                                    </span>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Items.Count == 0) { <tr><td colspan="6" class="text-center empty-state">None yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
