@@ -1,0 +1,32 @@
+Username | Password | Tenant name | Branch name | Role |
+superadmin@edusphere.local | ChangeMe!123 | Platform / host | - | SuperAdmin |
+tenantadmin@edusphere.local | TenantAdmin123! | Acme School | Acme - Main Campus | TenantAdmin |
+teacher@edusphere.local | Teacher123! | Acme School | Acme - Main Campus | Teacher |
+student@edusphere.local | Student123! | Acme School | Acme - Main Campus | Student |
+branchadmin.acme1788380534.main.bfcc4331@edusphere.local | BranchAdmin123! | Acme School | Acme - Main Campus | BranchAdmin |
+branchadmin.acme1788380534.acme17jr.3935340e@edusphere.local | BranchAdmin123! | Acme School | Acme School - Junior Wing | BranchAdmin |
+branchadmin.acme1788380534.acme17main.b1d0bbb6@edusphere.local | BranchAdmin123! | Acme School | Acme School - Main Campus | BranchAdmin |
+branchadmin.apexneetjeeacademy.anjamain.bc232f23@edusphere.local | BranchAdmin123! | Apex NEET JEE Academy | Apex NEET JEE Academy - Main Learning Center | BranchAdmin |
+branchadmin.apexneetjeeacademy.anjawknd.762a220c@edusphere.local | BranchAdmin123! | Apex NEET JEE Academy | Apex NEET JEE Academy - Weekend Practice Center | BranchAdmin |
+branchadmin.catalystcivilservices.ccsmain.bf078a10@edusphere.local | BranchAdmin123! | Catalyst Civil Services Institute | Catalyst Civil Services Institute - Main Learning Center | BranchAdmin |
+branchadmin.catalystcivilservices.ccswknd.f0e44bab@edusphere.local | BranchAdmin123! | Catalyst Civil Services Institute | Catalyst Civil Services Institute - Weekend Practice Center | BranchAdmin |
+branchadmin.edu1788382688.edu178jr.5a5d4f2b@edusphere.local | BranchAdmin123! | EduTest Univ | EduTest Univ - Junior Wing | BranchAdmin |
+branchadmin.edu1788382688.edu178main.8c665762@edusphere.local | BranchAdmin123! | EduTest Univ | EduTest Univ - Main Campus | BranchAdmin |
+branchadmin.edu1788382688.etub1.a31ea19f@edusphere.local | BranchAdmin123! | EduTest Univ | EduTest Univ Branch 1 | BranchAdmin |
+branchadmin.greenwoodpublicschool.gpsjr.c1dbd19a@edusphere.local | BranchAdmin123! | Greenwood Public School | Greenwood Public School - Junior Wing | BranchAdmin |
+branchadmin.greenwoodpublicschool.gpsmain.de1cc0f8@edusphere.local | BranchAdmin123! | Greenwood Public School | Greenwood Public School - Main Campus | BranchAdmin |
+branchadmin.meridianartssciencecollege.mascinno.7c9674a9@edusphere.local | BranchAdmin123! | Meridian Arts and Science College | Meridian Arts and Science College - Innovation Block | BranchAdmin |
+branchadmin.meridianartssciencecollege.mascmain.878620e8@edusphere.local | BranchAdmin123! | Meridian Arts and Science College | Meridian Arts and Science College - Main Campus | BranchAdmin |
+branchadmin.northbridgeuniversity.northbcity.df92c58c@edusphere.local | BranchAdmin123! | Northbridge State University | Northbridge State University - City Campus | BranchAdmin |
+branchadmin.northbridgeuniversity.northbmain.27d501b9@edusphere.local | BranchAdmin123! | Northbridge State University | Northbridge State University - Main Campus | BranchAdmin |
+branchadmin.other1788382691.other1jr.1af378f4@edusphere.local | BranchAdmin123! | Other | Other - Junior Wing | BranchAdmin |
+branchadmin.other1788382691.other1main.de9e39b4@edusphere.local | BranchAdmin123! | Other | Other - Main Campus | BranchAdmin |
+branchadmin.pragatiinternationalschool.pisjr.4bae421d@edusphere.local | BranchAdmin123! | Pragati International School | Pragati International School - Junior Wing | BranchAdmin |
+branchadmin.pragatiinternationalschool.pismain.97a3b972@edusphere.local | BranchAdmin123! | Pragati International School | Pragati International School - Main Campus | BranchAdmin |
+branchadmin.suryodayatechnicaluniversity.stucity.40dc647b@edusphere.local | BranchAdmin123! | Suryodaya Technical University | Suryodaya Technical University - City Campus | BranchAdmin |
+branchadmin.suryodayatechnicaluniversity.stumain.66e2b599@edusphere.local | BranchAdmin123! | Suryodaya Technical University | Suryodaya Technical University - Main Campus | BranchAdmin |
+branchadmin.uitest1788383783.ut1jr.71e68383@edusphere.local | BranchAdmin123! | UI Test School | UI Test School - Junior Wing | BranchAdmin |
+branchadmin.uitest1788383783.ut1main.53f8d628@edusphere.local | BranchAdmin123! | UI Test School | UI Test School - Main Campus | BranchAdmin |
+branchadmin.uitest1788383783.uitsb1.64072234@edusphere.local | BranchAdmin123! | UI Test School | UI Test School Branch 1 | BranchAdmin |
+branchadmin.vikraminstitutetechnology.vitinno.354dc2cf@edusphere.local | BranchAdmin123! | Vikram Institute of Technology | Vikram Institute of Technology - Innovation Block | BranchAdmin |
+branchadmin.vikraminstitutetechnology.vitmain.76a928a0@edusphere.local | BranchAdmin123! | Vikram Institute of Technology | Vikram Institute of Technology - Main Campus | BranchAdmin |
