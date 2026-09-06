@@ -1,0 +1,148 @@
+@page
+@model EduSphere.Web.Pages.Enterprise.LibraryModel
+@{
+    ViewData["Title"] = "Library";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Enterprise</span>
+        <h1>Library</h1>
+        <p>Manage catalogue records, physical copies, memberships, issues, returns, and fines.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Copies.Count copies</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Book</span><span class="stage-tag">Catalogue</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveBook">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <div class="mb-2"><label asp-for="BookInput.BranchId" class="form-label"></label><select asp-for="BookInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="BookInput.Title" class="form-label"></label><input asp-for="BookInput.Title" class="form-control" /></div>
+                        <div class="mb-2"><label asp-for="BookInput.Authors" class="form-label"></label><input asp-for="BookInput.Authors" class="form-control" /></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="BookInput.Isbn" class="form-label"></label><input asp-for="BookInput.Isbn" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="BookInput.Category" class="form-label"></label><input asp-for="BookInput.Category" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add book</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Copy</span><span class="stage-tag">Accession</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveCopy">
+                        <div class="mb-2"><label asp-for="CopyInput.BranchId" class="form-label"></label><select asp-for="CopyInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="CopyInput.LibraryBookId" class="form-label"></label><select asp-for="CopyInput.LibraryBookId" class="form-select"><option value="">Select book</option>@foreach (var b in Model.Books) { <option value="@b.Id">@b.Title</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="CopyInput.AccessionNumber" class="form-label"></label><input asp-for="CopyInput.AccessionNumber" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="CopyInput.ShelfLocation" class="form-label"></label><input asp-for="CopyInput.ShelfLocation" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="CopyInput.Status" class="form-label"></label><select asp-for="CopyInput.Status" asp-items="Html.GetEnumSelectList<BookCopyStatus>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="CopyInput.Price" class="form-label"></label><input asp-for="CopyInput.Price" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add copy</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Member</span><span class="stage-tag">Reader</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveMember">
+                        <div class="mb-2"><label asp-for="MemberInput.BranchId" class="form-label"></label><select asp-for="MemberInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="MemberInput.MemberNumber" class="form-label"></label><input asp-for="MemberInput.MemberNumber" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="MemberInput.MemberType" class="form-label"></label><select asp-for="MemberInput.MemberType" asp-items="Html.GetEnumSelectList<LibraryMemberType>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="MemberInput.StudentProfileId" class="form-label"></label><select asp-for="MemberInput.StudentProfileId" class="form-select"><option value="">No student</option>@foreach (var s in Model.Students) { <option value="@s.Id">@Model.StudentName(s.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="MemberInput.TeacherProfileId" class="form-label"></label><select asp-for="MemberInput.TeacherProfileId" class="form-select"><option value="">No teacher</option>@foreach (var t in Model.Teachers) { <option value="@t.Id">@Model.TeacherName(t.Id)</option> }</select></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add member</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Issue / return</span><span class="stage-tag">Circulation</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveIssue" class="mb-3">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="IssueInput.BranchId" class="form-label"></label><select asp-for="IssueInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="IssueInput.LibraryBookCopyId" class="form-label"></label><select asp-for="IssueInput.LibraryBookCopyId" class="form-select"><option value="">Copy</option>@foreach (var c in Model.Copies) { <option value="@c.Id">@Model.CopyName(c.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="IssueInput.LibraryMemberId" class="form-label"></label><select asp-for="IssueInput.LibraryMemberId" class="form-select"><option value="">Member</option>@foreach (var m in Model.Members) { <option value="@m.Id">@Model.MemberName(m.Id)</option> }</select></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Issue book</button>
+                    </form>
+                    <form method="post" asp-page-handler="SaveReturn">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="ReturnInput.BranchId" class="form-label"></label><select asp-for="ReturnInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="ReturnInput.LibraryBookIssueId" class="form-label"></label><select asp-for="ReturnInput.LibraryBookIssueId" class="form-select"><option value="">Issue</option>@foreach (var i in Model.Issues) { <option value="@i.Id">@Model.CopyName(i.LibraryBookCopyId)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="ReturnInput.FineAssessed" class="form-label"></label><input asp-for="ReturnInput.FineAssessed" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary mt-3">Record return</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card data-card h-100">
+                <div class="card-header"><span>Circulation</span><span class="count-pill">@Model.Issues.Count issues</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Copy</th><th>Member</th><th>Due</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                        <tbody>
+                        @foreach (var issue in Model.Issues)
+                        {
+                            <tr>
+                                <td>@Model.CopyName(issue.LibraryBookCopyId)</td><td>@Model.MemberName(issue.LibraryMemberId)</td><td>@issue.DueDate</td><td>@issue.Status</td>
+                                <td class="text-end"><form method="post" asp-page-handler="DeleteIssue" asp-route-id="@issue.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td>
+                            </tr>
+                        }
+                        @if (Model.Issues.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No circulation records yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Catalogue & copies</span><span class="count-pill">@Model.Books.Count books</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Type</th><th>Title / Accession</th><th>Branch</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var book in Model.Books)
+                {
+                    <tr><td>Book</td><td>@book.Title</td><td>@Model.BranchName(book.BranchId)</td><td>@book.Authors</td><td class="text-end"><form method="post" asp-page-handler="DeleteBook" asp-route-id="@book.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var copy in Model.Copies.Take(10))
+                {
+                    <tr><td>Copy</td><td>@copy.AccessionNumber</td><td>@Model.BranchName(copy.BranchId)</td><td>@Model.BookTitle(copy.LibraryBookId) / @copy.Status</td><td class="text-end"><form method="post" asp-page-handler="DeleteCopy" asp-route-id="@copy.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @if (Model.Books.Count == 0 && Model.Copies.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No books or copies yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

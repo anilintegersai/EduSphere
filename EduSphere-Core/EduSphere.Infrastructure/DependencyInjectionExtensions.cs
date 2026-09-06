@@ -3,6 +3,7 @@ using EduSphere.Application.Services;
 using EduSphere.Domain.Interfaces;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Infrastructure.MultiTenancy;
+using EduSphere.Infrastructure.Notifications;
 using EduSphere.Infrastructure.Repositories;
 using EduSphere.Infrastructure.Security;
 using Microsoft.EntityFrameworkCore;
@@ -71,6 +72,10 @@ public static class DependencyInjectionExtensions
 
         // JWT token issuance for API clients
         services.AddScoped<IJwtTokenService, JwtTokenService>();
+
+        // Notification delivery stays extensible by channel; SMTP email is the first concrete sender.
+        services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
+        services.AddScoped<INotificationChannelSender, SmtpEmailNotificationChannelSender>();
 
         // Centralized migration strategy: None, Validate, or Migrate.
         services.AddSingleton<IDatabaseMigrationService, DatabaseMigrationService>();

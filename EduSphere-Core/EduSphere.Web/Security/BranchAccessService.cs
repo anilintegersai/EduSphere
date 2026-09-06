@@ -7,6 +7,20 @@ namespace EduSphere.Web.Security;
 
 public sealed class BranchAccessService : IBranchAccessService
 {
+    private static readonly string[] BranchScopedRoles =
+    {
+        Roles.BranchAdmin,
+        Roles.Principal,
+        Roles.DepartmentAdmin,
+        Roles.Teacher,
+        Roles.Accountant,
+        Roles.Librarian,
+        Roles.TransportManager,
+        Roles.HostelManager,
+        Roles.ExamController,
+        Roles.StaffAdmin
+    };
+
     private readonly UserManager<ApplicationUser> _userManager;
 
     public BranchAccessService(UserManager<ApplicationUser> userManager)
@@ -15,7 +29,7 @@ public sealed class BranchAccessService : IBranchAccessService
     }
 
     public bool IsBranchAdminOnly(ClaimsPrincipal user)
-        => user.IsInRole(Roles.BranchAdmin) &&
+        => BranchScopedRoles.Any(user.IsInRole) &&
            !user.IsInRole(Roles.SuperAdmin) &&
            !user.IsInRole(Roles.TenantAdmin);
 

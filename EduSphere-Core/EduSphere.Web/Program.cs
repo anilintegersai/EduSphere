@@ -144,6 +144,32 @@ builder.Services.AddAuthorization(options =>
         Roles.BranchAdmin,
         Roles.Principal,
         Roles.Teacher));
+    options.AddPolicy(AuthorizationPolicies.FinanceManager, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.Accountant));
+    options.AddPolicy(AuthorizationPolicies.TransportManager, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.TransportManager));
+    options.AddPolicy(AuthorizationPolicies.LibraryManager, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.Librarian));
+    options.AddPolicy(AuthorizationPolicies.HostelManager, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.HostelManager));
+    options.AddPolicy(AuthorizationPolicies.CommunicationManager, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.Principal,
+        Roles.StaffAdmin));
 });
 
 // ---- OpenAPI / Swagger ----

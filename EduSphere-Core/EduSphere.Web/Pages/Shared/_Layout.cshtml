@@ -7,6 +7,11 @@
     var canManageTenantWorkspace = canManageTenants || User.IsInRole(Roles.TenantAdmin);
     var canManageBranchWorkspace = canManageTenantWorkspace || User.IsInRole(Roles.BranchAdmin);
     var canMarkAttendance = canManageBranchWorkspace || User.IsInRole(Roles.Principal) || User.IsInRole(Roles.Teacher);
+    var canManageFinance = canManageBranchWorkspace || User.IsInRole(Roles.Accountant);
+    var canManageTransport = canManageBranchWorkspace || User.IsInRole(Roles.TransportManager);
+    var canManageLibrary = canManageBranchWorkspace || User.IsInRole(Roles.Librarian);
+    var canManageHostel = canManageBranchWorkspace || User.IsInRole(Roles.HostelManager);
+    var canManageCommunications = canManageBranchWorkspace || User.IsInRole(Roles.Principal) || User.IsInRole(Roles.StaffAdmin);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -95,6 +100,34 @@
                                 </li>
                                 <li class="nav-item">
                                     <a class="nav-link @(currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Examinations/Exams">Exams</a>
+                                </li>
+                            }
+                            @if (canManageFinance || canManageTransport || canManageLibrary || canManageHostel || canManageCommunications)
+                            {
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Enterprise", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Enterprise</a>
+                                    <ul class="dropdown-menu app-dropdown">
+                                        @if (canManageFinance)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Enterprise/Finance">Fees & Finance</a></li>
+                                        }
+                                        @if (canManageTransport)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Enterprise/Transport">Transport</a></li>
+                                        }
+                                        @if (canManageLibrary)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Enterprise/Library">Library</a></li>
+                                        }
+                                        @if (canManageHostel)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Enterprise/Hostel">Hostel</a></li>
+                                        }
+                                        @if (canManageCommunications)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Enterprise/Communications">Communications</a></li>
+                                        }
+                                    </ul>
                                 </li>
                             }
                         </ul>

@@ -1,0 +1,141 @@
+@page
+@model EduSphere.Web.Pages.Enterprise.HostelModel
+@{
+    ViewData["Title"] = "Hostel";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Enterprise</span>
+        <h1>Hostel</h1>
+        <p>Manage hostel blocks, rooms, beds, student allocations, and monthly hostel fees.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Allocations.Count allocations</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Block</span><span class="stage-tag">Residence</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveBlock">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <div class="mb-2"><label asp-for="BlockInput.BranchId" class="form-label"></label><select asp-for="BlockInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-7"><label asp-for="BlockInput.Name" class="form-label"></label><input asp-for="BlockInput.Name" class="form-control" /></div>
+                            <div class="col-md-5"><label asp-for="BlockInput.Code" class="form-label"></label><input asp-for="BlockInput.Code" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="BlockInput.Gender" class="form-label"></label><select asp-for="BlockInput.Gender" asp-items="Html.GetEnumSelectList<Gender>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="BlockInput.WardenName" class="form-label"></label><input asp-for="BlockInput.WardenName" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add block</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Room</span><span class="stage-tag">Capacity</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveRoom">
+                        <div class="mb-2"><label asp-for="RoomInput.BranchId" class="form-label"></label><select asp-for="RoomInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="RoomInput.HostelBlockId" class="form-label"></label><select asp-for="RoomInput.HostelBlockId" class="form-select"><option value="">Select block</option>@foreach (var b in Model.Blocks) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="RoomInput.RoomNumber" class="form-label"></label><input asp-for="RoomInput.RoomNumber" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="RoomInput.Capacity" class="form-label"></label><input asp-for="RoomInput.Capacity" type="number" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="RoomInput.MonthlyFee" class="form-label"></label><input asp-for="RoomInput.MonthlyFee" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add room</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Bed</span><span class="stage-tag">Inventory</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveBed">
+                        <div class="mb-2"><label asp-for="BedInput.BranchId" class="form-label"></label><select asp-for="BedInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="BedInput.HostelRoomId" class="form-label"></label><select asp-for="BedInput.HostelRoomId" class="form-select"><option value="">Select room</option>@foreach (var r in Model.Rooms) { <option value="@r.Id">@Model.BlockName(r.HostelBlockId) / @r.RoomNumber</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="BedInput.BedNumber" class="form-label"></label><input asp-for="BedInput.BedNumber" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="BedInput.Status" class="form-label"></label><select asp-for="BedInput.Status" asp-items="Html.GetEnumSelectList<HostelBedStatus>()" class="form-select"></select></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add bed</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-7">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Student allocation</span><span class="stage-tag">Occupancy</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveAllocation">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="AllocationInput.BranchId" class="form-label"></label><select asp-for="AllocationInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="AllocationInput.StudentProfileId" class="form-label"></label><select asp-for="AllocationInput.StudentProfileId" class="form-select"><option value="">Student</option>@foreach (var s in Model.Students) { <option value="@s.Id">@Model.StudentName(s.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="AllocationInput.HostelRoomId" class="form-label"></label><select asp-for="AllocationInput.HostelRoomId" class="form-select"><option value="">Room</option>@foreach (var r in Model.Rooms) { <option value="@r.Id">@Model.RoomName(r.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="AllocationInput.HostelBedId" class="form-label"></label><select asp-for="AllocationInput.HostelBedId" class="form-select"><option value="">No bed</option>@foreach (var b in Model.Beds) { <option value="@b.Id">@Model.BedName(b.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="AllocationInput.MonthlyFee" class="form-label"></label><input asp-for="AllocationInput.MonthlyFee" type="number" step="0.01" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="AllocationInput.SecurityDeposit" class="form-label"></label><input asp-for="AllocationInput.SecurityDeposit" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Allocate</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Hostel fee</span><span class="stage-tag">Billing</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveFee">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="FeeInput.BranchId" class="form-label"></label><select asp-for="FeeInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="FeeInput.HostelAllocationId" class="form-label"></label><select asp-for="FeeInput.HostelAllocationId" class="form-select"><option value="">Allocation</option>@foreach (var a in Model.Allocations) { <option value="@a.Id">@Model.AllocationName(a.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="FeeInput.InvoiceNumber" class="form-label"></label><input asp-for="FeeInput.InvoiceNumber" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="FeeInput.Amount" class="form-label"></label><input asp-for="FeeInput.Amount" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Create fee</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Hostel records</span><span class="count-pill">@Model.Rooms.Count rooms</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Type</th><th>Branch</th><th>Name</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var block in Model.Blocks)
+                {
+                    <tr><td>Block</td><td>@Model.BranchName(block.BranchId)</td><td>@block.Name</td><td>@block.Code / @block.Gender</td><td class="text-end"><form method="post" asp-page-handler="DeleteBlock" asp-route-id="@block.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var room in Model.Rooms)
+                {
+                    <tr><td>Room</td><td>@Model.BranchName(room.BranchId)</td><td>@room.RoomNumber</td><td>@Model.BlockName(room.HostelBlockId) / @room.Capacity beds</td><td class="text-end"><form method="post" asp-page-handler="DeleteRoom" asp-route-id="@room.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var allocation in Model.Allocations)
+                {
+                    <tr><td>Allocation</td><td>@Model.BranchName(allocation.BranchId)</td><td>@Model.StudentName(allocation.StudentProfileId)</td><td>@Model.RoomName(allocation.HostelRoomId) / @Model.BedName(allocation.HostelBedId)</td><td class="text-end"><form method="post" asp-page-handler="DeleteAllocation" asp-route-id="@allocation.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @if (Model.Blocks.Count == 0 && Model.Rooms.Count == 0 && Model.Allocations.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No hostel records yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

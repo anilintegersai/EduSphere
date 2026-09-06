@@ -72,6 +72,40 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<MarkEntry> MarkEntries { get; set; }
     public DbSet<Result> Results { get; set; }
 
+    // Enterprise services (Modules 14-18)
+    public DbSet<FeeStructure> FeeStructures { get; set; }
+    public DbSet<FeeComponent> FeeComponents { get; set; }
+    public DbSet<DiscountRule> DiscountRules { get; set; }
+    public DbSet<Scholarship> Scholarships { get; set; }
+    public DbSet<StudentFeeAssignment> StudentFeeAssignments { get; set; }
+    public DbSet<FeeInvoice> FeeInvoices { get; set; }
+    public DbSet<FeeInvoiceLine> FeeInvoiceLines { get; set; }
+    public DbSet<FeePayment> FeePayments { get; set; }
+    public DbSet<FeeReceipt> FeeReceipts { get; set; }
+    public DbSet<Vehicle> Vehicles { get; set; }
+    public DbSet<TransportDriver> TransportDrivers { get; set; }
+    public DbSet<TransportRoute> TransportRoutes { get; set; }
+    public DbSet<TransportRouteStop> TransportRouteStops { get; set; }
+    public DbSet<TransportRouteAssignment> TransportRouteAssignments { get; set; }
+    public DbSet<StudentTransportAssignment> StudentTransportAssignments { get; set; }
+    public DbSet<LibraryBook> LibraryBooks { get; set; }
+    public DbSet<LibraryBookCopy> LibraryBookCopies { get; set; }
+    public DbSet<LibraryMember> LibraryMembers { get; set; }
+    public DbSet<LibraryBookIssue> LibraryBookIssues { get; set; }
+    public DbSet<LibraryBookReturn> LibraryBookReturns { get; set; }
+    public DbSet<LibraryFineRecord> LibraryFineRecords { get; set; }
+    public DbSet<HostelBlock> HostelBlocks { get; set; }
+    public DbSet<HostelRoom> HostelRooms { get; set; }
+    public DbSet<HostelBed> HostelBeds { get; set; }
+    public DbSet<HostelAllocation> HostelAllocations { get; set; }
+    public DbSet<HostelFee> HostelFees { get; set; }
+    public DbSet<NotificationProviderSetting> NotificationProviderSettings { get; set; }
+    public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
+    public DbSet<NotificationMessage> NotificationMessages { get; set; }
+    public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
+    public DbSet<Announcement> Announcements { get; set; }
+    public DbSet<CommunicationLog> CommunicationLogs { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         // Configures the ASP.NET Core Identity schema (AspNetUsers, AspNetRoles, ...).
@@ -101,6 +135,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         ConfigurePeopleProfiles(modelBuilder);
         ConfigureOperations(modelBuilder);
         ConfigureExaminations(modelBuilder);
+        ConfigureEnterpriseServices(modelBuilder);
 
         // Global tenant and soft-delete query filters for tenant-owned domain entities.
         // Identity's UserManager/SignInManager must resolve users (including a host-level
@@ -669,6 +704,398 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<MarkEntry>().HasIndex(m => new { m.TenantId, m.ExamScheduleId, m.StudentProfileId }).IsUnique();
         modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.ExamId, r.StudentProfileId }).IsUnique();
         modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.BranchId, r.Status });
+    }
+
+    private static void ConfigureEnterpriseServices(ModelBuilder modelBuilder)
+    {
+        ConfigureFinance(modelBuilder);
+        ConfigureTransport(modelBuilder);
+        ConfigureLibrary(modelBuilder);
+        ConfigureHostel(modelBuilder);
+        ConfigureCommunications(modelBuilder);
+    }
+
+    private static void ConfigureFinance(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FeeStructure>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeStructure>()
+            .HasOne(e => e.AcademicYear).WithMany()
+            .HasForeignKey(e => e.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeStructure>()
+            .HasOne(e => e.Course).WithMany()
+            .HasForeignKey(e => e.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeStructure>()
+            .HasOne(e => e.Batch).WithMany()
+            .HasForeignKey(e => e.BatchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FeeComponent>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeComponent>()
+            .HasOne(e => e.FeeStructure).WithMany(e => e.Components)
+            .HasForeignKey(e => e.FeeStructureId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeComponent>()
+            .Property(e => e.Amount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<DiscountRule>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DiscountRule>()
+            .HasOne(e => e.Course).WithMany()
+            .HasForeignKey(e => e.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DiscountRule>()
+            .Property(e => e.Value).HasPrecision(12, 2);
+
+        modelBuilder.Entity<Scholarship>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Scholarship>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Scholarship>()
+            .Property(e => e.Value).HasPrecision(12, 2);
+
+        modelBuilder.Entity<StudentFeeAssignment>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentFeeAssignment>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentFeeAssignment>()
+            .HasOne(e => e.FeeStructure).WithMany(e => e.Assignments)
+            .HasForeignKey(e => e.FeeStructureId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentFeeAssignment>()
+            .HasOne(e => e.DiscountRule).WithMany()
+            .HasForeignKey(e => e.DiscountRuleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentFeeAssignment>()
+            .Property(e => e.CustomDiscountAmount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<FeeInvoice>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoice>()
+            .HasOne(e => e.StudentFeeAssignment).WithMany(e => e.Invoices)
+            .HasForeignKey(e => e.StudentFeeAssignmentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoice>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoice>()
+            .Property(e => e.SubTotal).HasPrecision(12, 2);
+        modelBuilder.Entity<FeeInvoice>()
+            .Property(e => e.DiscountAmount).HasPrecision(12, 2);
+        modelBuilder.Entity<FeeInvoice>()
+            .Property(e => e.FineAmount).HasPrecision(12, 2);
+        modelBuilder.Entity<FeeInvoice>()
+            .Property(e => e.TotalAmount).HasPrecision(12, 2);
+        modelBuilder.Entity<FeeInvoice>()
+            .Property(e => e.PaidAmount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<FeeInvoiceLine>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoiceLine>()
+            .HasOne(e => e.FeeInvoice).WithMany(e => e.Lines)
+            .HasForeignKey(e => e.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoiceLine>()
+            .HasOne(e => e.FeeComponent).WithMany()
+            .HasForeignKey(e => e.FeeComponentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoiceLine>()
+            .Property(e => e.Amount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<FeePayment>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeePayment>()
+            .HasOne(e => e.FeeInvoice).WithMany(e => e.Payments)
+            .HasForeignKey(e => e.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeePayment>()
+            .HasOne(e => e.ReceivedByUser).WithMany()
+            .HasForeignKey(e => e.ReceivedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeePayment>()
+            .Property(e => e.Amount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<FeeReceipt>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeReceipt>()
+            .HasOne(e => e.FeePayment).WithOne(e => e.Receipt)
+            .HasForeignKey<FeeReceipt>(e => e.FeePaymentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeReceipt>()
+            .HasOne(e => e.IssuedByUser).WithMany()
+            .HasForeignKey(e => e.IssuedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<FeeStructure>().HasIndex(e => new { e.TenantId, e.BranchId, e.Code }).IsUnique();
+        modelBuilder.Entity<FeeStructure>().HasIndex(e => new { e.TenantId, e.BranchId, e.AcademicYearId, e.CourseId, e.BatchId });
+        modelBuilder.Entity<FeeComponent>().HasIndex(e => new { e.FeeStructureId, e.SortOrder });
+        modelBuilder.Entity<DiscountRule>().HasIndex(e => new { e.TenantId, e.Code }).IsUnique();
+        modelBuilder.Entity<Scholarship>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.Code }).IsUnique();
+        modelBuilder.Entity<StudentFeeAssignment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.FeeStructureId }).IsUnique();
+        modelBuilder.Entity<FeeInvoice>().HasIndex(e => new { e.TenantId, e.InvoiceNumber }).IsUnique();
+        modelBuilder.Entity<FeeInvoice>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<FeeInvoiceLine>().HasIndex(e => new { e.FeeInvoiceId, e.SortOrder });
+        modelBuilder.Entity<FeePayment>().HasIndex(e => new { e.TenantId, e.PaymentNumber }).IsUnique();
+        modelBuilder.Entity<FeeReceipt>().HasIndex(e => new { e.TenantId, e.ReceiptNumber }).IsUnique();
+        modelBuilder.Entity<FeeReceipt>().HasIndex(e => e.FeePaymentId).IsUnique();
+    }
+
+    private static void ConfigureTransport(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<Vehicle>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportDriver>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRoute>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRouteStop>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRouteStop>()
+            .HasOne(e => e.TransportRoute).WithMany(e => e.Stops)
+            .HasForeignKey(e => e.TransportRouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRouteStop>()
+            .Property(e => e.MonthlyFee).HasPrecision(12, 2);
+        modelBuilder.Entity<TransportRouteStop>()
+            .Property(e => e.Latitude).HasPrecision(10, 7);
+        modelBuilder.Entity<TransportRouteStop>()
+            .Property(e => e.Longitude).HasPrecision(10, 7);
+
+        modelBuilder.Entity<TransportRouteAssignment>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRouteAssignment>()
+            .HasOne(e => e.TransportRoute).WithMany()
+            .HasForeignKey(e => e.TransportRouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRouteAssignment>()
+            .HasOne(e => e.Vehicle).WithMany()
+            .HasForeignKey(e => e.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportRouteAssignment>()
+            .HasOne(e => e.Driver).WithMany()
+            .HasForeignKey(e => e.DriverId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentTransportAssignment>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTransportAssignment>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTransportAssignment>()
+            .HasOne(e => e.TransportRoute).WithMany()
+            .HasForeignKey(e => e.TransportRouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTransportAssignment>()
+            .HasOne(e => e.TransportRouteStop).WithMany()
+            .HasForeignKey(e => e.TransportRouteStopId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTransportAssignment>()
+            .HasOne(e => e.Vehicle).WithMany()
+            .HasForeignKey(e => e.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTransportAssignment>()
+            .Property(e => e.MonthlyFee).HasPrecision(12, 2);
+
+        modelBuilder.Entity<TransportRoute>()
+            .Property(e => e.DistanceKm).HasPrecision(8, 2);
+
+        modelBuilder.Entity<Vehicle>().HasIndex(e => new { e.TenantId, e.BranchId, e.RegistrationNumber }).IsUnique();
+        modelBuilder.Entity<TransportDriver>().HasIndex(e => new { e.TenantId, e.BranchId, e.LicenseNumber }).IsUnique();
+        modelBuilder.Entity<TransportRoute>().HasIndex(e => new { e.TenantId, e.BranchId, e.RouteCode }).IsUnique();
+        modelBuilder.Entity<TransportRouteStop>().HasIndex(e => new { e.TransportRouteId, e.StopOrder }).IsUnique();
+        modelBuilder.Entity<TransportRouteAssignment>().HasIndex(e => new { e.TenantId, e.BranchId, e.TransportRouteId, e.EffectiveFrom });
+        modelBuilder.Entity<StudentTransportAssignment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.Status });
+    }
+
+    private static void ConfigureLibrary(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<LibraryBook>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBook>()
+            .HasOne(e => e.Subject).WithMany()
+            .HasForeignKey(e => e.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookCopy>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookCopy>()
+            .HasOne(e => e.LibraryBook).WithMany(e => e.Copies)
+            .HasForeignKey(e => e.LibraryBookId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookCopy>()
+            .Property(e => e.Price).HasPrecision(12, 2);
+
+        modelBuilder.Entity<LibraryMember>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryMember>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryMember>()
+            .HasOne(e => e.TeacherProfile).WithMany()
+            .HasForeignKey(e => e.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryMember>()
+            .HasOne(e => e.User).WithMany()
+            .HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<LibraryBookIssue>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookIssue>()
+            .HasOne(e => e.LibraryBookCopy).WithMany()
+            .HasForeignKey(e => e.LibraryBookCopyId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookIssue>()
+            .HasOne(e => e.LibraryMember).WithMany()
+            .HasForeignKey(e => e.LibraryMemberId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookIssue>()
+            .HasOne(e => e.IssuedByUser).WithMany()
+            .HasForeignKey(e => e.IssuedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookIssue>()
+            .HasOne(e => e.ReturnReceivedByUser).WithMany()
+            .HasForeignKey(e => e.ReturnReceivedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookIssue>()
+            .Property(e => e.FineAmount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<LibraryBookReturn>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookReturn>()
+            .HasOne(e => e.LibraryBookIssue).WithMany(e => e.Returns)
+            .HasForeignKey(e => e.LibraryBookIssueId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookReturn>()
+            .HasOne(e => e.ReceivedByUser).WithMany()
+            .HasForeignKey(e => e.ReceivedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryBookReturn>()
+            .Property(e => e.FineAssessed).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryBookReturn>()
+            .Property(e => e.FinePaid).HasPrecision(12, 2);
+
+        modelBuilder.Entity<LibraryFineRecord>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryFineRecord>()
+            .HasOne(e => e.LibraryMember).WithMany()
+            .HasForeignKey(e => e.LibraryMemberId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryFineRecord>()
+            .HasOne(e => e.LibraryBookIssue).WithMany()
+            .HasForeignKey(e => e.LibraryBookIssueId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryFineRecord>()
+            .Property(e => e.Amount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<LibraryBook>().HasIndex(e => new { e.TenantId, e.BranchId, e.Isbn });
+        modelBuilder.Entity<LibraryBook>().HasIndex(e => new { e.TenantId, e.BranchId, e.Title });
+        modelBuilder.Entity<LibraryBookCopy>().HasIndex(e => new { e.TenantId, e.BranchId, e.AccessionNumber }).IsUnique();
+        modelBuilder.Entity<LibraryMember>().HasIndex(e => new { e.TenantId, e.BranchId, e.MemberNumber }).IsUnique();
+        modelBuilder.Entity<LibraryMember>().HasIndex(e => new { e.TenantId, e.StudentProfileId });
+        modelBuilder.Entity<LibraryBookIssue>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<LibraryBookIssue>().HasIndex(e => new { e.LibraryBookCopyId, e.Status });
+        modelBuilder.Entity<LibraryBookReturn>().HasIndex(e => e.LibraryBookIssueId);
+        modelBuilder.Entity<LibraryFineRecord>().HasIndex(e => new { e.TenantId, e.LibraryMemberId, e.Status });
+    }
+
+    private static void ConfigureHostel(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<HostelBlock>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelRoom>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelRoom>()
+            .HasOne(e => e.HostelBlock).WithMany(e => e.Rooms)
+            .HasForeignKey(e => e.HostelBlockId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelRoom>()
+            .Property(e => e.MonthlyFee).HasPrecision(12, 2);
+
+        modelBuilder.Entity<HostelBed>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelBed>()
+            .HasOne(e => e.HostelRoom).WithMany(e => e.Beds)
+            .HasForeignKey(e => e.HostelRoomId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<HostelAllocation>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelAllocation>()
+            .HasOne(e => e.StudentProfile).WithMany()
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelAllocation>()
+            .HasOne(e => e.HostelRoom).WithMany()
+            .HasForeignKey(e => e.HostelRoomId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelAllocation>()
+            .HasOne(e => e.HostelBed).WithMany()
+            .HasForeignKey(e => e.HostelBedId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelAllocation>()
+            .Property(e => e.MonthlyFee).HasPrecision(12, 2);
+        modelBuilder.Entity<HostelAllocation>()
+            .Property(e => e.SecurityDeposit).HasPrecision(12, 2);
+
+        modelBuilder.Entity<HostelFee>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelFee>()
+            .HasOne(e => e.HostelAllocation).WithMany(e => e.Fees)
+            .HasForeignKey(e => e.HostelAllocationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelFee>()
+            .Property(e => e.Amount).HasPrecision(12, 2);
+        modelBuilder.Entity<HostelFee>()
+            .Property(e => e.PaidAmount).HasPrecision(12, 2);
+
+        modelBuilder.Entity<HostelBlock>().HasIndex(e => new { e.TenantId, e.BranchId, e.Code }).IsUnique();
+        modelBuilder.Entity<HostelRoom>().HasIndex(e => new { e.TenantId, e.HostelBlockId, e.RoomNumber }).IsUnique();
+        modelBuilder.Entity<HostelBed>().HasIndex(e => new { e.TenantId, e.HostelRoomId, e.BedNumber }).IsUnique();
+        modelBuilder.Entity<HostelAllocation>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.Status });
+        modelBuilder.Entity<HostelAllocation>().HasIndex(e => new { e.TenantId, e.HostelBedId, e.Status });
+        modelBuilder.Entity<HostelFee>().HasIndex(e => new { e.TenantId, e.InvoiceNumber }).IsUnique();
+        modelBuilder.Entity<HostelFee>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+    }
+
+    private static void ConfigureCommunications(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<NotificationProviderSetting>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationTemplate>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<NotificationMessage>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationMessage>()
+            .HasOne(e => e.NotificationTemplate).WithMany()
+            .HasForeignKey(e => e.NotificationTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationMessage>()
+            .HasOne(e => e.CreatedForUser).WithMany()
+            .HasForeignKey(e => e.CreatedForUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<NotificationRecipient>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationRecipient>()
+            .HasOne(e => e.NotificationMessage).WithMany(e => e.Recipients)
+            .HasForeignKey(e => e.NotificationMessageId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationRecipient>()
+            .HasOne(e => e.User).WithMany()
+            .HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Announcement>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<Announcement>()
+            .HasOne(e => e.CreatedByUser).WithMany()
+            .HasForeignKey(e => e.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<CommunicationLog>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<NotificationProviderSetting>().HasIndex(e => new { e.TenantId, e.BranchId, e.Channel, e.ProviderKey }).IsUnique();
+        modelBuilder.Entity<NotificationTemplate>().HasIndex(e => new { e.TenantId, e.BranchId, e.Code }).IsUnique();
+        modelBuilder.Entity<NotificationMessage>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<NotificationMessage>().HasIndex(e => e.ScheduledOn);
+        modelBuilder.Entity<NotificationRecipient>().HasIndex(e => new { e.NotificationMessageId, e.DestinationAddress });
+        modelBuilder.Entity<Announcement>().HasIndex(e => new { e.TenantId, e.BranchId, e.Audience, e.PublishOn });
+        modelBuilder.Entity<CommunicationLog>().HasIndex(e => new { e.TenantId, e.BranchId, e.Channel, e.OccurredOn });
     }
 
     public override int SaveChanges()

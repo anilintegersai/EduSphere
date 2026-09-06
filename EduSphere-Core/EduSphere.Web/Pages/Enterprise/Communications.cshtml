@@ -1,0 +1,154 @@
+@page
+@model EduSphere.Web.Pages.Enterprise.CommunicationsModel
+@{
+    ViewData["Title"] = "Communications";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Enterprise</span>
+        <h1>Communications</h1>
+        <p>Configure notification providers, templates, queued messages, recipients, and announcements.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Messages.Count messages</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Provider</span><span class="stage-tag">Channel</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveProvider">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <div class="mb-2"><label asp-for="ProviderInput.BranchId" class="form-label"></label><select asp-for="ProviderInput.BranchId" class="form-select"><option value="">Tenant-wide</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="ProviderInput.Channel" class="form-label"></label><select asp-for="ProviderInput.Channel" asp-items="Html.GetEnumSelectList<CommunicationChannel>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="ProviderInput.ProviderKey" class="form-label"></label><input asp-for="ProviderInput.ProviderKey" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="ProviderInput.DisplayName" class="form-label"></label><input asp-for="ProviderInput.DisplayName" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="ProviderInput.FromAddress" class="form-label"></label><input asp-for="ProviderInput.FromAddress" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="ProviderInput.SecretReference" class="form-label"></label><input asp-for="ProviderInput.SecretReference" class="form-control" placeholder="KeyVault:EduSphere:SmtpPassword" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add provider</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Template</span><span class="stage-tag">Reusable</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveTemplate">
+                        <div class="mb-2"><label asp-for="TemplateInput.BranchId" class="form-label"></label><select asp-for="TemplateInput.BranchId" class="form-select"><option value="">Tenant-wide</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="TemplateInput.Name" class="form-label"></label><input asp-for="TemplateInput.Name" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="TemplateInput.Code" class="form-label"></label><input asp-for="TemplateInput.Code" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="TemplateInput.SubjectTemplate" class="form-label"></label><input asp-for="TemplateInput.SubjectTemplate" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="TemplateInput.BodyTemplate" class="form-label"></label><textarea asp-for="TemplateInput.BodyTemplate" class="form-control" rows="3"></textarea></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add template</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Announcement</span><span class="stage-tag">Notice</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveAnnouncement">
+                        <div class="mb-2"><label asp-for="AnnouncementInput.BranchId" class="form-label"></label><select asp-for="AnnouncementInput.BranchId" class="form-select"><option value="">Tenant-wide</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="AnnouncementInput.Title" class="form-label"></label><input asp-for="AnnouncementInput.Title" class="form-control" /></div>
+                        <div class="mb-2"><label asp-for="AnnouncementInput.Message" class="form-label"></label><textarea asp-for="AnnouncementInput.Message" class="form-control" rows="3"></textarea></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="AnnouncementInput.Audience" class="form-label"></label><select asp-for="AnnouncementInput.Audience" asp-items="Html.GetEnumSelectList<AnnouncementAudience>()" class="form-select"></select></div>
+                            <div class="col-md-6 form-check form-switch align-self-end mb-2"><input asp-for="AnnouncementInput.IsPinned" class="form-check-input" /><label asp-for="AnnouncementInput.IsPinned" class="form-check-label"></label></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Publish announcement</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Message</span><span class="stage-tag">Queue</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveMessage">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="MessageInput.BranchId" class="form-label"></label><select asp-for="MessageInput.BranchId" class="form-select"><option value="">Tenant-wide</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="MessageInput.NotificationTemplateId" class="form-label"></label><select asp-for="MessageInput.NotificationTemplateId" class="form-select"><option value="">No template</option>@foreach (var t in Model.Templates) { <option value="@t.Id">@t.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="MessageInput.Channel" class="form-label"></label><select asp-for="MessageInput.Channel" asp-items="Html.GetEnumSelectList<CommunicationChannel>()" class="form-select"></select></div>
+                            <div class="col-12"><label asp-for="MessageInput.Subject" class="form-label"></label><input asp-for="MessageInput.Subject" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="MessageInput.Body" class="form-label"></label><textarea asp-for="MessageInput.Body" class="form-control" rows="3"></textarea></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Create message</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Recipient</span><span class="stage-tag">Delivery</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveRecipient">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="RecipientInput.BranchId" class="form-label"></label><select asp-for="RecipientInput.BranchId" class="form-select"><option value="">Tenant-wide</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="RecipientInput.NotificationMessageId" class="form-label"></label><select asp-for="RecipientInput.NotificationMessageId" class="form-select"><option value="">Message</option>@foreach (var m in Model.Messages) { <option value="@m.Id">@Model.MessageSubject(m.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="RecipientInput.DisplayName" class="form-label"></label><input asp-for="RecipientInput.DisplayName" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="RecipientInput.DestinationAddress" class="form-label"></label><input asp-for="RecipientInput.DestinationAddress" class="form-control" placeholder="parent@example.com" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add recipient</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Communication records</span><span class="count-pill">@Model.Recipients.Count recipients</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Type</th><th>Scope</th><th>Name</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var provider in Model.Providers)
+                {
+                    <tr><td>Provider</td><td>@Model.BranchName(provider.BranchId)</td><td>@provider.DisplayName</td><td>@provider.Channel / @provider.ProviderKey</td><td class="text-end"><form method="post" asp-page-handler="DeleteProvider" asp-route-id="@provider.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var template in Model.Templates)
+                {
+                    <tr><td>Template</td><td>@Model.BranchName(template.BranchId)</td><td>@template.Name</td><td>@template.Channel / @template.Code</td><td class="text-end"><form method="post" asp-page-handler="DeleteTemplate" asp-route-id="@template.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var announcement in Model.Announcements)
+                {
+                    <tr><td>Announcement</td><td>@Model.BranchName(announcement.BranchId)</td><td>@announcement.Title</td><td>@announcement.Audience / @announcement.PublishOn:g</td><td class="text-end"><form method="post" asp-page-handler="DeleteAnnouncement" asp-route-id="@announcement.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var message in Model.Messages.Take(8))
+                {
+                    <tr>
+                        <td>Message</td><td>@Model.BranchName(message.BranchId)</td><td>@message.Subject</td><td>@message.Channel / @message.Status</td>
+                        <td class="text-end">
+                            <span class="action-stack">
+                                <form method="post" asp-page-handler="DispatchMessage" asp-route-id="@message.Id" class="d-inline"><button class="btn btn-sm btn-outline-primary">Dispatch</button></form>
+                                <form method="post" asp-page-handler="DeleteMessage" asp-route-id="@message.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
+                            </span>
+                        </td>
+                    </tr>
+                }
+                @if (Model.Providers.Count == 0 && Model.Templates.Count == 0 && Model.Messages.Count == 0 && Model.Announcements.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No communication records yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

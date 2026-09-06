@@ -1,0 +1,143 @@
+@page
+@model EduSphere.Web.Pages.Enterprise.TransportModel
+@{
+    ViewData["Title"] = "Transport";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Enterprise</span>
+        <h1>Transport</h1>
+        <p>Manage fleet, drivers, routes, route stops, and student transport assignments.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Routes.Count routes</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Vehicle</span><span class="stage-tag">Fleet</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveVehicle">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <div class="mb-2"><label asp-for="VehicleInput.BranchId" class="form-label"></label><select asp-for="VehicleInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="VehicleInput.RegistrationNumber" class="form-label"></label><input asp-for="VehicleInput.RegistrationNumber" class="form-control" placeholder="KA-01-AB-1234" /></div>
+                            <div class="col-md-6"><label asp-for="VehicleInput.DisplayName" class="form-label"></label><input asp-for="VehicleInput.DisplayName" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="VehicleInput.Type" class="form-label"></label><select asp-for="VehicleInput.Type" asp-items="Html.GetEnumSelectList<VehicleType>()" class="form-select"></select></div>
+                            <div class="col-md-4"><label asp-for="VehicleInput.SeatCapacity" class="form-label"></label><input asp-for="VehicleInput.SeatCapacity" type="number" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="VehicleInput.Status" class="form-label"></label><select asp-for="VehicleInput.Status" asp-items="Html.GetEnumSelectList<VehicleStatus>()" class="form-select"></select></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add vehicle</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Driver</span><span class="stage-tag">Crew</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveDriver">
+                        <div class="mb-2"><label asp-for="DriverInput.BranchId" class="form-label"></label><select asp-for="DriverInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="DriverInput.FirstName" class="form-label"></label><input asp-for="DriverInput.FirstName" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="DriverInput.LastName" class="form-label"></label><input asp-for="DriverInput.LastName" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="DriverInput.PhoneNumber" class="form-label"></label><input asp-for="DriverInput.PhoneNumber" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="DriverInput.LicenseNumber" class="form-label"></label><input asp-for="DriverInput.LicenseNumber" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add driver</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Route</span><span class="stage-tag">Network</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveRoute">
+                        <div class="mb-2"><label asp-for="RouteInput.BranchId" class="form-label"></label><select asp-for="RouteInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="row g-2">
+                            <div class="col-md-5"><label asp-for="RouteInput.RouteCode" class="form-label"></label><input asp-for="RouteInput.RouteCode" class="form-control" /></div>
+                            <div class="col-md-7"><label asp-for="RouteInput.Name" class="form-label"></label><input asp-for="RouteInput.Name" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="RouteInput.ShiftName" class="form-label"></label><input asp-for="RouteInput.ShiftName" class="form-control" placeholder="Morning" /></div>
+                            <div class="col-md-6"><label asp-for="RouteInput.DistanceKm" class="form-label"></label><input asp-for="RouteInput.DistanceKm" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Create route</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-5">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Route stop</span><span class="stage-tag">Pickup</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveStop">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="StopInput.BranchId" class="form-label"></label><select asp-for="StopInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="StopInput.TransportRouteId" class="form-label"></label><select asp-for="StopInput.TransportRouteId" class="form-select"><option value="">Route</option>@foreach (var r in Model.Routes) { <option value="@r.Id">@r.Name</option> }</select></div>
+                            <div class="col-md-7"><label asp-for="StopInput.StopName" class="form-label"></label><input asp-for="StopInput.StopName" class="form-control" /></div>
+                            <div class="col-md-5"><label asp-for="StopInput.MonthlyFee" class="form-label"></label><input asp-for="StopInput.MonthlyFee" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Add stop</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-7">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Student assignment</span><span class="stage-tag">Roster</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveStudentAssignment">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="StudentAssignmentInput.BranchId" class="form-label"></label><select asp-for="StudentAssignmentInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="StudentAssignmentInput.StudentProfileId" class="form-label"></label><select asp-for="StudentAssignmentInput.StudentProfileId" class="form-select"><option value="">Student</option>@foreach (var s in Model.Students) { <option value="@s.Id">@Model.StudentName(s.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="StudentAssignmentInput.TransportRouteId" class="form-label"></label><select asp-for="StudentAssignmentInput.TransportRouteId" class="form-select"><option value="">Route</option>@foreach (var r in Model.Routes) { <option value="@r.Id">@r.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="StudentAssignmentInput.TransportRouteStopId" class="form-label"></label><select asp-for="StudentAssignmentInput.TransportRouteStopId" class="form-select"><option value="">Stop</option>@foreach (var s in Model.Stops) { <option value="@s.Id">@s.StopName</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="StudentAssignmentInput.VehicleId" class="form-label"></label><select asp-for="StudentAssignmentInput.VehicleId" class="form-select"><option value="">Vehicle</option>@foreach (var v in Model.Vehicles) { <option value="@v.Id">@v.RegistrationNumber</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="StudentAssignmentInput.MonthlyFee" class="form-label"></label><input asp-for="StudentAssignmentInput.MonthlyFee" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Assign student</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Transport records</span><span class="count-pill">@Model.StudentAssignments.Count assignments</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Type</th><th>Branch</th><th>Name</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var route in Model.Routes)
+                {
+                    <tr><td>Route</td><td>@Model.BranchName(route.BranchId)</td><td>@route.Name</td><td>@route.RouteCode / @route.DistanceKm.ToString("N1") km</td><td class="text-end"><form method="post" asp-page-handler="DeleteRoute" asp-route-id="@route.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var vehicle in Model.Vehicles)
+                {
+                    <tr><td>Vehicle</td><td>@Model.BranchName(vehicle.BranchId)</td><td>@vehicle.RegistrationNumber</td><td>@vehicle.Type / @vehicle.SeatCapacity seats</td><td class="text-end"><form method="post" asp-page-handler="DeleteVehicle" asp-route-id="@vehicle.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @foreach (var assignment in Model.StudentAssignments)
+                {
+                    <tr><td>Student</td><td>@Model.BranchName(assignment.BranchId)</td><td>@Model.StudentName(assignment.StudentProfileId)</td><td>@Model.RouteName(assignment.TransportRouteId) / @Model.StopName(assignment.TransportRouteStopId)</td><td class="text-end"><form method="post" asp-page-handler="DeleteStudentAssignment" asp-route-id="@assignment.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
+                }
+                @if (Model.Routes.Count == 0 && Model.Vehicles.Count == 0 && Model.StudentAssignments.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No transport records yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
