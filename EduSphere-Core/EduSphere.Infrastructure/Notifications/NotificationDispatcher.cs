@@ -21,6 +21,7 @@ public sealed class NotificationDispatcher : INotificationDispatcher
     public async Task<NotificationDispatchResult> DispatchAsync(Guid notificationMessageId, CancellationToken cancellationToken = default)
     {
         var message = await _dbContext.NotificationMessages
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(m => m.Id == notificationMessageId, cancellationToken);
         if (message is null)
             return NotificationDispatchResult.Failure("Notification message was not found.");
@@ -29,7 +30,9 @@ public sealed class NotificationDispatcher : INotificationDispatcher
             return NotificationDispatchResult.Failure($"No sender is registered for channel '{message.Channel}'.");
 
         var recipients = await _dbContext.NotificationRecipients
-            .Where(r => r.NotificationMessageId == notificationMessageId &&
+            .IgnoreQueryFilters()
+            .Where(r => r.TenantId == message.TenantId &&
+                        r.NotificationMessageId == notificationMessageId &&
                         r.Status != NotificationStatus.Sent &&
                         r.Status != NotificationStatus.Cancelled)
             .OrderBy(r => r.DisplayName)
@@ -71,6 +74,7 @@ public sealed class NotificationDispatcher : INotificationDispatcher
 
             _dbContext.CommunicationLogs.Add(new CommunicationLog
             {
+                TenantId = message.TenantId,
                 BranchId = recipient.BranchId ?? message.BranchId,
                 Channel = message.Channel,
                 Direction = CommunicationDirection.Outbound,

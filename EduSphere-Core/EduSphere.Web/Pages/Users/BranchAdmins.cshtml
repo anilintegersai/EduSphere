@@ -8,7 +8,7 @@
     <div>
         <span class="eyebrow">Access Control</span>
         <h1>Branch Admins</h1>
-        <p>Create branch-scoped administrators for operational work inside a tenant.</p>
+        <p>Create branch-scoped administrators and send secure activation links.</p>
     </div>
 </section>
 
@@ -64,11 +64,6 @@
                             <input asp-for="Input.PhoneNumber" class="form-control" />
                             <span asp-validation-for="Input.PhoneNumber" class="text-danger small"></span>
                         </div>
-                        <div class="mb-3">
-                            <label asp-for="Input.Password" class="form-label"></label>
-                            <input asp-for="Input.Password" class="form-control" />
-                            <span asp-validation-for="Input.Password" class="text-danger small"></span>
-                        </div>
                         <button type="submit" class="btn btn-primary w-100">Create Branch Admin</button>
                     </form>
                 </div>
@@ -84,7 +79,7 @@
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Branch</th>
-                                <th>Status</th>
+                                <th>Activation</th>
                                 <th class="text-end">Actions</th>
                             </tr>
                         </thead>
@@ -95,10 +90,19 @@
                                 <td>@item.Name</td>
                                 <td>@item.Email</td>
                                 <td>@item.BranchName <span class="text-muted small">@item.BranchCode</span></td>
-                                <td><span class="badge @(item.IsActive ? "text-bg-success" : "text-bg-secondary")">@(item.IsActive ? "Active" : "Inactive")</span></td>
+                                <td>
+                                    <span class="badge @(item.RequiresActivation ? "text-bg-warning" : "text-bg-success")">@(item.RequiresActivation ? "Pending" : "Activated")</span>
+                                    <span class="badge @(item.IsActive ? "text-bg-success" : "text-bg-secondary") ms-1">@(item.IsActive ? "Enabled" : "Disabled")</span>
+                                </td>
                                 <td class="text-end">
-                                    <form method="post" asp-page-handler="ToggleActive" asp-route-id="@item.Id" class="d-inline">
-                                        <button type="submit" class="btn btn-sm btn-outline-secondary">@(item.IsActive ? "Deactivate" : "Activate")</button>
+                                    @if (item.RequiresActivation)
+                                    {
+                                        <form method="post" asp-page-handler="ResendActivation" asp-route-id="@item.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Resend</button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-page-handler="ToggleActive" asp-route-id="@item.Id" asp-route-isActive="@(!item.IsActive)" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">@(item.IsActive ? "Disable" : "Enable")</button>
                                     </form>
                                 </td>
                             </tr>

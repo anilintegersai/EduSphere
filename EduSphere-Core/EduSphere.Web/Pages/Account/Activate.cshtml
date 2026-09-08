@@ -1,0 +1,53 @@
+@page
+@model EduSphere.Web.Pages.Account.ActivateModel
+@{
+    ViewData["Title"] = "Activate account";
+}
+
+<section class="auth-shell">
+    <div class="auth-story">
+        <div>
+            <span class="eyebrow">Account activation</span>
+            <h1>Set your password and enter your EduSphere workspace.</h1>
+            <p>Your invitation link verifies the account before sign-in is enabled.</p>
+        </div>
+    </div>
+    <div class="auth-card">
+        <span class="eyebrow">Invitation</span>
+        <h1>Activate account</h1>
+
+        @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+        {
+            <div class="alert @(Model.IsComplete ? "alert-success" : "alert-warning")">@Model.StatusMessage</div>
+        }
+
+        @if (Model.IsComplete)
+        {
+            <a class="btn btn-primary w-100" asp-page="/Account/Login">Go to sign in</a>
+        }
+        else
+        {
+            <form method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                <input type="hidden" asp-for="Input.UserId" />
+                <input type="hidden" asp-for="Input.Code" />
+
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.NewPassword" class="form-control" autocomplete="new-password" placeholder="Password" />
+                    <label asp-for="Input.NewPassword"></label>
+                    <span asp-validation-for="Input.NewPassword" class="text-danger small"></span>
+                </div>
+                <div class="form-floating mb-3">
+                    <input asp-for="Input.ConfirmPassword" class="form-control" autocomplete="new-password" placeholder="Confirm password" />
+                    <label asp-for="Input.ConfirmPassword"></label>
+                    <span asp-validation-for="Input.ConfirmPassword" class="text-danger small"></span>
+                </div>
+                <button type="submit" class="btn btn-primary w-100">Activate account</button>
+            </form>
+        }
+    </div>
+</section>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

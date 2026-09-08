@@ -42,6 +42,11 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<TeacherProfile> TeacherProfiles { get; set; }
     public DbSet<TeacherSubjectAssignment> TeacherSubjectAssignments { get; set; }
     public DbSet<ProfileDocument> ProfileDocuments { get; set; }
+    public DbSet<ParentProfile> ParentProfiles { get; set; }
+    public DbSet<StaffProfile> StaffProfiles { get; set; }
+    public DbSet<UserBranchAssignment> UserBranchAssignments { get; set; }
+    public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
+    public DbSet<UserInvitation> UserInvitations { get; set; }
 
     // Admissions / Attendance / Timetable (Module 5-9)
     public DbSet<AdmissionApplication> AdmissionApplications { get; set; }
@@ -130,6 +135,8 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<Tenant>().HasIndex(t => t.CustomDomain);
         modelBuilder.Entity<Branch>().HasIndex(b => b.TenantId);
         modelBuilder.Entity<ApplicationUser>().HasIndex(u => u.TenantId);
+        modelBuilder.Entity<ApplicationUser>().HasIndex(u => new { u.TenantId, u.BranchId });
+        modelBuilder.Entity<ApplicationUser>().HasIndex(u => u.RequiresActivation);
 
         ConfigureAcademicStructure(modelBuilder);
         ConfigurePeopleProfiles(modelBuilder);
@@ -309,6 +316,56 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(a => a.Section).WithMany()
             .HasForeignKey(a => a.SectionId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<ParentProfile>()
+            .HasOne(p => p.User).WithMany()
+            .HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentProfile>()
+            .HasOne(p => p.Branch).WithMany()
+            .HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StaffProfile>()
+            .HasOne(s => s.User).WithMany()
+            .HasForeignKey(s => s.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffProfile>()
+            .HasOne(s => s.Branch).WithMany()
+            .HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffProfile>()
+            .HasOne(s => s.Department).WithMany()
+            .HasForeignKey(s => s.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffProfile>()
+            .Property(s => s.ExperienceYears)
+            .HasPrecision(18, 2);
+
+        modelBuilder.Entity<UserBranchAssignment>()
+            .HasOne(a => a.User).WithMany()
+            .HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserBranchAssignment>()
+            .HasOne(a => a.Branch).WithMany()
+            .HasForeignKey(a => a.BranchId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<UserRoleAssignment>()
+            .HasOne(a => a.User).WithMany()
+            .HasForeignKey(a => a.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserRoleAssignment>()
+            .HasOne(a => a.Role).WithMany()
+            .HasForeignKey(a => a.RoleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserRoleAssignment>()
+            .HasOne(a => a.Branch).WithMany()
+            .HasForeignKey(a => a.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserRoleAssignment>()
+            .HasOne(a => a.AssignedByUser).WithMany()
+            .HasForeignKey(a => a.AssignedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<UserInvitation>()
+            .HasOne(i => i.User).WithMany()
+            .HasForeignKey(i => i.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserInvitation>()
+            .HasOne(i => i.Branch).WithMany()
+            .HasForeignKey(i => i.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserInvitation>()
+            .HasOne(i => i.InvitedByUser).WithMany()
+            .HasForeignKey(i => i.InvitedByUserId).OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<StudentProfile>().HasIndex(s => new { s.TenantId, s.AdmissionNumber }).IsUnique();
         modelBuilder.Entity<StudentProfile>().HasIndex(s => s.BranchId);
         modelBuilder.Entity<StudentProfile>().HasIndex(s => s.SectionId);
@@ -326,6 +383,24 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.SectionId);
 
         modelBuilder.Entity<ProfileDocument>().HasIndex(d => new { d.OwnerType, d.OwnerId });
+
+        modelBuilder.Entity<ParentProfile>().HasIndex(p => new { p.TenantId, p.UserId }).IsUnique();
+        modelBuilder.Entity<ParentProfile>().HasIndex(p => new { p.TenantId, p.Email });
+        modelBuilder.Entity<ParentProfile>().HasIndex(p => p.BranchId);
+
+        modelBuilder.Entity<StaffProfile>().HasIndex(s => new { s.TenantId, s.UserId }).IsUnique();
+        modelBuilder.Entity<StaffProfile>().HasIndex(s => new { s.TenantId, s.EmployeeNumber }).IsUnique();
+        modelBuilder.Entity<StaffProfile>().HasIndex(s => s.BranchId);
+        modelBuilder.Entity<StaffProfile>().HasIndex(s => s.DepartmentId);
+
+        modelBuilder.Entity<UserBranchAssignment>().HasIndex(a => new { a.TenantId, a.UserId, a.BranchId }).IsUnique();
+        modelBuilder.Entity<UserBranchAssignment>().HasIndex(a => new { a.TenantId, a.BranchId, a.IsActive });
+
+        modelBuilder.Entity<UserRoleAssignment>().HasIndex(a => new { a.TenantId, a.UserId, a.RoleName, a.BranchId }).IsUnique();
+        modelBuilder.Entity<UserRoleAssignment>().HasIndex(a => new { a.TenantId, a.RoleName, a.IsActive });
+
+        modelBuilder.Entity<UserInvitation>().HasIndex(i => new { i.TenantId, i.Email, i.Status });
+        modelBuilder.Entity<UserInvitation>().HasIndex(i => new { i.TenantId, i.UserId, i.Status });
     }
 
     private static void ConfigureOperations(ModelBuilder modelBuilder)

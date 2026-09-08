@@ -1,0 +1,325 @@
+@page
+@model EduSphere.Web.Pages.Users.IndexModel
+@{
+    ViewData["Title"] = "Users & Roles";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Identity and access</span>
+        <h1>Users & Roles</h1>
+        <p>Create users inside the allowed hierarchy, send activation links, and manage account status.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@Model.Items.Count users</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the top bar before creating tenant-owned users.</div>
+}
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-success">@Model.StatusMessage</div>
+}
+@foreach (var warning in Model.Warnings)
+{
+    <div class="alert alert-warning">@warning</div>
+}
+
+<div asp-validation-summary="ModelOnly" class="alert alert-danger validation-summary-alert"></div>
+
+<div class="row g-4 workspace-grid">
+    <div class="col-12 col-xxl-4">
+        <div class="card form-card">
+            <div class="card-header"><span>Create user</span><span class="stage-tag">Activation required</span></div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="Create">
+                    <div class="row g-2">
+                        @if (Model.IsSuperAdmin)
+                        {
+                            <div class="col-12">
+                                <label asp-for="CreateInput.TenantId" class="form-label">Tenant</label>
+                                <select asp-for="CreateInput.TenantId" class="form-select">
+                                    <option value="">Select tenant</option>
+                                    @foreach (var tenant in Model.Tenants)
+                                    {
+                                        <option value="@tenant.Id">@tenant.Name</option>
+                                    }
+                                </select>
+                            </div>
+                        }
+                        else
+                        {
+                            <input type="hidden" asp-for="CreateInput.TenantId" />
+                        }
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.RoleName" class="form-label">Role</label>
+                            <select asp-for="CreateInput.RoleName" class="form-select">
+                                <option value="">Select role</option>
+                                @foreach (var role in Model.AssignableRoles)
+                                {
+                                    <option value="@role.RoleName">@role.Label</option>
+                                }
+                            </select>
+                            <span asp-validation-for="CreateInput.RoleName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.BranchId" class="form-label">Branch</label>
+                            <select asp-for="CreateInput.BranchId" class="form-select">
+                                <option value="">Tenant-level user</option>
+                                @foreach (var branch in Model.Branches)
+                                {
+                                    <option value="@branch.Id">@branch.Name @(!string.IsNullOrWhiteSpace(branch.Code) ? $"({branch.Code})" : "")</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.FirstName" class="form-label">First name</label>
+                            <input asp-for="CreateInput.FirstName" class="form-control" />
+                            <span asp-validation-for="CreateInput.FirstName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.LastName" class="form-label">Last name</label>
+                            <input asp-for="CreateInput.LastName" class="form-control" />
+                            <span asp-validation-for="CreateInput.LastName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.Email" class="form-label">Email</label>
+                            <input asp-for="CreateInput.Email" class="form-control" autocomplete="off" />
+                            <span asp-validation-for="CreateInput.Email" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.PhoneNumber" class="form-label">Phone</label>
+                            <input asp-for="CreateInput.PhoneNumber" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.DepartmentId" class="form-label">Department</label>
+                            <select asp-for="CreateInput.DepartmentId" class="form-select">
+                                <option value="">No department</option>
+                                @foreach (var department in Model.Departments)
+                                {
+                                    <option value="@department.Id">@department.Name (@department.Code)</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.Designation" class="form-label">Designation</label>
+                            <input asp-for="CreateInput.Designation" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.EmployeeNumber" class="form-label">Employee #</label>
+                            <input asp-for="CreateInput.EmployeeNumber" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.AdmissionNumber" class="form-label">Admission #</label>
+                            <input asp-for="CreateInput.AdmissionNumber" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.DateOfBirth" class="form-label">Date of birth</label>
+                            <input asp-for="CreateInput.DateOfBirth" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.JoiningDate" class="form-label">Joining date</label>
+                            <input asp-for="CreateInput.JoiningDate" type="date" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.Gender" class="form-label">Gender</label>
+                            <select asp-for="CreateInput.Gender" asp-items="Html.GetEnumSelectList<Gender>()" class="form-select"></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CreateInput.EmploymentType" class="form-label">Employment</label>
+                            <select asp-for="CreateInput.EmploymentType" asp-items="Html.GetEnumSelectList<EmploymentType>()" class="form-select"></select>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="CreateInput.Address" class="form-label">Address</label>
+                            <textarea asp-for="CreateInput.Address" class="form-control" rows="2"></textarea>
+                        </div>
+                        <div class="col-12 form-check mt-3">
+                            <input asp-for="CreateInput.SendActivationEmail" class="form-check-input" />
+                            <label asp-for="CreateInput.SendActivationEmail" class="form-check-label">Send activation email now</label>
+                        </div>
+                    </div>
+                    <div class="form-actions mt-3">
+                        <button type="submit" class="btn btn-primary">Create user</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="card form-card mt-4">
+            <div class="card-header"><span>Bulk import</span><span class="stage-tag">CSV</span></div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="BulkImport">
+                    @if (Model.IsSuperAdmin)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="BulkInput.TenantId" class="form-label">Tenant</label>
+                            <select asp-for="BulkInput.TenantId" class="form-select">
+                                <option value="">Select tenant</option>
+                                @foreach (var tenant in Model.Tenants)
+                                {
+                                    <option value="@tenant.Id">@tenant.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="BulkInput.TenantId" />
+                    }
+                    <div class="row g-2">
+                        <div class="col-md-6">
+                            <label asp-for="BulkInput.RoleName" class="form-label">Default role</label>
+                            <select asp-for="BulkInput.RoleName" class="form-select">
+                                <option value="">Role in CSV</option>
+                                @foreach (var role in Model.AssignableRoles)
+                                {
+                                    <option value="@role.RoleName">@role.Label</option>
+                                }
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="BulkInput.BranchId" class="form-label">Default branch</label>
+                            <select asp-for="BulkInput.BranchId" class="form-select">
+                                <option value="">Branch in CSV</option>
+                                @foreach (var branch in Model.Branches)
+                                {
+                                    <option value="@branch.Id">@branch.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mt-3">
+                        <label asp-for="BulkInput.CsvText" class="form-label">Rows</label>
+                        <textarea asp-for="BulkInput.CsvText" class="form-control font-monospace" rows="7" placeholder="email,firstName,lastName,roleName,branch,phone,designation"></textarea>
+                        <span asp-validation-for="BulkInput.CsvText" class="text-danger small"></span>
+                    </div>
+                    <div class="form-check mt-3">
+                        <input asp-for="BulkInput.SendActivationEmail" class="form-check-input" />
+                        <label asp-for="BulkInput.SendActivationEmail" class="form-check-label">Send activation emails</label>
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary mt-3">Import users</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xxl-8">
+        <div class="card data-card">
+            <div class="card-header">
+                <span>User directory</span>
+                <span class="count-pill">@Model.Items.Count records</span>
+            </div>
+            <div class="card-body border-bottom">
+                <form method="get" class="row g-2 align-items-end">
+                    @if (Model.IsSuperAdmin)
+                    {
+                        <div class="col-md-4">
+                            <label asp-for="Query.TenantId" class="form-label">Tenant</label>
+                            <select asp-for="Query.TenantId" class="form-select">
+                                <option value="">All tenants</option>
+                                @foreach (var tenant in Model.Tenants)
+                                {
+                                    <option value="@tenant.Id">@tenant.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    <div class="col-md-3">
+                        <label asp-for="Query.RoleName" class="form-label">Role</label>
+                        <select asp-for="Query.RoleName" class="form-select">
+                            <option value="">All roles</option>
+                            @foreach (var role in Model.AssignableRoles)
+                            {
+                                <option value="@role.RoleName">@role.Label</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label asp-for="Query.BranchId" class="form-label">Branch</label>
+                        <select asp-for="Query.BranchId" class="form-select">
+                            <option value="">All branches</option>
+                            @foreach (var branch in Model.Branches)
+                            {
+                                <option value="@branch.Id">@branch.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md">
+                        <label asp-for="Query.Search" class="form-label">Search</label>
+                        <input asp-for="Query.Search" class="form-control" />
+                    </div>
+                    <div class="col-md-auto">
+                        <button type="submit" class="btn btn-outline-secondary">Apply</button>
+                    </div>
+                </form>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Tenant</th>
+                            <th>Branch</th>
+                            <th>Activation</th>
+                            <th>Last login</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var user in Model.Items)
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@user.FullName</div>
+                                <div class="text-muted small">@user.Email</div>
+                            </td>
+                            <td>@Model.RoleText(user)</td>
+                            <td>@(user.TenantName ?? "-")</td>
+                            <td>@(user.BranchName ?? "Tenant")</td>
+                            <td>
+                                @if (user.RequiresActivation)
+                                {
+                                    <span class="badge text-bg-warning">Pending</span>
+                                }
+                                else
+                                {
+                                    <span class="badge text-bg-success">Active</span>
+                                }
+                                <span class="badge @(user.IsActive ? "text-bg-success" : "text-bg-secondary") ms-1">@(user.IsActive ? "Enabled" : "Disabled")</span>
+                            </td>
+                            <td>@(user.LastLoginAt?.ToLocalTime().ToString("dd MMM yyyy HH:mm") ?? "-")</td>
+                            <td class="text-end">
+                                <span class="action-stack">
+                                    @if (user.RequiresActivation)
+                                    {
+                                        <form method="post" asp-page-handler="ResendActivation" asp-route-id="@user.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-primary">Resend</button>
+                                        </form>
+                                    }
+                                    <form method="post" asp-page-handler="SetStatus" asp-route-id="@user.Id" asp-route-isActive="@(!user.IsActive)" class="d-inline">
+                                        <button type="submit" class="btn btn-sm btn-outline-secondary">@(user.IsActive ? "Disable" : "Enable")</button>
+                                    </form>
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Items.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center empty-state">No users found.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

@@ -1,7 +1,9 @@
 using System.Security.Claims;
 using EduSphere.Domain.Constants;
 using EduSphere.Domain.Entities;
+using EduSphere.Infrastructure;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduSphere.Web.Security;
 
@@ -22,10 +24,14 @@ public sealed class BranchAccessService : IBranchAccessService
     };
 
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly TenantDbContext _dbContext;
 
-    public BranchAccessService(UserManager<ApplicationUser> userManager)
+    public BranchAccessService(
+        UserManager<ApplicationUser> userManager,
+        TenantDbContext dbContext)
     {
         _userManager = userManager;
+        _dbContext = dbContext;
     }
 
     public bool IsBranchAdminOnly(ClaimsPrincipal user)
@@ -50,6 +56,21 @@ public sealed class BranchAccessService : IBranchAccessService
         var userId = GetUserId(user);
         if (!userId.HasValue)
             return null;
+
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        var assignedBranchId = await _dbContext.UserBranchAssignments
+            .IgnoreQueryFilters()
+            .Where(a => a.UserId == userId.Value &&
+                        a.IsActive &&
+                        a.EffectiveFrom <= today &&
+                        (!a.EffectiveUntil.HasValue || a.EffectiveUntil.Value >= today))
+            .OrderByDescending(a => a.IsPrimary)
+            .ThenByDescending(a => a.EffectiveFrom)
+            .Select(a => (Guid?)a.BranchId)
+            .FirstOrDefaultAsync();
+
+        if (assignedBranchId.HasValue)
+            return assignedBranchId.Value;
 
         var applicationUser = await _userManager.FindByIdAsync(userId.Value.ToString());
         return applicationUser?.BranchId;

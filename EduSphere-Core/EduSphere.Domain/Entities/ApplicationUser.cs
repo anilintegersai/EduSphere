@@ -39,11 +39,15 @@ public class ApplicationUser : IdentityUser<Guid>, ITenantEntity, IAuditableEnti
     public UserType UserType { get; set; } = UserType.Student;
 
     public bool IsActive { get; set; } = true;
+    public bool RequiresActivation { get; set; }
 
     public string? CreatedBy { get; set; }
     public DateTime CreatedOn { get; set; }
     public string? ModifiedBy { get; set; }
     public DateTime? ModifiedOn { get; set; }
     public Guid ConcurrencyToken { get; set; } = Guid.NewGuid();
+    public DateTime? ActivatedOn { get; set; }
     public DateTime? LastLoginAt { get; set; }
+    public DateTime? LastPasswordChangedOn { get; set; }
+    public DateTime? LastPasswordResetRequestedOn { get; set; }
 }

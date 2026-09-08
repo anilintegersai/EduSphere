@@ -1,12 +1,11 @@
 using System.ComponentModel.DataAnnotations;
+using EduSphere.Application.DTOs.UserManagement;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Constants;
 using EduSphere.Domain.Entities;
-using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Authorization;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
@@ -15,18 +14,16 @@ namespace EduSphere.Web.Pages.Users;
 [Authorize(Policy = AuthorizationPolicies.TenantAdmin)]
 public class BranchAdminsModel : PageModel
 {
-    private const string DefaultPassword = "BranchAdmin123!";
-
-    private readonly UserManager<ApplicationUser> _userManager;
+    private readonly IUserManagementService _users;
     private readonly IBranchService _branches;
     private readonly ITenantContext _tenant;
 
     public BranchAdminsModel(
-        UserManager<ApplicationUser> userManager,
+        IUserManagementService users,
         IBranchService branches,
         ITenantContext tenant)
     {
-        _userManager = userManager;
+        _users = users;
         _branches = branches;
         _tenant = tenant;
     }
@@ -45,7 +42,6 @@ public class BranchAdminsModel : PageModel
         [Required, StringLength(100), Display(Name = "Last name")] public string LastName { get; set; } = string.Empty;
         [Required, EmailAddress, StringLength(150)] public string Email { get; set; } = string.Empty;
         [StringLength(30), Display(Name = "Phone")] public string? PhoneNumber { get; set; }
-        [StringLength(100), DataType(DataType.Password)] public string Password { get; set; } = DefaultPassword;
     }
 
     public sealed record BranchAdminRow(
@@ -54,7 +50,8 @@ public class BranchAdminsModel : PageModel
         string Email,
         string BranchName,
         string? BranchCode,
-        bool IsActive);
+        bool IsActive,
+        bool RequiresActivation);
 
     public async Task OnGetAsync()
     {
@@ -75,73 +72,47 @@ public class BranchAdminsModel : PageModel
         if (branchId == Guid.Empty || branches.All(b => b.Id != branchId))
             ModelState.AddModelError("Input.BranchId", "Selected branch was not found in this tenant.");
 
-        var normalizedEmail = Input.Email.Trim().ToUpperInvariant();
-        if (await _userManager.FindByEmailAsync(Input.Email.Trim()) is not null)
-            ModelState.AddModelError("Input.Email", "A user with this email already exists.");
-
-        if (string.IsNullOrWhiteSpace(Input.Password))
-            Input.Password = DefaultPassword;
-
         if (!ModelState.IsValid)
         {
             await LoadAsync();
             return Page();
         }
 
-        var user = new ApplicationUser
+        var result = await _users.CreateUserAsync(User, new CreateManagedUserRequest
         {
-            UserName = Input.Email.Trim(),
-            NormalizedUserName = normalizedEmail,
-            Email = Input.Email.Trim(),
-            NormalizedEmail = normalizedEmail,
-            EmailConfirmed = true,
+            RoleName = Roles.BranchAdmin,
             TenantId = tenantId,
             BranchId = branchId,
             FirstName = Input.FirstName.Trim(),
             LastName = Input.LastName.Trim(),
             PhoneNumber = Input.PhoneNumber,
-            UserType = UserType.BranchAdmin,
-            IsActive = true
-        };
-
-        var createResult = await _userManager.CreateAsync(user, Input.Password);
-        if (!createResult.Succeeded)
+            Designation = "Branch Administrator",
+            SendActivationEmail = true
+        }, HttpContext.RequestAborted);
+        if (!result.Succeeded)
         {
-            foreach (var error in createResult.Errors)
-                ModelState.AddModelError(string.Empty, error.Description);
+            foreach (var error in result.Errors)
+                ModelState.AddModelError(string.Empty, error);
 
             await LoadAsync();
             return Page();
         }
 
-        var roleResult = await _userManager.AddToRoleAsync(user, Roles.BranchAdmin);
-        if (!roleResult.Succeeded)
-        {
-            foreach (var error in roleResult.Errors)
-                ModelState.AddModelError(string.Empty, error.Description);
-
-            await LoadAsync();
-            return Page();
-        }
-
-        TempData["StatusMessage"] = $"Branch admin {user.Email} created.";
+        TempData["StatusMessage"] = result.Warnings.Count == 0
+            ? result.Message
+            : $"{result.Message} {string.Join(" ", result.Warnings)}";
         return RedirectToPage();
     }
 
-    public async Task<IActionResult> OnPostToggleActiveAsync(Guid id)
+    public async Task<IActionResult> OnPostToggleActiveAsync(Guid id, bool isActive)
     {
-        if (_tenant.TenantId is not Guid tenantId)
-            return RedirectToPage();
+        await _users.SetUserActiveAsync(User, id, isActive, HttpContext.RequestAborted);
+        return RedirectToPage();
+    }
 
-        var user = await _userManager.FindByIdAsync(id.ToString());
-        if (user is not null &&
-            user.TenantId == tenantId &&
-            await _userManager.IsInRoleAsync(user, Roles.BranchAdmin))
-        {
-            user.IsActive = !user.IsActive;
-            await _userManager.UpdateAsync(user);
-        }
-
+    public async Task<IActionResult> OnPostResendActivationAsync(Guid id)
+    {
+        await _users.ResendActivationAsync(User, id, HttpContext.RequestAborted);
         return RedirectToPage();
     }
 
@@ -159,24 +130,24 @@ public class BranchAdminsModel : PageModel
         if (Input.BranchId is null && Branches.Count == 1)
             Input.BranchId = Branches[0].Id;
 
-        var branchMap = Branches.ToDictionary(b => b.Id);
-        var branchAdmins = await _userManager.GetUsersInRoleAsync(Roles.BranchAdmin);
-        Items = branchAdmins
-            .Where(u => u.TenantId == tenantId)
-            .OrderBy(u => branchMap.TryGetValue(u.BranchId ?? Guid.Empty, out var branch) ? branch.Name : string.Empty)
+        var users = await _users.ListUsersAsync(
+            User,
+            new UserManagementQuery { TenantId = tenantId, RoleName = Roles.BranchAdmin },
+            HttpContext.RequestAborted);
+
+        Items = users
+            .OrderBy(u => u.BranchName)
             .ThenBy(u => u.FirstName)
             .ThenBy(u => u.LastName)
             .Select(u =>
-            {
-                branchMap.TryGetValue(u.BranchId ?? Guid.Empty, out var branch);
-                return new BranchAdminRow(
+                new BranchAdminRow(
                     u.Id,
                     u.FullName,
-                    u.Email ?? u.UserName ?? "-",
-                    branch?.Name ?? "Unassigned",
-                    branch?.Code,
-                    u.IsActive);
-            })
+                    u.Email,
+                    u.BranchName ?? "Unassigned",
+                    Branches.FirstOrDefault(b => b.Id == u.BranchId)?.Code,
+                    u.IsActive,
+                    u.RequiresActivation))
             .ToList();
     }
 }

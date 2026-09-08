@@ -64,6 +64,7 @@ public sealed class SmtpEmailNotificationChannelSender : INotificationChannelSen
     private async Task<NotificationProviderSetting?> ResolveProviderAsync(NotificationDispatchMessage message, CancellationToken cancellationToken)
     {
         var query = _dbContext.NotificationProviderSettings
+            .IgnoreQueryFilters()
             .Where(p => p.Channel == CommunicationChannel.Email && p.IsEnabled);
 
         if (!string.IsNullOrWhiteSpace(message.ProviderKey))
@@ -71,7 +72,13 @@ public sealed class SmtpEmailNotificationChannelSender : INotificationChannelSen
 
         var messageEntity = await _dbContext.NotificationMessages
             .AsNoTracking()
+            .IgnoreQueryFilters()
             .FirstOrDefaultAsync(m => m.Id == message.MessageId, cancellationToken);
+
+        if (messageEntity is null)
+            return null;
+
+        query = query.Where(p => p.TenantId == messageEntity.TenantId);
 
         return await query
             .OrderByDescending(p => messageEntity != null && p.BranchId == messageEntity.BranchId)

@@ -62,11 +62,19 @@ public class LoginModel : PageModel
             return Page();
         }
 
+        if (user.RequiresActivation)
+        {
+            ErrorMessage = "Please activate your account from the email invitation before signing in.";
+            return Page();
+        }
+
         var result = await _signInManager.PasswordSignInAsync(
             user, Input.Password, Input.RememberMe, lockoutOnFailure: true);
 
         if (result.Succeeded)
         {
+            user.LastLoginAt = DateTime.UtcNow;
+            await _userManager.UpdateAsync(user);
             _logger.LogInformation("User {Email} signed in.", Input.Email);
             return LocalRedirect(returnUrl);
         }

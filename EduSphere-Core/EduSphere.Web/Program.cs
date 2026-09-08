@@ -1,6 +1,7 @@
 using System.Text;
 using Asp.Versioning;
 using EduSphere.Application.Common;
+using EduSphere.Application.Interfaces;
 using EduSphere.Application.Validators;
 using EduSphere.Domain.Constants;
 using EduSphere.Domain.Common;
@@ -10,6 +11,7 @@ using EduSphere.Web.Authorization;
 using EduSphere.Web.Data;
 using EduSphere.Web.Middleware;
 using EduSphere.Web.Security;
+using EduSphere.Web.Services;
 using EduSphere.Web.Swagger;
 using FluentValidation;
 using FluentValidation.AspNetCore;
@@ -65,6 +67,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<IBranchAccessService, BranchAccessService>();
+builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 
@@ -92,6 +95,8 @@ builder.Services
         options.Password.RequiredLength = 8;
         options.Password.RequireNonAlphanumeric = false;
         options.User.RequireUniqueEmail = true;
+        // Existing seeded/demo users remain usable; new admin-created users are
+        // blocked explicitly by RequiresActivation + EmailConfirmed checks.
         options.SignIn.RequireConfirmedAccount = false;
         options.Lockout.MaxFailedAccessAttempts = 5;
         options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
@@ -106,6 +111,11 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
     options.SlidingExpiration = true;
+});
+
+builder.Services.Configure<DataProtectionTokenProviderOptions>(options =>
+{
+    options.TokenLifespan = TimeSpan.FromDays(7);
 });
 
 // ---- JWT bearer (for the /api/v1 surface) ----
@@ -169,6 +179,13 @@ builder.Services.AddAuthorization(options =>
         Roles.TenantAdmin,
         Roles.BranchAdmin,
         Roles.Principal,
+        Roles.StaffAdmin));
+    options.AddPolicy(AuthorizationPolicies.UserManager, p => p.RequireRole(
+        Roles.SuperAdmin,
+        Roles.TenantAdmin,
+        Roles.BranchAdmin,
+        Roles.Principal,
+        Roles.DepartmentAdmin,
         Roles.StaffAdmin));
 });
 

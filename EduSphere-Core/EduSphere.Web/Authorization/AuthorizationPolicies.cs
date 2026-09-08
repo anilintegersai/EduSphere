@@ -11,4 +11,5 @@ public static class AuthorizationPolicies
     public const string LibraryManager = "LibraryManagerPolicy";
     public const string HostelManager = "HostelManagerPolicy";
     public const string CommunicationManager = "CommunicationManagerPolicy";
+    public const string UserManager = "UserManagerPolicy";
 }
