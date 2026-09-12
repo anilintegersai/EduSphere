@@ -43,6 +43,13 @@ else
                                 </select>
                                 <span asp-validation-for="Input.BranchId" class="text-danger small"></span>
                             </div>
+                            <div class="col-md-12">
+                                <label asp-for="Input.DepartmentId" class="form-label"></label>
+                                <select asp-for="Input.DepartmentId" class="form-select">
+                                    <option value="">Unassigned</option>
+                                    @foreach (var d in Model.Departments) { <option value="@d.Id">@d.Name</option> }
+                                </select>
+                            </div>
                             <div class="col-md-6">
                                 <label asp-for="Input.FirstName" class="form-label"></label>
                                 <input asp-for="Input.FirstName" class="form-control" />
@@ -111,7 +118,7 @@ else
                 <div class="card-header"><span>Teacher Directory</span><span class="count-pill">@Model.Items.Count records</span></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
-                        <thead><tr><th>Employee</th><th>Name</th><th>Branch</th><th>Designation</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
+                        <thead><tr><th>Employee</th><th>Name</th><th>Branch</th><th>Department</th><th>Designation</th><th>Status</th><th class="text-end">Actions</th></tr></thead>
                         <tbody>
                         @foreach (var t in Model.Items)
                         {
@@ -119,6 +126,7 @@ else
                                 <td><code>@t.EmployeeNumber</code></td>
                                 <td>@t.FirstName @t.LastName</td>
                                 <td>@Model.BranchName(t.BranchId)</td>
+                                <td>@Model.DepartmentName(t.DepartmentId)</td>
                                 <td>@(t.Designation ?? "-")</td>
                                 <td><span class="stage-tag">@t.Status</span></td>
                                 <td class="text-end">
@@ -129,7 +137,7 @@ else
                                 </td>
                             </tr>
                         }
-                        @if (Model.Items.Count == 0) { <tr><td colspan="6" class="text-center empty-state">None yet.</td></tr> }
+                        @if (Model.Items.Count == 0) { <tr><td colspan="7" class="text-center empty-state">None yet.</td></tr> }
                         </tbody>
                     </table>
                 </div>

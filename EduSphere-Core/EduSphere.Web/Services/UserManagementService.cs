@@ -232,69 +232,80 @@ public sealed class UserManagementService : IUserManagementService
             IsActive = true
         };
 
-        await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
+        UserManagementOperationResult<UserSummaryDto>? transactionFailure = null;
         try
         {
-            var createResult = await _userManager.CreateAsync(user);
-            if (!createResult.Succeeded)
+            var executionStrategy = _dbContext.Database.CreateExecutionStrategy();
+            await executionStrategy.ExecuteAsync(async () =>
             {
-                await transaction.RollbackAsync(cancellationToken);
-                return UserManagementOperationResult<UserSummaryDto>.Failure(createResult.Errors.Select(e => e.Description).ToArray());
-            }
+                await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-            var roleResult = await _userManager.AddToRoleAsync(user, role.RoleName);
-            if (!roleResult.Succeeded)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return UserManagementOperationResult<UserSummaryDto>.Failure(roleResult.Errors.Select(e => e.Description).ToArray());
-            }
+                var createResult = await _userManager.CreateAsync(user);
+                if (!createResult.Succeeded)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    transactionFailure = UserManagementOperationResult<UserSummaryDto>.Failure(createResult.Errors.Select(e => e.Description).ToArray());
+                    return;
+                }
 
-            var roleEntity = await _roleManager.FindByNameAsync(role.RoleName)
-                ?? throw new InvalidOperationException($"Role '{role.RoleName}' disappeared during user creation.");
+                var roleResult = await _userManager.AddToRoleAsync(user, role.RoleName);
+                if (!roleResult.Succeeded)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    transactionFailure = UserManagementOperationResult<UserSummaryDto>.Failure(roleResult.Errors.Select(e => e.Description).ToArray());
+                    return;
+                }
 
-            _dbContext.UserRoleAssignments.Add(new UserRoleAssignment
-            {
-                TenantId = tenantId,
-                UserId = user.Id,
-                RoleId = roleEntity.Id,
-                RoleName = role.RoleName,
-                BranchId = branchId,
-                AssignedByUserId = actorInfo.User.Id == Guid.Empty ? null : actorInfo.User.Id,
-                AssignedOn = DateTime.UtcNow,
-                IsActive = true,
-                Notes = "Created through user management."
-            });
+                var roleEntity = await _roleManager.FindByNameAsync(role.RoleName)
+                    ?? throw new InvalidOperationException($"Role '{role.RoleName}' disappeared during user creation.");
 
-            if (branchId.HasValue)
-            {
-                _dbContext.UserBranchAssignments.Add(new UserBranchAssignment
+                _dbContext.UserRoleAssignments.Add(new UserRoleAssignment
                 {
                     TenantId = tenantId,
                     UserId = user.Id,
-                    BranchId = branchId.Value,
-                    IsPrimary = true,
+                    RoleId = roleEntity.Id,
+                    RoleName = role.RoleName,
+                    BranchId = branchId,
+                    AssignedByUserId = actorInfo.User.Id == Guid.Empty ? null : actorInfo.User.Id,
+                    AssignedOn = DateTime.UtcNow,
                     IsActive = true,
-                    EffectiveFrom = DateOnly.FromDateTime(DateTime.UtcNow),
-                    Notes = "Primary branch assignment created with user."
+                    Notes = "Created through user management."
                 });
-            }
 
-            var profileError = await CreateProfileAsync(user, role, request, branchId, cancellationToken);
-            if (profileError is not null)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return UserManagementOperationResult<UserSummaryDto>.Failure(profileError);
-            }
+                if (branchId.HasValue)
+                {
+                    _dbContext.UserBranchAssignments.Add(new UserBranchAssignment
+                    {
+                        TenantId = tenantId,
+                        UserId = user.Id,
+                        BranchId = branchId.Value,
+                        IsPrimary = true,
+                        IsActive = true,
+                        EffectiveFrom = DateOnly.FromDateTime(DateTime.UtcNow),
+                        Notes = "Primary branch assignment created with user."
+                    });
+                }
 
-            await _dbContext.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+                var profileError = await CreateProfileAsync(user, role, request, branchId, actorInfo.User.Id, cancellationToken);
+                if (profileError is not null)
+                {
+                    await transaction.RollbackAsync(cancellationToken);
+                    transactionFailure = UserManagementOperationResult<UserSummaryDto>.Failure(profileError);
+                    return;
+                }
+
+                await _dbContext.SaveChangesAsync(cancellationToken);
+                await transaction.CommitAsync(cancellationToken);
+            });
         }
         catch (DbUpdateException ex)
         {
-            await transaction.RollbackAsync(cancellationToken);
             _logger.LogWarning(ex, "Profile or assignment creation failed for {Email}.", user.Email);
             return UserManagementOperationResult<UserSummaryDto>.Failure("User profile or assignment could not be created. Check for duplicate employee/admission numbers.");
         }
+
+        if (transactionFailure is not null)
+            return transactionFailure;
 
         var warnings = new List<string>();
         if (request.SendActivationEmail)
@@ -588,6 +599,7 @@ public sealed class UserManagementService : IUserManagementService
         RoleDefinition role,
         CreateManagedUserRequest request,
         Guid? branchId,
+        Guid? createdByUserId,
         CancellationToken cancellationToken)
     {
         switch (role.ProfileKind)
@@ -596,11 +608,14 @@ public sealed class UserManagementService : IUserManagementService
                 if (!branchId.HasValue)
                     return "Teacher users require a branch.";
 
-                _dbContext.TeacherProfiles.Add(new TeacherProfile
+                var teacherJoiningDate = request.JoiningDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+                var teacherProfile = new TeacherProfile
                 {
+                    Id = Guid.NewGuid(),
                     TenantId = user.TenantId,
                     UserId = user.Id,
                     BranchId = branchId.Value,
+                    DepartmentId = request.DepartmentId,
                     EmployeeNumber = string.IsNullOrWhiteSpace(request.EmployeeNumber)
                         ? await NextTeacherEmployeeNumberAsync(user.TenantId, cancellationToken)
                         : request.EmployeeNumber.Trim(),
@@ -615,8 +630,27 @@ public sealed class UserManagementService : IUserManagementService
                     Qualifications = NormalizeOptional(request.Qualifications),
                     Specializations = NormalizeOptional(request.Specializations),
                     ExperienceYears = request.ExperienceYears,
-                    JoiningDate = request.JoiningDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                    JoiningDate = teacherJoiningDate,
                     Status = TeacherStatus.Active
+                };
+                _dbContext.TeacherProfiles.Add(teacherProfile);
+                _dbContext.TeacherLifecycleEvents.Add(new TeacherLifecycleEvent
+                {
+                    TenantId = user.TenantId,
+                    TeacherProfileId = teacherProfile.Id,
+                    BranchId = branchId.Value,
+                    EventType = TeacherLifecycleEventType.ProfileCreated,
+                    FromStatus = TeacherStatus.Active,
+                    ToStatus = TeacherStatus.Active,
+                    FromBranchId = branchId.Value,
+                    ToBranchId = branchId.Value,
+                    FromDepartmentId = request.DepartmentId,
+                    ToDepartmentId = request.DepartmentId,
+                    EffectiveOn = teacherJoiningDate,
+                    RecordedOn = DateTime.UtcNow,
+                    RecordedByUserId = createdByUserId == Guid.Empty ? null : createdByUserId,
+                    Reason = "Initial teacher profile created.",
+                    Notes = "Created through user management."
                 });
                 break;
 
@@ -624,8 +658,10 @@ public sealed class UserManagementService : IUserManagementService
                 if (!branchId.HasValue)
                     return "Student users require a branch.";
 
-                _dbContext.StudentProfiles.Add(new StudentProfile
+                var studentAdmissionDate = request.AdmissionDate ?? DateOnly.FromDateTime(DateTime.UtcNow);
+                var studentProfile = new StudentProfile
                 {
+                    Id = Guid.NewGuid(),
                     TenantId = user.TenantId,
                     UserId = user.Id,
                     BranchId = branchId.Value,
@@ -639,11 +675,28 @@ public sealed class UserManagementService : IUserManagementService
                     DateOfBirth = request.DateOfBirth ?? DateOnly.FromDateTime(DateTime.UtcNow.AddYears(-12)),
                     Gender = request.Gender,
                     BloodGroup = request.BloodGroup,
-                    AdmissionDate = request.AdmissionDate ?? DateOnly.FromDateTime(DateTime.UtcNow),
+                    AdmissionDate = studentAdmissionDate,
                     Email = user.Email,
                     PhoneNumber = user.PhoneNumber,
                     Address = NormalizeOptional(request.Address),
                     Status = StudentStatus.Active
+                };
+                _dbContext.StudentProfiles.Add(studentProfile);
+                _dbContext.StudentLifecycleEvents.Add(new StudentLifecycleEvent
+                {
+                    TenantId = user.TenantId,
+                    StudentProfileId = studentProfile.Id,
+                    BranchId = branchId.Value,
+                    EventType = StudentLifecycleEventType.ProfileCreated,
+                    FromStatus = StudentStatus.Active,
+                    ToStatus = StudentStatus.Active,
+                    FromBranchId = branchId.Value,
+                    ToBranchId = branchId.Value,
+                    EffectiveOn = studentAdmissionDate,
+                    RecordedOn = DateTime.UtcNow,
+                    RecordedByUserId = createdByUserId == Guid.Empty ? null : createdByUserId,
+                    Reason = "Initial student profile created.",
+                    Notes = "Created through user management."
                 });
                 break;
 

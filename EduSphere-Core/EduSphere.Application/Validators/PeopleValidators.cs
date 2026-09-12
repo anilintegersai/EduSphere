@@ -36,6 +36,7 @@ public class CreateTeacherProfileRequestValidator : AbstractValidator<CreateTeac
     public CreateTeacherProfileRequestValidator()
     {
         RuleFor(x => x.BranchId).NotEmpty();
+        RuleFor(x => x.DepartmentId).NotEmpty().When(x => x.DepartmentId.HasValue);
         RuleFor(x => x.EmployeeNumber).NotEmpty().MaximumLength(50);
         RuleFor(x => x.FirstName).NotEmpty().MaximumLength(100);
         RuleFor(x => x.MiddleName).MaximumLength(100);
@@ -55,6 +56,32 @@ public class CreateTeacherProfileRequestValidator : AbstractValidator<CreateTeac
 public class UpdateTeacherProfileRequestValidator : AbstractValidator<UpdateTeacherProfileRequest>
 {
     public UpdateTeacherProfileRequestValidator() => Include(new CreateTeacherProfileRequestValidator());
+}
+
+public class CreateStudentLifecycleEventRequestValidator : AbstractValidator<CreateStudentLifecycleEventRequest>
+{
+    public CreateStudentLifecycleEventRequestValidator()
+    {
+        RuleFor(x => x.StudentProfileId).NotEmpty();
+        RuleFor(x => x.EventType).IsInEnum();
+        RuleFor(x => x.ToStatus).IsInEnum();
+        RuleFor(x => x.EffectiveOn).NotEmpty();
+        RuleFor(x => x.Reason).MaximumLength(500);
+        RuleFor(x => x.Notes).MaximumLength(1000);
+    }
+}
+
+public class CreateTeacherLifecycleEventRequestValidator : AbstractValidator<CreateTeacherLifecycleEventRequest>
+{
+    public CreateTeacherLifecycleEventRequestValidator()
+    {
+        RuleFor(x => x.TeacherProfileId).NotEmpty();
+        RuleFor(x => x.EventType).IsInEnum();
+        RuleFor(x => x.ToStatus).IsInEnum();
+        RuleFor(x => x.EffectiveOn).NotEmpty();
+        RuleFor(x => x.Reason).MaximumLength(500);
+        RuleFor(x => x.Notes).MaximumLength(1000);
+    }
 }
 
 public class CreateStudentGuardianRequestValidator : AbstractValidator<CreateStudentGuardianRequest>

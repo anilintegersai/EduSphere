@@ -28,6 +28,7 @@ public class StudentsController : ApiControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITenantContext _tenantContext;
     private readonly IBranchAccessService _branchAccess;
+    private readonly IStudentTeacherLifecycleService _lifecycle;
 
     public StudentsController(
         ICrudService<StudentProfile> students,
@@ -35,7 +36,8 @@ public class StudentsController : ApiControllerBase
         ICrudService<Section> sections,
         UserManager<ApplicationUser> userManager,
         ITenantContext tenantContext,
-        IBranchAccessService branchAccess)
+        IBranchAccessService branchAccess,
+        IStudentTeacherLifecycleService lifecycle)
     {
         _students = students;
         _branches = branches;
@@ -43,6 +45,7 @@ public class StudentsController : ApiControllerBase
         _userManager = userManager;
         _tenantContext = tenantContext;
         _branchAccess = branchAccess;
+        _lifecycle = lifecycle;
     }
 
     [HttpGet]
@@ -83,6 +86,17 @@ public class StudentsController : ApiControllerBase
             return Forbid();
 
         var created = await _students.CreateAsync(Apply(new StudentProfile(), request));
+        await _lifecycle.RecordStudentEventAsync(User, new CreateStudentLifecycleEventRequest
+        {
+            StudentProfileId = created.Id,
+            EventType = StudentLifecycleEventType.ProfileCreated,
+            ToStatus = created.Status,
+            ToBranchId = created.BranchId,
+            ToSectionId = created.SectionId,
+            EffectiveOn = created.AdmissionDate,
+            Reason = "Initial student profile created.",
+            Notes = "Created through the student API."
+        });
         return StatusCode(StatusCodes.Status201Created, ApiResponse<StudentProfileDto>.Ok(Map(created)));
     }
 

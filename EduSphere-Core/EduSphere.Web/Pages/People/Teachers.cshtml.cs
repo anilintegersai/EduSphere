@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EduSphere.Application.DTOs.People;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
@@ -16,17 +17,23 @@ public class TeachersModel : PageModel
 {
     private readonly ICrudService<TeacherProfile> _teachers;
     private readonly ICrudService<Branch> _branches;
+    private readonly ICrudService<Department> _departments;
+    private readonly IStudentTeacherLifecycleService _lifecycle;
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
 
     public TeachersModel(
         ICrudService<TeacherProfile> teachers,
         ICrudService<Branch> branches,
+        ICrudService<Department> departments,
+        IStudentTeacherLifecycleService lifecycle,
         ITenantContext tenant,
         IBranchAccessService branchAccess)
     {
         _teachers = teachers;
         _branches = branches;
+        _departments = departments;
+        _lifecycle = lifecycle;
         _tenant = tenant;
         _branchAccess = branchAccess;
     }
@@ -34,16 +41,19 @@ public class TeachersModel : PageModel
     public bool HasTenant => _tenant.HasTenant;
     public IReadOnlyList<TeacherProfile> Items { get; private set; } = new List<TeacherProfile>();
     public IReadOnlyList<Branch> Branches { get; private set; } = new List<Branch>();
+    public IReadOnlyList<Department> Departments { get; private set; } = new List<Department>();
 
     [BindProperty] public InputModel Input { get; set; } = new();
     public bool IsEditing => Input.Id != Guid.Empty;
 
     public string BranchName(Guid id) => Branches.FirstOrDefault(b => b.Id == id)?.Name ?? "-";
+    public string DepartmentName(Guid? id) => Departments.FirstOrDefault(d => d.Id == id)?.Name ?? "-";
 
     public class InputModel
     {
         public Guid Id { get; set; }
         [Display(Name = "Branch"), Required] public Guid? BranchId { get; set; }
+        [Display(Name = "Department")] public Guid? DepartmentId { get; set; }
         [Required, StringLength(50), Display(Name = "Employee #")] public string EmployeeNumber { get; set; } = string.Empty;
         [Required, StringLength(100), Display(Name = "First name")] public string FirstName { get; set; } = string.Empty;
         [StringLength(100), Display(Name = "Middle name")] public string? MiddleName { get; set; }
@@ -78,6 +88,8 @@ public class TeachersModel : PageModel
             ModelState.AddModelError("Input.BranchId", "Selected branch was not found.");
         else if (!await CanUseBranchAsync(branchId))
             ModelState.AddModelError("Input.BranchId", "You can manage teachers only for your assigned branch.");
+        if (Input.DepartmentId is Guid departmentId && await _departments.GetAsync(departmentId) is null)
+            ModelState.AddModelError("Input.DepartmentId", "Selected department was not found.");
         if (Input.Id != Guid.Empty && await _teachers.GetAsync(Input.Id) is { } existing && !await CanUseBranchAsync(existing.BranchId))
             ModelState.AddModelError(string.Empty, "You can update teachers only in your assigned branch.");
 
@@ -88,9 +100,24 @@ public class TeachersModel : PageModel
         }
 
         if (Input.Id == Guid.Empty)
-            await _teachers.CreateAsync(Apply(new TeacherProfile(), branchId));
+        {
+            var created = await _teachers.CreateAsync(Apply(new TeacherProfile(), branchId));
+            await _lifecycle.RecordTeacherEventAsync(User, new CreateTeacherLifecycleEventRequest
+            {
+                TeacherProfileId = created.Id,
+                EventType = TeacherLifecycleEventType.ProfileCreated,
+                ToStatus = created.Status,
+                ToBranchId = created.BranchId,
+                ToDepartmentId = created.DepartmentId,
+                EffectiveOn = created.JoiningDate,
+                Reason = "Initial teacher profile created.",
+                Notes = "Created from the teacher directory."
+            });
+        }
         else
+        {
             await _teachers.UpdateAsync(Input.Id, e => Apply(e, branchId));
+        }
 
         return RedirectToPage();
     }
@@ -112,6 +139,7 @@ public class TeachersModel : PageModel
             .OrderBy(t => t.EmployeeNumber)
             .ToList();
         Branches = await _branchAccess.FilterBranchesAsync(User, await _branches.ListAsync());
+        Departments = (await _departments.ListAsync()).OrderBy(d => d.Name).ToList();
         if (_branchAccess.IsBranchAdminOnly(User) && assignedBranchId.HasValue && Input.BranchId is null)
             Input.BranchId = assignedBranchId.Value;
     }
@@ -121,6 +149,7 @@ public class TeachersModel : PageModel
     private TeacherProfile Apply(TeacherProfile entity, Guid branchId)
     {
         entity.BranchId = branchId;
+        entity.DepartmentId = Input.DepartmentId;
         entity.EmployeeNumber = Input.EmployeeNumber;
         entity.FirstName = Input.FirstName;
         entity.MiddleName = Input.MiddleName;
@@ -142,6 +171,7 @@ public class TeachersModel : PageModel
     {
         Id = e.Id,
         BranchId = e.BranchId,
+        DepartmentId = e.DepartmentId,
         EmployeeNumber = e.EmployeeNumber,
         FirstName = e.FirstName,
         MiddleName = e.MiddleName,

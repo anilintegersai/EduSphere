@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EduSphere.Application.DTOs.People;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
@@ -17,6 +18,7 @@ public class StudentsModel : PageModel
     private readonly ICrudService<StudentProfile> _students;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<Section> _sections;
+    private readonly IStudentTeacherLifecycleService _lifecycle;
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
 
@@ -24,12 +26,14 @@ public class StudentsModel : PageModel
         ICrudService<StudentProfile> students,
         ICrudService<Branch> branches,
         ICrudService<Section> sections,
+        IStudentTeacherLifecycleService lifecycle,
         ITenantContext tenant,
         IBranchAccessService branchAccess)
     {
         _students = students;
         _branches = branches;
         _sections = sections;
+        _lifecycle = lifecycle;
         _tenant = tenant;
         _branchAccess = branchAccess;
     }
@@ -98,9 +102,24 @@ public class StudentsModel : PageModel
         }
 
         if (Input.Id == Guid.Empty)
-            await _students.CreateAsync(Apply(new StudentProfile(), branchId));
+        {
+            var created = await _students.CreateAsync(Apply(new StudentProfile(), branchId));
+            await _lifecycle.RecordStudentEventAsync(User, new CreateStudentLifecycleEventRequest
+            {
+                StudentProfileId = created.Id,
+                EventType = StudentLifecycleEventType.ProfileCreated,
+                ToStatus = created.Status,
+                ToBranchId = created.BranchId,
+                ToSectionId = created.SectionId,
+                EffectiveOn = created.AdmissionDate,
+                Reason = "Initial student profile created.",
+                Notes = "Created from the student directory."
+            });
+        }
         else
+        {
             await _students.UpdateAsync(Input.Id, e => Apply(e, branchId));
+        }
 
         return RedirectToPage();
     }

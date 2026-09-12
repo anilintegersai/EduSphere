@@ -66,6 +66,7 @@ public class TeacherProfileDto : PeopleTenantScopedDto
 {
     public Guid? UserId { get; set; }
     public Guid BranchId { get; set; }
+    public Guid? DepartmentId { get; set; }
     public string EmployeeNumber { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string? MiddleName { get; set; }
@@ -86,6 +87,7 @@ public class CreateTeacherProfileRequest
 {
     public Guid? UserId { get; set; }
     public Guid BranchId { get; set; }
+    public Guid? DepartmentId { get; set; }
     public string EmployeeNumber { get; set; } = string.Empty;
     public string FirstName { get; set; } = string.Empty;
     public string? MiddleName { get; set; }
@@ -103,6 +105,99 @@ public class CreateTeacherProfileRequest
 }
 
 public class UpdateTeacherProfileRequest : CreateTeacherProfileRequest { }
+
+public class StudentLifecycleEventDto : PeopleTenantScopedDto
+{
+    public Guid StudentProfileId { get; set; }
+    public Guid BranchId { get; set; }
+    public StudentLifecycleEventType EventType { get; set; }
+    public StudentStatus FromStatus { get; set; }
+    public StudentStatus ToStatus { get; set; }
+    public Guid? FromBranchId { get; set; }
+    public Guid? ToBranchId { get; set; }
+    public Guid? FromAcademicYearId { get; set; }
+    public Guid? ToAcademicYearId { get; set; }
+    public Guid? FromCourseId { get; set; }
+    public Guid? ToCourseId { get; set; }
+    public Guid? FromBatchId { get; set; }
+    public Guid? ToBatchId { get; set; }
+    public Guid? FromSectionId { get; set; }
+    public Guid? ToSectionId { get; set; }
+    public DateOnly EffectiveOn { get; set; }
+    public DateTime RecordedOn { get; set; }
+    public Guid? RecordedByUserId { get; set; }
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CreateStudentLifecycleEventRequest
+{
+    public Guid StudentProfileId { get; set; }
+    public StudentLifecycleEventType EventType { get; set; } = StudentLifecycleEventType.Enrolled;
+    public StudentStatus ToStatus { get; set; } = StudentStatus.Active;
+    public Guid? ToBranchId { get; set; }
+    public Guid? ToAcademicYearId { get; set; }
+    public Guid? ToCourseId { get; set; }
+    public Guid? ToBatchId { get; set; }
+    public Guid? ToSectionId { get; set; }
+    public DateOnly EffectiveOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class TeacherLifecycleEventDto : PeopleTenantScopedDto
+{
+    public Guid TeacherProfileId { get; set; }
+    public Guid BranchId { get; set; }
+    public TeacherLifecycleEventType EventType { get; set; }
+    public TeacherStatus FromStatus { get; set; }
+    public TeacherStatus ToStatus { get; set; }
+    public Guid? FromBranchId { get; set; }
+    public Guid? ToBranchId { get; set; }
+    public Guid? FromDepartmentId { get; set; }
+    public Guid? ToDepartmentId { get; set; }
+    public DateOnly EffectiveOn { get; set; }
+    public DateTime RecordedOn { get; set; }
+    public Guid? RecordedByUserId { get; set; }
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CreateTeacherLifecycleEventRequest
+{
+    public Guid TeacherProfileId { get; set; }
+    public TeacherLifecycleEventType EventType { get; set; } = TeacherLifecycleEventType.Onboarded;
+    public TeacherStatus ToStatus { get; set; } = TeacherStatus.Active;
+    public Guid? ToBranchId { get; set; }
+    public Guid? ToDepartmentId { get; set; }
+    public DateOnly EffectiveOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class PeopleOperationResult
+{
+    public bool Succeeded { get; init; }
+    public string? Message { get; init; }
+    public IReadOnlyList<string> Errors { get; init; } = Array.Empty<string>();
+
+    public static PeopleOperationResult Success(string? message = null)
+        => new() { Succeeded = true, Message = message };
+
+    public static PeopleOperationResult Failure(params string[] errors)
+        => new() { Succeeded = false, Errors = errors };
+}
+
+public class PeopleOperationResult<T> : PeopleOperationResult
+{
+    public T? Data { get; init; }
+
+    public static PeopleOperationResult<T> Success(T data, string? message = null)
+        => new() { Succeeded = true, Data = data, Message = message };
+
+    public new static PeopleOperationResult<T> Failure(params string[] errors)
+        => new() { Succeeded = false, Errors = errors };
+}
 
 public class StudentGuardianDto : PeopleTenantScopedDto
 {

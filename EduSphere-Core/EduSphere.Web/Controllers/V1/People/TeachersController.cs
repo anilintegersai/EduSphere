@@ -24,22 +24,28 @@ public class TeachersController : ApiControllerBase
 {
     private readonly ICrudService<TeacherProfile> _teachers;
     private readonly ICrudService<Branch> _branches;
+    private readonly ICrudService<Department> _departments;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITenantContext _tenantContext;
     private readonly IBranchAccessService _branchAccess;
+    private readonly IStudentTeacherLifecycleService _lifecycle;
 
     public TeachersController(
         ICrudService<TeacherProfile> teachers,
         ICrudService<Branch> branches,
+        ICrudService<Department> departments,
         UserManager<ApplicationUser> userManager,
         ITenantContext tenantContext,
-        IBranchAccessService branchAccess)
+        IBranchAccessService branchAccess,
+        IStudentTeacherLifecycleService lifecycle)
     {
         _teachers = teachers;
         _branches = branches;
+        _departments = departments;
         _userManager = userManager;
         _tenantContext = tenantContext;
         _branchAccess = branchAccess;
+        _lifecycle = lifecycle;
     }
 
     [HttpGet]
@@ -76,6 +82,17 @@ public class TeachersController : ApiControllerBase
             return Forbid();
 
         var created = await _teachers.CreateAsync(Apply(new TeacherProfile(), request));
+        await _lifecycle.RecordTeacherEventAsync(User, new CreateTeacherLifecycleEventRequest
+        {
+            TeacherProfileId = created.Id,
+            EventType = TeacherLifecycleEventType.ProfileCreated,
+            ToStatus = created.Status,
+            ToBranchId = created.BranchId,
+            ToDepartmentId = created.DepartmentId,
+            EffectiveOn = created.JoiningDate,
+            Reason = "Initial teacher profile created.",
+            Notes = "Created through the teacher API."
+        });
         return StatusCode(StatusCodes.Status201Created, ApiResponse<TeacherProfileDto>.Ok(Map(created)));
     }
 
@@ -113,6 +130,9 @@ public class TeachersController : ApiControllerBase
         if (await _branches.GetAsync(request.BranchId) is null)
             return $"Branch {request.BranchId} was not found in this tenant.";
 
+        if (request.DepartmentId is Guid departmentId && await _departments.GetAsync(departmentId) is null)
+            return $"Department {departmentId} was not found in this tenant.";
+
         if (request.UserId is not Guid userId)
             return null;
 
@@ -130,6 +150,7 @@ public class TeachersController : ApiControllerBase
     {
         entity.UserId = request.UserId;
         entity.BranchId = request.BranchId;
+        entity.DepartmentId = request.DepartmentId;
         entity.EmployeeNumber = request.EmployeeNumber;
         entity.FirstName = request.FirstName;
         entity.MiddleName = request.MiddleName;
@@ -151,6 +172,7 @@ public class TeachersController : ApiControllerBase
     {
         UserId = e.UserId,
         BranchId = e.BranchId,
+        DepartmentId = e.DepartmentId,
         EmployeeNumber = e.EmployeeNumber,
         FirstName = e.FirstName,
         MiddleName = e.MiddleName,

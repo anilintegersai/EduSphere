@@ -39,8 +39,10 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     // Students / Teachers (Module 4)
     public DbSet<StudentProfile> StudentProfiles { get; set; }
     public DbSet<StudentGuardian> StudentGuardians { get; set; }
+    public DbSet<StudentLifecycleEvent> StudentLifecycleEvents { get; set; }
     public DbSet<TeacherProfile> TeacherProfiles { get; set; }
     public DbSet<TeacherSubjectAssignment> TeacherSubjectAssignments { get; set; }
+    public DbSet<TeacherLifecycleEvent> TeacherLifecycleEvents { get; set; }
     public DbSet<ProfileDocument> ProfileDocuments { get; set; }
     public DbSet<ParentProfile> ParentProfiles { get; set; }
     public DbSet<StaffProfile> StaffProfiles { get; set; }
@@ -296,6 +298,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(t => t.Branch).WithMany()
             .HasForeignKey(t => t.BranchId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<TeacherProfile>()
+            .HasOne(t => t.Department).WithMany()
+            .HasForeignKey(t => t.DepartmentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherProfile>()
             .Property(t => t.ExperienceYears)
             .HasPrecision(18, 2);
 
@@ -315,6 +320,68 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<TeacherSubjectAssignment>()
             .HasOne(a => a.Section).WithMany()
             .HasForeignKey(a => a.SectionId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.StudentProfile).WithMany(s => s.LifecycleEvents)
+            .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.FromBranch).WithMany()
+            .HasForeignKey(e => e.FromBranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.ToBranch).WithMany()
+            .HasForeignKey(e => e.ToBranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.FromAcademicYear).WithMany()
+            .HasForeignKey(e => e.FromAcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.ToAcademicYear).WithMany()
+            .HasForeignKey(e => e.ToAcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.FromCourse).WithMany()
+            .HasForeignKey(e => e.FromCourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.ToCourse).WithMany()
+            .HasForeignKey(e => e.ToCourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.FromBatch).WithMany()
+            .HasForeignKey(e => e.FromBatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.ToBatch).WithMany()
+            .HasForeignKey(e => e.ToBatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.FromSection).WithMany()
+            .HasForeignKey(e => e.FromSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.ToSection).WithMany()
+            .HasForeignKey(e => e.ToSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentLifecycleEvent>()
+            .HasOne(e => e.RecordedByUser).WithMany()
+            .HasForeignKey(e => e.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.TeacherProfile).WithMany(t => t.LifecycleEvents)
+            .HasForeignKey(e => e.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.FromBranch).WithMany()
+            .HasForeignKey(e => e.FromBranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.ToBranch).WithMany()
+            .HasForeignKey(e => e.ToBranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.FromDepartment).WithMany()
+            .HasForeignKey(e => e.FromDepartmentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.ToDepartment).WithMany()
+            .HasForeignKey(e => e.ToDepartmentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLifecycleEvent>()
+            .HasOne(e => e.RecordedByUser).WithMany()
+            .HasForeignKey(e => e.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<ParentProfile>()
             .HasOne(p => p.User).WithMany()
@@ -373,6 +440,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
         modelBuilder.Entity<TeacherProfile>().HasIndex(t => new { t.TenantId, t.EmployeeNumber }).IsUnique();
         modelBuilder.Entity<TeacherProfile>().HasIndex(t => t.BranchId);
+        modelBuilder.Entity<TeacherProfile>().HasIndex(t => t.DepartmentId);
         modelBuilder.Entity<TeacherProfile>().HasIndex(t => t.UserId);
 
         modelBuilder.Entity<StudentGuardian>().HasIndex(g => g.StudentProfileId);
@@ -381,6 +449,14 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.TeacherProfileId);
         modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.SubjectId);
         modelBuilder.Entity<TeacherSubjectAssignment>().HasIndex(a => a.SectionId);
+
+        modelBuilder.Entity<StudentLifecycleEvent>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.EffectiveOn });
+        modelBuilder.Entity<StudentLifecycleEvent>().HasIndex(e => new { e.TenantId, e.BranchId, e.EventType, e.EffectiveOn });
+        modelBuilder.Entity<StudentLifecycleEvent>().HasIndex(e => e.ToSectionId);
+
+        modelBuilder.Entity<TeacherLifecycleEvent>().HasIndex(e => new { e.TenantId, e.TeacherProfileId, e.EffectiveOn });
+        modelBuilder.Entity<TeacherLifecycleEvent>().HasIndex(e => new { e.TenantId, e.BranchId, e.EventType, e.EffectiveOn });
+        modelBuilder.Entity<TeacherLifecycleEvent>().HasIndex(e => e.ToDepartmentId);
 
         modelBuilder.Entity<ProfileDocument>().HasIndex(d => new { d.OwnerType, d.OwnerId });
 

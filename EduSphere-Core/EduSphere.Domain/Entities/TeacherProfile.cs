@@ -12,6 +12,9 @@ public class TeacherProfile : TenantEntityBase
     public Guid BranchId { get; set; }
     public Branch? Branch { get; set; }
 
+    public Guid? DepartmentId { get; set; }
+    public Department? Department { get; set; }
+
     [Required]
     [StringLength(50)]
     public string EmployeeNumber { get; set; } = null!;
@@ -50,4 +53,5 @@ public class TeacherProfile : TenantEntityBase
     public TeacherStatus Status { get; set; } = TeacherStatus.Active;
 
     public ICollection<TeacherSubjectAssignment> SubjectAssignments { get; set; } = new List<TeacherSubjectAssignment>();
+    public ICollection<TeacherLifecycleEvent> LifecycleEvents { get; set; } = new List<TeacherLifecycleEvent>();
 }

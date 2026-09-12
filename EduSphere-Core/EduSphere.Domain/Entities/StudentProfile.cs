@@ -56,4 +56,5 @@ public class StudentProfile : TenantEntityBase
     public StudentStatus Status { get; set; } = StudentStatus.Active;
 
     public ICollection<StudentGuardian> Guardians { get; set; } = new List<StudentGuardian>();
+    public ICollection<StudentLifecycleEvent> LifecycleEvents { get; set; } = new List<StudentLifecycleEvent>();
 }

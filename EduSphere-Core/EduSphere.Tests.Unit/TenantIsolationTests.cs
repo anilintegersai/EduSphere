@@ -266,17 +266,39 @@ public class TenantIsolationTests
             FileName = "student-id.pdf",
             StoragePath = "students/student-id.pdf"
         });
+        db.StudentLifecycleEvents.Add(new StudentLifecycleEvent
+        {
+            StudentProfileId = Guid.NewGuid(),
+            BranchId = Guid.NewGuid(),
+            EventType = StudentLifecycleEventType.ProfileCreated,
+            FromStatus = StudentStatus.Active,
+            ToStatus = StudentStatus.Active
+        });
+        db.TeacherLifecycleEvents.Add(new TeacherLifecycleEvent
+        {
+            TeacherProfileId = Guid.NewGuid(),
+            BranchId = Guid.NewGuid(),
+            EventType = TeacherLifecycleEventType.ProfileCreated,
+            FromStatus = TeacherStatus.Active,
+            ToStatus = TeacherStatus.Active
+        });
         db.SaveChanges();
 
         Assert.Single(db.StudentGuardians.ToList());
         Assert.Single(db.TeacherSubjectAssignments.ToList());
         Assert.Single(db.ProfileDocuments.ToList());
+        Assert.Single(db.StudentLifecycleEvents.ToList());
+        Assert.Single(db.TeacherLifecycleEvents.ToList());
         Assert.All(db.ProfileDocuments.ToList(), d => Assert.Equal(Tenant1Id, d.TenantId));
+        Assert.All(db.StudentLifecycleEvents.ToList(), e => Assert.Equal(Tenant1Id, e.TenantId));
+        Assert.All(db.TeacherLifecycleEvents.ToList(), e => Assert.Equal(Tenant1Id, e.TenantId));
 
         using var noTenantDb = NewDb(dbName, new TenantContext());
         Assert.Empty(noTenantDb.StudentGuardians.ToList());
         Assert.Empty(noTenantDb.TeacherSubjectAssignments.ToList());
         Assert.Empty(noTenantDb.ProfileDocuments.ToList());
+        Assert.Empty(noTenantDb.StudentLifecycleEvents.ToList());
+        Assert.Empty(noTenantDb.TeacherLifecycleEvents.ToList());
     }
 
     [Fact]

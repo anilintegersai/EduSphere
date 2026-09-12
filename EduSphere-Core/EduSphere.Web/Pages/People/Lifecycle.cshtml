@@ -1,0 +1,256 @@
+@page
+@model EduSphere.Web.Pages.People.LifecycleModel
+@{
+    ViewData["Title"] = "People Lifecycle";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">People registry</span>
+        <h1>Student & Teacher Lifecycle</h1>
+        <p>Record promotions, transfers, withdrawals, confirmations, leave movements, and exit events with an auditable timeline.</p>
+    </div>
+    @if (Model.HasTenant)
+    {
+        <span class="count-pill">@(Model.StudentEvents.Count + Model.TeacherEvents.Count) recent events</span>
+    }
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant from the switcher in the top bar first.</div>
+}
+else
+{
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+    {
+        <div class="alert alert-success">@Model.StatusMessage</div>
+    }
+
+    @if (!ViewData.ModelState.IsValid)
+    {
+        <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
+    }
+
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-6">
+            <div class="card form-card">
+                <div class="card-header"><span>Student action</span><span class="stage-tag">Lifecycle</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Student">
+                        <div class="row g-2">
+                            <div class="col-md-12">
+                                <label asp-for="StudentInput.StudentProfileId" class="form-label"></label>
+                                <select asp-for="StudentInput.StudentProfileId" class="form-select">
+                                    <option value="">Select student</option>
+                                    @foreach (var student in Model.Students)
+                                    {
+                                        <option value="@student.Id">@student.AdmissionNumber - @student.FirstName @student.LastName</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="StudentInput.StudentProfileId" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.EventType" class="form-label"></label>
+                                <select asp-for="StudentInput.EventType" asp-items="Html.GetEnumSelectList<StudentLifecycleEventType>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.ToStatus" class="form-label"></label>
+                                <select asp-for="StudentInput.ToStatus" asp-items="Html.GetEnumSelectList<StudentStatus>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.ToBranchId" class="form-label"></label>
+                                <select asp-for="StudentInput.ToBranchId" class="form-select">
+                                    <option value="">Keep current branch</option>
+                                    @foreach (var branch in Model.Branches)
+                                    {
+                                        <option value="@branch.Id">@branch.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.ToAcademicYearId" class="form-label"></label>
+                                <select asp-for="StudentInput.ToAcademicYearId" class="form-select">
+                                    <option value="">Keep current year</option>
+                                    @foreach (var year in Model.AcademicYears)
+                                    {
+                                        <option value="@year.Id">@year.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.ToCourseId" class="form-label"></label>
+                                <select asp-for="StudentInput.ToCourseId" class="form-select">
+                                    <option value="">Keep current course</option>
+                                    @foreach (var course in Model.Courses)
+                                    {
+                                        <option value="@course.Id">@course.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.ToBatchId" class="form-label"></label>
+                                <select asp-for="StudentInput.ToBatchId" class="form-select">
+                                    <option value="">Keep current batch</option>
+                                    @foreach (var batch in Model.Batches)
+                                    {
+                                        <option value="@batch.Id">@batch.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.ToSectionId" class="form-label"></label>
+                                <select asp-for="StudentInput.ToSectionId" class="form-select">
+                                    <option value="">Keep current section</option>
+                                    @foreach (var classSection in Model.Sections)
+                                    {
+                                        <option value="@classSection.Id">@classSection.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="StudentInput.EffectiveOn" class="form-label"></label>
+                                <input asp-for="StudentInput.EffectiveOn" type="date" class="form-control" />
+                                <span asp-validation-for="StudentInput.EffectiveOn" class="text-danger small"></span>
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="StudentInput.Reason" class="form-label"></label>
+                                <input asp-for="StudentInput.Reason" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="StudentInput.Notes" class="form-label"></label>
+                                <textarea asp-for="StudentInput.Notes" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">Record student event</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card form-card">
+                <div class="card-header"><span>Teacher action</span><span class="stage-tag">Lifecycle</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="Teacher">
+                        <div class="row g-2">
+                            <div class="col-md-12">
+                                <label asp-for="TeacherInput.TeacherProfileId" class="form-label"></label>
+                                <select asp-for="TeacherInput.TeacherProfileId" class="form-select">
+                                    <option value="">Select teacher</option>
+                                    @foreach (var teacher in Model.Teachers)
+                                    {
+                                        <option value="@teacher.Id">@teacher.EmployeeNumber - @teacher.FirstName @teacher.LastName</option>
+                                    }
+                                </select>
+                                <span asp-validation-for="TeacherInput.TeacherProfileId" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TeacherInput.EventType" class="form-label"></label>
+                                <select asp-for="TeacherInput.EventType" asp-items="Html.GetEnumSelectList<TeacherLifecycleEventType>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TeacherInput.ToStatus" class="form-label"></label>
+                                <select asp-for="TeacherInput.ToStatus" asp-items="Html.GetEnumSelectList<TeacherStatus>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TeacherInput.ToBranchId" class="form-label"></label>
+                                <select asp-for="TeacherInput.ToBranchId" class="form-select">
+                                    <option value="">Keep current branch</option>
+                                    @foreach (var branch in Model.Branches)
+                                    {
+                                        <option value="@branch.Id">@branch.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TeacherInput.ToDepartmentId" class="form-label"></label>
+                                <select asp-for="TeacherInput.ToDepartmentId" class="form-select">
+                                    <option value="">Keep current department</option>
+                                    @foreach (var department in Model.Departments)
+                                    {
+                                        <option value="@department.Id">@department.Name</option>
+                                    }
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TeacherInput.EffectiveOn" class="form-label"></label>
+                                <input asp-for="TeacherInput.EffectiveOn" type="date" class="form-control" />
+                                <span asp-validation-for="TeacherInput.EffectiveOn" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="TeacherInput.Reason" class="form-label"></label>
+                                <input asp-for="TeacherInput.Reason" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="TeacherInput.Notes" class="form-label"></label>
+                                <textarea asp-for="TeacherInput.Notes" class="form-control" rows="2"></textarea>
+                            </div>
+                        </div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-primary">Record teacher event</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card data-card">
+                <div class="card-header"><span>Student timeline</span><span class="count-pill">@Model.StudentEvents.Count events</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Date</th><th>Student</th><th>Action</th><th>Status</th><th>Placement</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.StudentEvents)
+                        {
+                            <tr>
+                                <td>@item.EffectiveOn</td>
+                                <td>@Model.StudentName(item.StudentProfileId)</td>
+                                <td><span class="stage-tag">@item.EventType</span></td>
+                                <td>@item.FromStatus &rarr; @item.ToStatus</td>
+                                <td>@Model.BranchName(item.ToBranchId) / @Model.SectionName(item.ToSectionId)</td>
+                            </tr>
+                        }
+                        @if (Model.StudentEvents.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center empty-state">No student lifecycle events yet.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-6">
+            <div class="card data-card">
+                <div class="card-header"><span>Teacher timeline</span><span class="count-pill">@Model.TeacherEvents.Count events</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Date</th><th>Teacher</th><th>Action</th><th>Status</th><th>Assignment</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.TeacherEvents)
+                        {
+                            <tr>
+                                <td>@item.EffectiveOn</td>
+                                <td>@Model.TeacherName(item.TeacherProfileId)</td>
+                                <td><span class="stage-tag">@item.EventType</span></td>
+                                <td>@item.FromStatus &rarr; @item.ToStatus</td>
+                                <td>@Model.BranchName(item.ToBranchId) / @Model.DepartmentName(item.ToDepartmentId)</td>
+                            </tr>
+                        }
+                        @if (Model.TeacherEvents.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center empty-state">No teacher lifecycle events yet.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+}
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }
