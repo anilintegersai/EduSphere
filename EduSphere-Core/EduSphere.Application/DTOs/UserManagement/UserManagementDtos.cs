@@ -94,8 +94,10 @@ public class BulkUserImportRequest
 public class BulkUserImportResult
 {
     public int TotalRows { get; set; }
+    public int ValidRows { get; set; }
     public int CreatedRows { get; set; }
     public int FailedRows { get; set; }
+    public bool IsPreview { get; set; }
     public List<BulkUserImportRowResult> Rows { get; set; } = new();
 }
 
@@ -103,8 +105,49 @@ public class BulkUserImportRowResult
 {
     public int RowNumber { get; set; }
     public string Email { get; set; } = string.Empty;
+    public string RoleName { get; set; } = string.Empty;
+    public string? BranchName { get; set; }
     public bool Succeeded { get; set; }
     public string Message { get; set; } = string.Empty;
+}
+
+public class UserInvitationDto
+{
+    public Guid Id { get; set; }
+    public Guid UserId { get; set; }
+    public string Email { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public Guid? BranchId { get; set; }
+    public string? BranchName { get; set; }
+    public string RoleName { get; set; } = string.Empty;
+    public UserInvitationStatus Status { get; set; }
+    public DateTime ExpiresOn { get; set; }
+    public DateTime? AcceptedOn { get; set; }
+    public DateTime? LastSentOn { get; set; }
+    public int SendAttempts { get; set; }
+    public string? InvitedByName { get; set; }
+    public string? LastSendError { get; set; }
+    public DateTime CreatedOn { get; set; }
+    public DateTime? ModifiedOn { get; set; }
+}
+
+public class UserAuditEventDto
+{
+    public DateTime OccurredOn { get; set; }
+    public string EventType { get; set; } = string.Empty;
+    public string UserEmail { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
+    public string? RoleName { get; set; }
+    public string? BranchName { get; set; }
+    public string? ActorName { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class EmailDeliveryTestRequest
+{
+    public Guid? TenantId { get; set; }
+    public Guid? BranchId { get; set; }
+    public string DestinationEmail { get; set; } = string.Empty;
 }
 
 public class ForgotPasswordRequest

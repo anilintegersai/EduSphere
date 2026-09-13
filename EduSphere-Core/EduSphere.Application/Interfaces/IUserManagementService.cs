@@ -24,6 +24,21 @@ public interface IUserManagementService
         BulkUserImportRequest request,
         CancellationToken cancellationToken = default);
 
+    Task<UserManagementOperationResult<BulkUserImportResult>> PreviewBulkImportUsersAsync(
+        ClaimsPrincipal actor,
+        BulkUserImportRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<UserInvitationDto>> ListInvitationsAsync(
+        ClaimsPrincipal actor,
+        UserManagementQuery query,
+        CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<UserAuditEventDto>> ListAuditEventsAsync(
+        ClaimsPrincipal actor,
+        UserManagementQuery query,
+        CancellationToken cancellationToken = default);
+
     Task<UserManagementOperationResult> SetUserActiveAsync(
         ClaimsPrincipal actor,
         Guid userId,
@@ -33,6 +48,22 @@ public interface IUserManagementService
     Task<UserManagementOperationResult> ResendActivationAsync(
         ClaimsPrincipal actor,
         Guid userId,
+        CancellationToken cancellationToken = default);
+
+    Task<UserManagementOperationResult> ExpireInvitationAsync(
+        ClaimsPrincipal actor,
+        Guid invitationId,
+        CancellationToken cancellationToken = default);
+
+    Task<UserManagementOperationResult> ExtendInvitationAsync(
+        ClaimsPrincipal actor,
+        Guid invitationId,
+        int days,
+        CancellationToken cancellationToken = default);
+
+    Task<UserManagementOperationResult> SendEmailDeliveryTestAsync(
+        ClaimsPrincipal actor,
+        EmailDeliveryTestRequest request,
         CancellationToken cancellationToken = default);
 
     Task<UserManagementOperationResult> ActivateAccountAsync(

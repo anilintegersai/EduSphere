@@ -217,6 +217,7 @@ builder.Services.AddSwaggerGen(options =>
 var app = builder.Build();
 
 await app.Services.ApplyDatabaseMigrationStrategyAsync();
+await app.Services.ApplyConfiguredAccountEmailProviderAsync();
 
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())

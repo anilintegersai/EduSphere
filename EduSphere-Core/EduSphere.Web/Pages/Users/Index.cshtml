@@ -202,7 +202,76 @@
                         <input asp-for="BulkInput.SendActivationEmail" class="form-check-input" />
                         <label asp-for="BulkInput.SendActivationEmail" class="form-check-label">Send activation emails</label>
                     </div>
-                    <button type="submit" class="btn btn-outline-primary mt-3">Import users</button>
+                    <div class="form-actions mt-3">
+                        <button type="submit" formaction="?handler=PreviewBulkImport" class="btn btn-outline-secondary">Preview validation</button>
+                        <button type="submit" class="btn btn-outline-primary">Import users</button>
+                    </div>
+                </form>
+                @if (Model.BulkPreview is not null)
+                {
+                    <div class="mt-4">
+                        <div class="d-flex flex-wrap gap-2 mb-2">
+                            <span class="count-pill">@Model.BulkPreview.ValidRows ready</span>
+                            <span class="count-pill">@Model.BulkPreview.FailedRows issues</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm align-middle">
+                                <thead><tr><th>Row</th><th>Email</th><th>Role</th><th>Branch</th><th>Status</th></tr></thead>
+                                <tbody>
+                                @foreach (var row in Model.BulkPreview.Rows)
+                                {
+                                    <tr>
+                                        <td>@row.RowNumber</td>
+                                        <td>@row.Email</td>
+                                        <td>@(row.RoleName ?? "-")</td>
+                                        <td>@(row.BranchName ?? "-")</td>
+                                        <td><span class="badge @(row.Succeeded ? "text-bg-success" : "text-bg-danger")">@row.Message</span></td>
+                                    </tr>
+                                }
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                }
+            </div>
+        </div>
+
+        <div class="card form-card mt-4">
+            <div class="card-header"><span>Email delivery</span><span class="stage-tag">SMTP</span></div>
+            <div class="card-body">
+                <form method="post" asp-page-handler="SendEmailTest">
+                    @if (Model.IsSuperAdmin)
+                    {
+                        <div class="mb-3">
+                            <label asp-for="EmailTestInput.TenantId" class="form-label">Tenant</label>
+                            <select asp-for="EmailTestInput.TenantId" class="form-select">
+                                <option value="">Select tenant</option>
+                                @foreach (var tenant in Model.Tenants)
+                                {
+                                    <option value="@tenant.Id">@tenant.Name</option>
+                                }
+                            </select>
+                        </div>
+                    }
+                    else
+                    {
+                        <input type="hidden" asp-for="EmailTestInput.TenantId" />
+                    }
+                    <div class="mb-3">
+                        <label asp-for="EmailTestInput.BranchId" class="form-label">Branch</label>
+                        <select asp-for="EmailTestInput.BranchId" class="form-select">
+                            <option value="">Tenant provider</option>
+                            @foreach (var branch in Model.Branches)
+                            {
+                                <option value="@branch.Id">@branch.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label asp-for="EmailTestInput.DestinationEmail" class="form-label">Send test to</label>
+                        <input asp-for="EmailTestInput.DestinationEmail" class="form-control" placeholder="name@example.com" />
+                    </div>
+                    <button type="submit" class="btn btn-outline-primary">Send SMTP test</button>
                 </form>
             </div>
         </div>
@@ -312,6 +381,104 @@
                     @if (Model.Items.Count == 0)
                     {
                         <tr><td colspan="7" class="text-center empty-state">No users found.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card data-card mt-4">
+            <div class="card-header">
+                <span>Activation Invitations</span>
+                <span class="count-pill">@Model.Invitations.Count records</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Branch</th>
+                            <th>Status</th>
+                            <th>Expiry</th>
+                            <th>Attempts</th>
+                            <th class="text-end">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var invitation in Model.Invitations)
+                    {
+                        <tr>
+                            <td>
+                                <div class="fw-semibold">@invitation.UserName</div>
+                                <div class="text-muted small">@invitation.Email</div>
+                            </td>
+                            <td>@invitation.RoleName</td>
+                            <td>@(invitation.BranchName ?? "Tenant")</td>
+                            <td><span class="badge @(invitation.Status == UserInvitationStatus.Pending ? "text-bg-warning" : "text-bg-secondary")">@invitation.Status</span></td>
+                            <td>@invitation.ExpiresOn.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                            <td>@invitation.SendAttempts</td>
+                            <td class="text-end">
+                                @if (invitation.Status == UserInvitationStatus.Pending)
+                                {
+                                    <span class="action-stack">
+                                        <form method="post" asp-page-handler="ExtendInvitation" asp-route-id="@invitation.Id" asp-route-days="7" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-secondary">Extend</button>
+                                        </form>
+                                        <form method="post" asp-page-handler="ExpireInvitation" asp-route-id="@invitation.Id" class="d-inline">
+                                            <button type="submit" class="btn btn-sm btn-outline-danger">Expire</button>
+                                        </form>
+                                    </span>
+                                }
+                            </td>
+                        </tr>
+                    }
+                    @if (Model.Invitations.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center empty-state">No invitations found.</td></tr>
+                    }
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="card data-card mt-4">
+            <div class="card-header">
+                <span>User Audit History</span>
+                <span class="count-pill">@Model.AuditEvents.Count events</span>
+            </div>
+            <div class="table-responsive">
+                <table class="table table-hover align-middle mb-0">
+                    <thead>
+                        <tr>
+                            <th>When</th>
+                            <th>Event</th>
+                            <th>User</th>
+                            <th>Role</th>
+                            <th>Branch</th>
+                            <th>Actor</th>
+                            <th>Notes</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    @foreach (var item in Model.AuditEvents)
+                    {
+                        <tr>
+                            <td>@item.OccurredOn.ToLocalTime().ToString("dd MMM yyyy HH:mm")</td>
+                            <td><span class="stage-tag">@item.EventType</span></td>
+                            <td>
+                                <div class="fw-semibold">@item.UserName</div>
+                                <div class="text-muted small">@item.UserEmail</div>
+                            </td>
+                            <td>@(item.RoleName ?? "-")</td>
+                            <td>@(item.BranchName ?? "Tenant")</td>
+                            <td>@(item.ActorName ?? "-")</td>
+                            <td>@(item.Notes ?? "-")</td>
+                        </tr>
+                    }
+                    @if (Model.AuditEvents.Count == 0)
+                    {
+                        <tr><td colspan="7" class="text-center empty-state">No audit events found.</td></tr>
                     }
                     </tbody>
                 </table>

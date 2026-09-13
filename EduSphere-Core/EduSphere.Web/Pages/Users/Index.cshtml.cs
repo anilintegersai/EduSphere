@@ -43,11 +43,17 @@ public class IndexModel : PageModel
     [BindProperty]
     public BulkUserImportRequest BulkInput { get; set; } = new();
 
+    [BindProperty]
+    public EmailDeliveryTestRequest EmailTestInput { get; set; } = new();
+
     public IReadOnlyList<UserSummaryDto> Items { get; private set; } = new List<UserSummaryDto>();
+    public IReadOnlyList<UserInvitationDto> Invitations { get; private set; } = new List<UserInvitationDto>();
+    public IReadOnlyList<UserAuditEventDto> AuditEvents { get; private set; } = new List<UserAuditEventDto>();
     public IReadOnlyList<RoleOptionDto> AssignableRoles { get; private set; } = new List<RoleOptionDto>();
     public IReadOnlyList<TenantOption> Tenants { get; private set; } = new List<TenantOption>();
     public IReadOnlyList<BranchOption> Branches { get; private set; } = new List<BranchOption>();
     public IReadOnlyList<DepartmentOption> Departments { get; private set; } = new List<DepartmentOption>();
+    public BulkUserImportResult? BulkPreview { get; private set; }
     public string? StatusMessage { get; private set; }
     public IReadOnlyList<string> Warnings { get; private set; } = Array.Empty<string>();
     public bool IsSuperAdmin => User.IsInRole(Roles.SuperAdmin);
@@ -112,6 +118,29 @@ public class IndexModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostPreviewBulkImportAsync(CancellationToken cancellationToken)
+    {
+        KeepOnlyModelStateFor(nameof(BulkInput));
+        if (!ModelState.IsValid)
+        {
+            await LoadAsync(cancellationToken);
+            return Page();
+        }
+
+        var result = await _users.PreviewBulkImportUsersAsync(User, BulkInput, cancellationToken);
+        if (!result.Succeeded)
+            AddErrors(result.Errors);
+        else
+        {
+            BulkPreview = result.Data;
+            StatusMessage = result.Message;
+        }
+
+        Warnings = result.Warnings;
+        await LoadAsync(cancellationToken);
+        return Page();
+    }
+
     public async Task<IActionResult> OnPostSetStatusAsync(Guid id, bool isActive, CancellationToken cancellationToken)
     {
         ModelState.Clear();
@@ -140,6 +169,54 @@ public class IndexModel : PageModel
         return Page();
     }
 
+    public async Task<IActionResult> OnPostExpireInvitationAsync(Guid id, CancellationToken cancellationToken)
+    {
+        ModelState.Clear();
+        var result = await _users.ExpireInvitationAsync(User, id, cancellationToken);
+        if (!result.Succeeded)
+            AddErrors(result.Errors);
+        else
+            StatusMessage = result.Message;
+
+        Warnings = result.Warnings;
+        await LoadAsync(cancellationToken);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostExtendInvitationAsync(Guid id, int days = 7, CancellationToken cancellationToken = default)
+    {
+        ModelState.Clear();
+        var result = await _users.ExtendInvitationAsync(User, id, days, cancellationToken);
+        if (!result.Succeeded)
+            AddErrors(result.Errors);
+        else
+            StatusMessage = result.Message;
+
+        Warnings = result.Warnings;
+        await LoadAsync(cancellationToken);
+        return Page();
+    }
+
+    public async Task<IActionResult> OnPostSendEmailTestAsync(CancellationToken cancellationToken)
+    {
+        KeepOnlyModelStateFor(nameof(EmailTestInput));
+        if (!ModelState.IsValid)
+        {
+            await LoadAsync(cancellationToken);
+            return Page();
+        }
+
+        var result = await _users.SendEmailDeliveryTestAsync(User, EmailTestInput, cancellationToken);
+        if (!result.Succeeded)
+            AddErrors(result.Errors);
+        else
+            StatusMessage = result.Message;
+
+        Warnings = result.Warnings;
+        await LoadAsync(cancellationToken);
+        return Page();
+    }
+
     public string RoleText(UserSummaryDto user)
         => user.Roles.Count == 0 ? "-" : string.Join(", ", user.Roles);
 
@@ -149,6 +226,8 @@ public class IndexModel : PageModel
 
         AssignableRoles = await _users.GetAssignableRolesAsync(User, cancellationToken);
         Items = await _users.ListUsersAsync(User, Query, cancellationToken);
+        Invitations = await _users.ListInvitationsAsync(User, Query, cancellationToken);
+        AuditEvents = await _users.ListAuditEventsAsync(User, Query, cancellationToken);
         Tenants = IsSuperAdmin
             ? await _dbContext.Tenants
                 .IgnoreQueryFilters()
@@ -185,6 +264,9 @@ public class IndexModel : PageModel
 
         if (BulkInput.BranchId is null && Branches.Count == 1)
             BulkInput.BranchId = Branches[0].Id;
+
+        EmailTestInput.TenantId ??= CreateInput.TenantId ?? BulkInput.TenantId ?? Query.TenantId ?? _tenantContext.TenantId;
+        EmailTestInput.BranchId ??= CreateInput.BranchId ?? BulkInput.BranchId ?? Query.BranchId;
 
         if (string.IsNullOrWhiteSpace(CreateInput.RoleName) && AssignableRoles.Count > 0 && !HttpMethods.IsPost(Request.Method))
             CreateInput.RoleName = AssignableRoles[0].RoleName;

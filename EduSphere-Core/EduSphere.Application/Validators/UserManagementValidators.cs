@@ -46,6 +46,14 @@ public class ForgotPasswordRequestValidator : AbstractValidator<ForgotPasswordRe
     }
 }
 
+public class EmailDeliveryTestRequestValidator : AbstractValidator<EmailDeliveryTestRequest>
+{
+    public EmailDeliveryTestRequestValidator()
+    {
+        RuleFor(x => x.DestinationEmail).EmailAddress().When(x => !string.IsNullOrWhiteSpace(x.DestinationEmail)).MaximumLength(150);
+    }
+}
+
 public class ResetPasswordRequestValidator : AbstractValidator<ResetPasswordRequest>
 {
     public ResetPasswordRequestValidator()

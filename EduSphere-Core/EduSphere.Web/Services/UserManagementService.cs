@@ -1,3 +1,4 @@
+using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
@@ -367,11 +368,13 @@ public sealed class UserManagementService : IUserManagementService
             var created = await CreateUserAsync(actor, createRequest, cancellationToken);
             if (created.Succeeded)
             {
+                result.ValidRows++;
                 result.CreatedRows++;
                 result.Rows.Add(new BulkUserImportRowResult
                 {
                     RowNumber = rowNumber,
                     Email = createRequest.Email,
+                    RoleName = createRequest.RoleName,
                     Succeeded = true,
                     Message = created.Warnings.Count == 0
                         ? "Created."
@@ -385,6 +388,7 @@ public sealed class UserManagementService : IUserManagementService
                 {
                     RowNumber = rowNumber,
                     Email = createRequest.Email,
+                    RoleName = createRequest.RoleName,
                     Message = string.Join(" ", created.Errors)
                 });
             }
@@ -393,6 +397,226 @@ public sealed class UserManagementService : IUserManagementService
         return UserManagementOperationResult<BulkUserImportResult>.Success(
             result,
             $"Bulk import finished: {result.CreatedRows} created, {result.FailedRows} failed.");
+    }
+
+    public async Task<UserManagementOperationResult<BulkUserImportResult>> PreviewBulkImportUsersAsync(
+        ClaimsPrincipal actor,
+        BulkUserImportRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var result = new BulkUserImportResult { IsPreview = true };
+        var lines = request.CsvText
+            .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .ToList();
+
+        if (lines.Count == 0)
+            return UserManagementOperationResult<BulkUserImportResult>.Failure("CSV text did not contain any rows.");
+
+        var actorInfo = await ResolveActorAsync(actor);
+        if (actorInfo is null)
+            return UserManagementOperationResult<BulkUserImportResult>.Failure("Only authenticated administrators can preview imports.");
+
+        var startIndex = LooksLikeHeader(lines[0]) ? 1 : 0;
+        var seenEmails = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        for (var i = startIndex; i < lines.Count; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var rowNumber = i + 1;
+            var fields = SplitCsvLine(lines[i]);
+            result.TotalRows++;
+
+            if (fields.Count < 3)
+            {
+                result.FailedRows++;
+                result.Rows.Add(new BulkUserImportRowResult { RowNumber = rowNumber, Message = "Expected at least email, first name and last name." });
+                continue;
+            }
+
+            var candidate = await BuildBulkCreateRequestAsync(request, fields, cancellationToken);
+            var errors = await ValidateCreateCandidateAsync(actor, actorInfo, candidate, seenEmails, cancellationToken);
+            var branchName = await ResolveBranchNameAsync(candidate.BranchId, cancellationToken);
+            if (errors.Count == 0)
+            {
+                result.ValidRows++;
+                result.Rows.Add(new BulkUserImportRowResult
+                {
+                    RowNumber = rowNumber,
+                    Email = candidate.Email,
+                    RoleName = candidate.RoleName,
+                    BranchName = branchName,
+                    Succeeded = true,
+                    Message = "Ready to import."
+                });
+            }
+            else
+            {
+                result.FailedRows++;
+                result.Rows.Add(new BulkUserImportRowResult
+                {
+                    RowNumber = rowNumber,
+                    Email = candidate.Email,
+                    RoleName = candidate.RoleName,
+                    BranchName = branchName,
+                    Message = string.Join(" ", errors)
+                });
+            }
+        }
+
+        return UserManagementOperationResult<BulkUserImportResult>.Success(
+            result,
+            $"Preview finished: {result.ValidRows} ready, {result.FailedRows} need attention.");
+    }
+
+    public async Task<IReadOnlyList<UserInvitationDto>> ListInvitationsAsync(
+        ClaimsPrincipal actor,
+        UserManagementQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var actorInfo = await ResolveActorAsync(actor);
+        if (actorInfo is null)
+            return Array.Empty<UserInvitationDto>();
+
+        var invitationsQuery = _dbContext.UserInvitations
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Include(i => i.User)
+            .Include(i => i.Branch)
+            .Include(i => i.InvitedByUser)
+            .Where(i => !i.IsDeleted);
+
+        if (actorInfo.IsSuperAdmin)
+        {
+            var tenantId = query.TenantId ?? _tenantContext.TenantId;
+            if (tenantId.HasValue)
+                invitationsQuery = invitationsQuery.Where(i => i.TenantId == tenantId.Value);
+        }
+        else
+        {
+            invitationsQuery = invitationsQuery.Where(i => i.TenantId == actorInfo.User.TenantId);
+        }
+
+        if (query.BranchId.HasValue)
+            invitationsQuery = invitationsQuery.Where(i => i.BranchId == query.BranchId.Value);
+        if (!string.IsNullOrWhiteSpace(query.RoleName))
+            invitationsQuery = invitationsQuery.Where(i => i.RoleName == query.RoleName.Trim());
+        if (!string.IsNullOrWhiteSpace(query.Search))
+        {
+            var search = query.Search.Trim();
+            invitationsQuery = invitationsQuery.Where(i =>
+                i.Email.Contains(search) ||
+                (i.User != null && (i.User.FirstName.Contains(search) || i.User.LastName.Contains(search))));
+        }
+
+        if (actorInfo.IsBranchScoped)
+        {
+            var branchId = await _branchAccess.GetAssignedBranchIdAsync(actor);
+            invitationsQuery = branchId.HasValue
+                ? invitationsQuery.Where(i => i.BranchId == branchId.Value)
+                : invitationsQuery.Where(_ => false);
+        }
+
+        var invitations = await invitationsQuery
+            .OrderByDescending(i => i.Status == UserInvitationStatus.Pending)
+            .ThenBy(i => i.ExpiresOn)
+            .ThenBy(i => i.Email)
+            .Take(80)
+            .ToListAsync(cancellationToken);
+
+        var result = new List<UserInvitationDto>();
+        foreach (var invitation in invitations)
+        {
+            if (invitation.User is null || !await CanManageTargetUserAsync(actor, actorInfo, invitation.User, cancellationToken))
+                continue;
+
+            result.Add(MapInvitation(invitation));
+        }
+
+        return result;
+    }
+
+    public async Task<IReadOnlyList<UserAuditEventDto>> ListAuditEventsAsync(
+        ClaimsPrincipal actor,
+        UserManagementQuery query,
+        CancellationToken cancellationToken = default)
+    {
+        var users = await ListUsersAsync(actor, query, cancellationToken);
+        var userIds = users.Select(u => u.Id).ToHashSet();
+        if (userIds.Count == 0)
+            return Array.Empty<UserAuditEventDto>();
+
+        var userMap = users.ToDictionary(u => u.Id);
+        var events = new List<UserAuditEventDto>();
+
+        events.AddRange(users.Select(u => new UserAuditEventDto
+        {
+            OccurredOn = u.CreatedOn,
+            EventType = "User created",
+            UserEmail = u.Email,
+            UserName = u.FullName,
+            RoleName = u.Roles.Count == 0 ? null : string.Join(", ", u.Roles),
+            BranchName = u.BranchName,
+            Notes = u.RequiresActivation ? "Activation pending." : "Account active."
+        }));
+
+        var roleAssignments = await _dbContext.UserRoleAssignments
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Include(a => a.Branch)
+            .Include(a => a.AssignedByUser)
+            .Where(a => userIds.Contains(a.UserId))
+            .OrderByDescending(a => a.AssignedOn)
+            .Take(120)
+            .ToListAsync(cancellationToken);
+
+        events.AddRange(roleAssignments.Select(a =>
+        {
+            userMap.TryGetValue(a.UserId, out var user);
+            return new UserAuditEventDto
+            {
+                OccurredOn = a.AssignedOn,
+                EventType = a.IsActive ? "Role assigned" : "Role ended",
+                UserEmail = user?.Email ?? string.Empty,
+                UserName = user?.FullName ?? "User",
+                RoleName = a.RoleName,
+                BranchName = a.Branch?.Name ?? user?.BranchName,
+                ActorName = a.AssignedByUser?.FullName,
+                Notes = a.Notes
+            };
+        }));
+
+        var invitations = await _dbContext.UserInvitations
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Include(i => i.Branch)
+            .Include(i => i.InvitedByUser)
+            .Where(i => userIds.Contains(i.UserId))
+            .OrderByDescending(i => i.LastSentOn ?? i.CreatedOn)
+            .Take(120)
+            .ToListAsync(cancellationToken);
+
+        events.AddRange(invitations.Select(i =>
+        {
+            userMap.TryGetValue(i.UserId, out var user);
+            return new UserAuditEventDto
+            {
+                OccurredOn = i.LastSentOn ?? i.CreatedOn,
+                EventType = $"Invitation {i.Status}",
+                UserEmail = i.Email,
+                UserName = user?.FullName ?? i.Email,
+                RoleName = i.RoleName,
+                BranchName = i.Branch?.Name ?? user?.BranchName,
+                ActorName = i.InvitedByUser?.FullName,
+                Notes = i.Status == UserInvitationStatus.Pending
+                    ? $"Expires {i.ExpiresOn:yyyy-MM-dd HH:mm} UTC. Sent {i.SendAttempts} time(s)."
+                    : i.LastSendError
+            };
+        }));
+
+        return events
+            .Where(e => e.OccurredOn != default)
+            .OrderByDescending(e => e.OccurredOn)
+            .Take(120)
+            .ToList();
     }
 
     public async Task<UserManagementOperationResult> SetUserActiveAsync(
@@ -442,6 +666,110 @@ public sealed class UserManagementService : IUserManagementService
         return UserManagementOperationResult.Success(
             warnings.Count == 0 ? "Activation email sent." : "Activation email was queued, but delivery reported a problem.",
             warnings);
+    }
+
+    public async Task<UserManagementOperationResult> ExpireInvitationAsync(
+        ClaimsPrincipal actor,
+        Guid invitationId,
+        CancellationToken cancellationToken = default)
+    {
+        var resolved = await ResolveInvitationForManagementAsync(actor, invitationId, cancellationToken);
+        if (!resolved.Succeeded || resolved.Invitation is null)
+            return UserManagementOperationResult.Failure(resolved.Errors.ToArray());
+
+        if (resolved.Invitation.Status != UserInvitationStatus.Pending)
+            return UserManagementOperationResult.Failure("Only pending invitations can be expired.");
+
+        resolved.Invitation.Status = UserInvitationStatus.Expired;
+        resolved.Invitation.ExpiresOn = DateTime.UtcNow;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return UserManagementOperationResult.Success("Invitation expired.");
+    }
+
+    public async Task<UserManagementOperationResult> ExtendInvitationAsync(
+        ClaimsPrincipal actor,
+        Guid invitationId,
+        int days,
+        CancellationToken cancellationToken = default)
+    {
+        var resolved = await ResolveInvitationForManagementAsync(actor, invitationId, cancellationToken);
+        if (!resolved.Succeeded || resolved.Invitation is null)
+            return UserManagementOperationResult.Failure(resolved.Errors.ToArray());
+
+        if (resolved.Invitation.Status != UserInvitationStatus.Pending)
+            return UserManagementOperationResult.Failure("Only pending invitations can be extended.");
+
+        var extensionDays = Math.Clamp(days, 1, 30);
+        resolved.Invitation.ExpiresOn = DateTime.UtcNow.AddDays(extensionDays);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return UserManagementOperationResult.Success($"Invitation extended by {extensionDays} day(s).");
+    }
+
+    public async Task<UserManagementOperationResult> SendEmailDeliveryTestAsync(
+        ClaimsPrincipal actor,
+        EmailDeliveryTestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var actorInfo = await ResolveActorAsync(actor);
+        if (actorInfo is null)
+            return UserManagementOperationResult.Failure("Only authenticated administrators can send SMTP tests.");
+
+        var tenantValidation = await ResolveTargetTenantIdAsync(actorInfo, request.TenantId, cancellationToken);
+        if (!tenantValidation.Succeeded || tenantValidation.Data is null)
+            return UserManagementOperationResult.Failure(tenantValidation.Errors.ToArray());
+
+        if (request.BranchId.HasValue)
+        {
+            var branchExists = await _dbContext.Branches
+                .IgnoreQueryFilters()
+                .AnyAsync(b => b.TenantId == tenantValidation.Data.Value &&
+                               b.Id == request.BranchId.Value &&
+                               !b.IsDeleted,
+                    cancellationToken);
+            if (!branchExists)
+                return UserManagementOperationResult.Failure("Selected branch was not found in the tenant.");
+            if (!await _branchAccess.CanAccessBranchAsync(actor, request.BranchId.Value))
+                return UserManagementOperationResult.Failure("You cannot send test email for this branch.");
+        }
+
+        var destination = string.IsNullOrWhiteSpace(request.DestinationEmail)
+            ? actorInfo.User.Email
+            : request.DestinationEmail.Trim();
+        if (string.IsNullOrWhiteSpace(destination) || !new EmailAddressAttribute().IsValid(destination))
+            return UserManagementOperationResult.Failure("Enter a valid destination email address.");
+
+        var messageId = Guid.NewGuid();
+        _dbContext.NotificationMessages.Add(new NotificationMessage
+        {
+            Id = messageId,
+            TenantId = tenantValidation.Data.Value,
+            BranchId = request.BranchId,
+            Channel = CommunicationChannel.Email,
+            Subject = "EduSphere SMTP delivery test",
+            Body = $"Hello {actorInfo.User.FullName},<br /><br />This message confirms EduSphere can send email through the configured SMTP provider at {DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC.",
+            Status = NotificationStatus.Queued,
+            ScheduledOn = DateTime.UtcNow,
+            ProviderKey = ActivationProviderKey,
+            CreatedForUserId = actorInfo.User.Id
+        });
+
+        _dbContext.NotificationRecipients.Add(new NotificationRecipient
+        {
+            TenantId = tenantValidation.Data.Value,
+            BranchId = request.BranchId,
+            NotificationMessageId = messageId,
+            UserId = actorInfo.User.Id,
+            DisplayName = actorInfo.User.FullName,
+            DestinationAddress = destination,
+            Status = NotificationStatus.Queued
+        });
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        var dispatchResult = await _notificationDispatcher.DispatchAsync(messageId, cancellationToken);
+        return dispatchResult.Succeeded
+            ? UserManagementOperationResult.Success($"SMTP test email delivered to {destination}.")
+            : UserManagementOperationResult.Failure($"SMTP test email failed: {dispatchResult.ErrorMessage}");
     }
 
     public async Task<UserManagementOperationResult> ActivateAccountAsync(
@@ -962,6 +1290,111 @@ public sealed class UserManagementService : IUserManagementService
         return targetRank < actorInfo.HighestRoleRank;
     }
 
+    private async Task<CreateManagedUserRequest> BuildBulkCreateRequestAsync(
+        BulkUserImportRequest request,
+        IReadOnlyList<string> fields,
+        CancellationToken cancellationToken)
+    {
+        var roleName = fields.ElementAtOrDefault(3);
+        var branchToken = fields.ElementAtOrDefault(4);
+        var branchId = request.BranchId;
+        if (!branchId.HasValue && !string.IsNullOrWhiteSpace(branchToken))
+            branchId = await ResolveBranchTokenAsync(request.TenantId, branchToken, cancellationToken);
+
+        return new CreateManagedUserRequest
+        {
+            TenantId = request.TenantId,
+            BranchId = branchId,
+            RoleName = string.IsNullOrWhiteSpace(roleName) ? request.RoleName : roleName.Trim(),
+            Email = fields[0].Trim(),
+            FirstName = fields[1].Trim(),
+            LastName = fields[2].Trim(),
+            PhoneNumber = fields.ElementAtOrDefault(5),
+            Designation = fields.ElementAtOrDefault(6),
+            SendActivationEmail = request.SendActivationEmail
+        };
+    }
+
+    private async Task<IReadOnlyList<string>> ValidateCreateCandidateAsync(
+        ClaimsPrincipal actor,
+        ActorInfo actorInfo,
+        CreateManagedUserRequest request,
+        ISet<string> seenEmails,
+        CancellationToken cancellationToken)
+    {
+        var errors = new List<string>();
+        if (string.IsNullOrWhiteSpace(request.Email) || !new EmailAddressAttribute().IsValid(request.Email))
+            errors.Add("Email is invalid.");
+        else if (!seenEmails.Add(request.Email.Trim()))
+            errors.Add("Email appears more than once in the CSV.");
+        else if (await _userManager.FindByEmailAsync(request.Email.Trim()) is not null)
+            errors.Add("A user with this email already exists.");
+
+        if (string.IsNullOrWhiteSpace(request.FirstName))
+            errors.Add("First name is required.");
+        if (string.IsNullOrWhiteSpace(request.LastName))
+            errors.Add("Last name is required.");
+
+        var role = ResolveRole(request.RoleName);
+        if (role is null)
+        {
+            errors.Add("Role is missing or unsupported.");
+            return errors;
+        }
+
+        if (role.RoleName == Roles.SuperAdmin || role.Rank >= actorInfo.HighestRoleRank)
+            errors.Add("Role must be below the importing administrator's level.");
+
+        if (!await _roleManager.RoleExistsAsync(role.RoleName))
+            errors.Add($"Role '{role.RoleName}' has not been provisioned.");
+
+        var tenantValidation = await ResolveTargetTenantIdAsync(actorInfo, request.TenantId, cancellationToken);
+        if (!tenantValidation.Succeeded || tenantValidation.Data is null)
+        {
+            errors.AddRange(tenantValidation.Errors);
+            return errors;
+        }
+
+        var branchValidation = await ResolveTargetBranchIdAsync(actor, actorInfo, tenantValidation.Data.Value, role, request.BranchId, cancellationToken);
+        if (!branchValidation.Succeeded)
+            errors.AddRange(branchValidation.Errors);
+
+        return errors;
+    }
+
+    private async Task<string?> ResolveBranchNameAsync(Guid? branchId, CancellationToken cancellationToken)
+    {
+        if (!branchId.HasValue)
+            return null;
+
+        return await _dbContext.Branches
+            .AsNoTracking()
+            .IgnoreQueryFilters()
+            .Where(b => b.Id == branchId.Value)
+            .Select(b => b.Name)
+            .FirstOrDefaultAsync(cancellationToken);
+    }
+
+    private async Task<InvitationManagementResolution> ResolveInvitationForManagementAsync(
+        ClaimsPrincipal actor,
+        Guid invitationId,
+        CancellationToken cancellationToken)
+    {
+        var actorInfo = await ResolveActorAsync(actor);
+        var invitation = await _dbContext.UserInvitations
+            .IgnoreQueryFilters()
+            .Include(i => i.User)
+            .FirstOrDefaultAsync(i => i.Id == invitationId && !i.IsDeleted, cancellationToken);
+
+        if (actorInfo is null || invitation?.User is null)
+            return new InvitationManagementResolution(false, null, new[] { "Invitation was not found." });
+
+        if (!await CanManageTargetUserAsync(actor, actorInfo, invitation.User, cancellationToken))
+            return new InvitationManagementResolution(false, null, new[] { "You do not have permission to manage this invitation." });
+
+        return new InvitationManagementResolution(true, invitation, Array.Empty<string>());
+    }
+
     private async Task<ActorInfo?> ResolveActorAsync(ClaimsPrincipal actor)
     {
         if (actor.Identity?.IsAuthenticated != true)
@@ -1088,6 +1521,27 @@ public sealed class UserManagementService : IUserManagementService
             CreatedOn = user.CreatedOn
         };
 
+    private static UserInvitationDto MapInvitation(UserInvitation invitation)
+        => new()
+        {
+            Id = invitation.Id,
+            UserId = invitation.UserId,
+            Email = invitation.Email,
+            UserName = invitation.User?.FullName ?? invitation.Email,
+            BranchId = invitation.BranchId,
+            BranchName = invitation.Branch?.Name,
+            RoleName = invitation.RoleName,
+            Status = invitation.Status,
+            ExpiresOn = invitation.ExpiresOn,
+            AcceptedOn = invitation.AcceptedOn,
+            LastSentOn = invitation.LastSentOn,
+            SendAttempts = invitation.SendAttempts,
+            InvitedByName = invitation.InvitedByUser?.FullName,
+            LastSendError = invitation.LastSendError,
+            CreatedOn = invitation.CreatedOn,
+            ModifiedOn = invitation.ModifiedOn
+        };
+
     private static RoleDefinition? ResolveRole(string? roleName)
         => !string.IsNullOrWhiteSpace(roleName) && RoleDefinitions.TryGetValue(roleName.Trim(), out var role)
             ? role
@@ -1127,6 +1581,11 @@ public sealed class UserManagementService : IUserManagementService
         int HighestRoleRank,
         bool IsSuperAdmin,
         bool IsBranchScoped);
+
+    private sealed record InvitationManagementResolution(
+        bool Succeeded,
+        UserInvitation? Invitation,
+        IReadOnlyList<string> Errors);
 
     private sealed record RoleDefinition(
         string RoleName,
