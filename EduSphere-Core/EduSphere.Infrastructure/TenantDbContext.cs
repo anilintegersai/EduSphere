@@ -51,6 +51,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<UserInvitation> UserInvitations { get; set; }
 
     // Admissions / Attendance / Timetable (Module 5-9)
+    public DbSet<AdmissionFormTemplate> AdmissionFormTemplates { get; set; }
+    public DbSet<AdmissionFormField> AdmissionFormFields { get; set; }
+    public DbSet<AdmissionDocumentRequirement> AdmissionDocumentRequirements { get; set; }
     public DbSet<AdmissionApplication> AdmissionApplications { get; set; }
     public DbSet<AdmissionDocument> AdmissionDocuments { get; set; }
     public DbSet<AdmissionReview> AdmissionReviews { get; set; }
@@ -481,6 +484,27 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
     private static void ConfigureOperations(ModelBuilder modelBuilder)
     {
+        modelBuilder.Entity<AdmissionFormTemplate>()
+            .HasOne(f => f.Branch).WithMany()
+            .HasForeignKey(f => f.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionFormTemplate>()
+            .HasOne(f => f.AcademicYear).WithMany()
+            .HasForeignKey(f => f.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionFormTemplate>()
+            .HasOne(f => f.Course).WithMany()
+            .HasForeignKey(f => f.CourseId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdmissionFormField>()
+            .HasOne(f => f.AdmissionFormTemplate).WithMany(t => t.Fields)
+            .HasForeignKey(f => f.AdmissionFormTemplateId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdmissionDocumentRequirement>()
+            .HasOne(r => r.AdmissionFormTemplate).WithMany(t => t.DocumentRequirements)
+            .HasForeignKey(r => r.AdmissionFormTemplateId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.AdmissionFormTemplate).WithMany()
+            .HasForeignKey(a => a.AdmissionFormTemplateId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<AdmissionApplication>()
             .HasOne(a => a.Branch).WithMany()
             .HasForeignKey(a => a.BranchId).OnDelete(DeleteBehavior.Restrict);
@@ -496,10 +520,16 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AdmissionApplication>()
             .HasOne(a => a.Section).WithMany()
             .HasForeignKey(a => a.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>()
+            .HasOne(a => a.EnrolledStudentProfile).WithMany()
+            .HasForeignKey(a => a.EnrolledStudentProfileId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<AdmissionDocument>()
             .HasOne(d => d.AdmissionApplication).WithMany(a => a.Documents)
             .HasForeignKey(d => d.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionDocument>()
+            .HasOne(d => d.UploadedByUser).WithMany()
+            .HasForeignKey(d => d.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<AdmissionDocument>()
             .HasOne(d => d.VerifiedByUser).WithMany()
             .HasForeignKey(d => d.VerifiedByUserId).OnDelete(DeleteBehavior.Restrict);
@@ -639,13 +669,23 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(e => e.Room).WithMany()
             .HasForeignKey(e => e.RoomId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AdmissionFormTemplate>().HasIndex(f => new { f.TenantId, f.Name }).IsUnique();
+        modelBuilder.Entity<AdmissionFormTemplate>().HasIndex(f => new { f.TenantId, f.BranchId, f.CourseId, f.AcademicYearId, f.IsActive });
+        modelBuilder.Entity<AdmissionFormField>().HasIndex(f => new { f.AdmissionFormTemplateId, f.FieldKey }).IsUnique();
+        modelBuilder.Entity<AdmissionFormField>().HasIndex(f => new { f.AdmissionFormTemplateId, f.SortOrder });
+        modelBuilder.Entity<AdmissionDocumentRequirement>().HasIndex(r => new { r.AdmissionFormTemplateId, r.DocumentType }).IsUnique();
+        modelBuilder.Entity<AdmissionDocumentRequirement>().HasIndex(r => new { r.AdmissionFormTemplateId, r.SortOrder });
+
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => new { a.TenantId, a.ApplicationNumber }).IsUnique();
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.AdmissionFormTemplateId);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.BranchId);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.CourseId);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.BatchId);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.SectionId);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.Status);
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.EnrolledStudentProfileId);
         modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.AdmissionApplicationId);
+        modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.UploadedByUserId);
         modelBuilder.Entity<AdmissionReview>().HasIndex(r => r.AdmissionApplicationId);
         modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.EnrollmentNumber }).IsUnique();
         modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.AcademicYearId }).IsUnique();

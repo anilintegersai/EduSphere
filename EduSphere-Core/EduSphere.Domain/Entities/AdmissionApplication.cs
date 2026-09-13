@@ -6,6 +6,9 @@ namespace EduSphere.Domain.Entities;
 
 public class AdmissionApplication : TenantEntityBase
 {
+    public Guid? AdmissionFormTemplateId { get; set; }
+    public AdmissionFormTemplate? AdmissionFormTemplate { get; set; }
+
     public Guid BranchId { get; set; }
     public Branch? Branch { get; set; }
 
@@ -59,6 +62,12 @@ public class AdmissionApplication : TenantEntityBase
 
     [StringLength(1000)]
     public string? ReviewNotes { get; set; }
+
+    public Guid? EnrolledStudentProfileId { get; set; }
+    public StudentProfile? EnrolledStudentProfile { get; set; }
+
+    [StringLength(4000)]
+    public string? FormResponseJson { get; set; }
 
     public ICollection<AdmissionDocument> Documents { get; set; } = new List<AdmissionDocument>();
     public ICollection<AdmissionReview> Reviews { get; set; } = new List<AdmissionReview>();

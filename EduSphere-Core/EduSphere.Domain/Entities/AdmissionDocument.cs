@@ -24,6 +24,11 @@ public class AdmissionDocument : TenantEntityBase
     [StringLength(500)]
     public string? StoragePath { get; set; }
 
+    public long? SizeBytes { get; set; }
+    public DateTime UploadedOn { get; set; } = DateTime.UtcNow;
+    public Guid? UploadedByUserId { get; set; }
+    public ApplicationUser? UploadedByUser { get; set; }
+
     public bool IsVerified { get; set; }
     public Guid? VerifiedByUserId { get; set; }
     public ApplicationUser? VerifiedByUser { get; set; }

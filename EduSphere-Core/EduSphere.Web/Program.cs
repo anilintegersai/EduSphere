@@ -69,6 +69,8 @@ builder.Services.AddScoped<ICurrentUserContext, HttpCurrentUserContext>();
 builder.Services.AddScoped<IBranchAccessService, BranchAccessService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IStudentTeacherLifecycleService, StudentTeacherLifecycleService>();
+builder.Services.AddScoped<IAdmissionWorkflowService, AdmissionWorkflowService>();
+builder.Services.AddSingleton<IAdmissionDocumentStorageService, FileSystemAdmissionDocumentStorageService>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 

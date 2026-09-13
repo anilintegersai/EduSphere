@@ -23,12 +23,74 @@ public class CreateAdmissionApplicationRequestValidator : AbstractValidator<Crea
         RuleFor(x => x.Address).MaximumLength(500);
         RuleFor(x => x.Status).IsInEnum();
         RuleFor(x => x.ReviewNotes).MaximumLength(1000);
+        RuleFor(x => x.FormResponseJson).MaximumLength(4000);
     }
 }
 
 public class UpdateAdmissionApplicationRequestValidator : AbstractValidator<UpdateAdmissionApplicationRequest>
 {
     public UpdateAdmissionApplicationRequestValidator() => Include(new CreateAdmissionApplicationRequestValidator());
+}
+
+public class CreateAdmissionFormTemplateRequestValidator : AbstractValidator<CreateAdmissionFormTemplateRequest>
+{
+    public CreateAdmissionFormTemplateRequestValidator()
+    {
+        RuleFor(x => x.Name).NotEmpty().MaximumLength(120);
+        RuleFor(x => x.Description).MaximumLength(500);
+        RuleFor(x => x.Instructions).MaximumLength(1000);
+        RuleFor(x => x.EffectiveTo).GreaterThanOrEqualTo(x => x.EffectiveFrom)
+            .When(x => x.EffectiveFrom.HasValue && x.EffectiveTo.HasValue)
+            .WithMessage("Effective to must be on or after effective from.");
+    }
+}
+
+public class UpdateAdmissionFormTemplateRequestValidator : AbstractValidator<UpdateAdmissionFormTemplateRequest>
+{
+    public UpdateAdmissionFormTemplateRequestValidator() => Include(new CreateAdmissionFormTemplateRequestValidator());
+}
+
+public class CreateAdmissionFormFieldRequestValidator : AbstractValidator<CreateAdmissionFormFieldRequest>
+{
+    public CreateAdmissionFormFieldRequestValidator()
+    {
+        RuleFor(x => x.AdmissionFormTemplateId).NotEmpty();
+        RuleFor(x => x.FieldKey)
+            .NotEmpty()
+            .MaximumLength(80)
+            .Matches("^[a-zA-Z][a-zA-Z0-9_]*$")
+            .WithMessage("Field key must start with a letter and contain only letters, numbers, and underscores.");
+        RuleFor(x => x.Label).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.FieldType).IsInEnum();
+        RuleFor(x => x.SortOrder).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Placeholder).MaximumLength(200);
+        RuleFor(x => x.HelpText).MaximumLength(500);
+        RuleFor(x => x.OptionsJson).MaximumLength(2000);
+        RuleFor(x => x.ValidationRegex).MaximumLength(200);
+        RuleFor(x => x.MaxLength).GreaterThan(0).When(x => x.MaxLength.HasValue);
+    }
+}
+
+public class UpdateAdmissionFormFieldRequestValidator : AbstractValidator<UpdateAdmissionFormFieldRequest>
+{
+    public UpdateAdmissionFormFieldRequestValidator() => Include(new CreateAdmissionFormFieldRequestValidator());
+}
+
+public class CreateAdmissionDocumentRequirementRequestValidator : AbstractValidator<CreateAdmissionDocumentRequirementRequest>
+{
+    public CreateAdmissionDocumentRequirementRequestValidator()
+    {
+        RuleFor(x => x.AdmissionFormTemplateId).NotEmpty();
+        RuleFor(x => x.DocumentType).IsInEnum();
+        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.SortOrder).GreaterThanOrEqualTo(0);
+        RuleFor(x => x.Notes).MaximumLength(500);
+    }
+}
+
+public class UpdateAdmissionDocumentRequirementRequestValidator : AbstractValidator<UpdateAdmissionDocumentRequirementRequest>
+{
+    public UpdateAdmissionDocumentRequirementRequestValidator() => Include(new CreateAdmissionDocumentRequirementRequestValidator());
 }
 
 public class CreateAdmissionDocumentRequestValidator : AbstractValidator<CreateAdmissionDocumentRequest>
@@ -41,6 +103,7 @@ public class CreateAdmissionDocumentRequestValidator : AbstractValidator<CreateA
         RuleFor(x => x.FileName).MaximumLength(255);
         RuleFor(x => x.ContentType).MaximumLength(100);
         RuleFor(x => x.StoragePath).MaximumLength(500);
+        RuleFor(x => x.SizeBytes).GreaterThanOrEqualTo(0).When(x => x.SizeBytes.HasValue);
         RuleFor(x => x.Notes).MaximumLength(500);
     }
 }
@@ -48,6 +111,16 @@ public class CreateAdmissionDocumentRequestValidator : AbstractValidator<CreateA
 public class UpdateAdmissionDocumentRequestValidator : AbstractValidator<UpdateAdmissionDocumentRequest>
 {
     public UpdateAdmissionDocumentRequestValidator() => Include(new CreateAdmissionDocumentRequestValidator());
+}
+
+public class UploadAdmissionDocumentRequestValidator : AbstractValidator<UploadAdmissionDocumentRequest>
+{
+    public UploadAdmissionDocumentRequestValidator()
+    {
+        RuleFor(x => x.DocumentType).IsInEnum();
+        RuleFor(x => x.DisplayName).NotEmpty().MaximumLength(150);
+        RuleFor(x => x.Notes).MaximumLength(500);
+    }
 }
 
 public class CreateAdmissionReviewRequestValidator : AbstractValidator<CreateAdmissionReviewRequest>
@@ -58,6 +131,25 @@ public class CreateAdmissionReviewRequestValidator : AbstractValidator<CreateAdm
         RuleFor(x => x.FromStatus).IsInEnum();
         RuleFor(x => x.ToStatus).IsInEnum();
         RuleFor(x => x.Notes).MaximumLength(1000);
+    }
+}
+
+public class ReviewAdmissionApplicationRequestValidator : AbstractValidator<ReviewAdmissionApplicationRequest>
+{
+    public ReviewAdmissionApplicationRequestValidator()
+    {
+        RuleFor(x => x.ToStatus).IsInEnum();
+        RuleFor(x => x.Notes).MaximumLength(1000);
+    }
+}
+
+public class ConvertAdmissionToEnrollmentRequestValidator : AbstractValidator<ConvertAdmissionToEnrollmentRequest>
+{
+    public ConvertAdmissionToEnrollmentRequestValidator()
+    {
+        RuleFor(x => x.AdmissionNumber).MaximumLength(50);
+        RuleFor(x => x.EnrollmentNumber).MaximumLength(50);
+        RuleFor(x => x.Notes).MaximumLength(500);
     }
 }
 

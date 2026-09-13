@@ -20,29 +20,43 @@ namespace EduSphere.Web.Controllers.V1.Operations;
 [RequireTenant]
 public class AdmissionApplicationsController : ApiControllerBase
 {
+    private const long MaxUploadBytes = 20 * 1024 * 1024;
+
     private readonly ICrudService<AdmissionApplication> _applications;
+    private readonly ICrudService<AdmissionFormTemplate> _forms;
+    private readonly ICrudService<AdmissionDocument> _documents;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<AcademicYear> _academicYears;
     private readonly ICrudService<Course> _courses;
     private readonly ICrudService<Batch> _batches;
     private readonly ICrudService<Section> _sections;
+    private readonly IAdmissionWorkflowService _workflow;
+    private readonly IAdmissionDocumentStorageService _storage;
     private readonly IBranchAccessService _branchAccess;
 
     public AdmissionApplicationsController(
         ICrudService<AdmissionApplication> applications,
+        ICrudService<AdmissionFormTemplate> forms,
+        ICrudService<AdmissionDocument> documents,
         ICrudService<Branch> branches,
         ICrudService<AcademicYear> academicYears,
         ICrudService<Course> courses,
         ICrudService<Batch> batches,
         ICrudService<Section> sections,
+        IAdmissionWorkflowService workflow,
+        IAdmissionDocumentStorageService storage,
         IBranchAccessService branchAccess)
     {
         _applications = applications;
+        _forms = forms;
+        _documents = documents;
         _branches = branches;
         _academicYears = academicYears;
         _courses = courses;
         _batches = batches;
         _sections = sections;
+        _workflow = workflow;
+        _storage = storage;
         _branchAccess = branchAccess;
     }
 
@@ -115,6 +129,101 @@ public class AdmissionApplicationsController : ApiControllerBase
             : NotFound(ApiResponse<object>.Fail($"Admission application {id} was not found."));
     }
 
+    [HttpGet("{id:guid}/documents")]
+    public async Task<IActionResult> GetDocuments(Guid id)
+    {
+        var documents = await _workflow.ListDocumentsAsync(User, id);
+        return Ok(ApiResponse<IEnumerable<AdmissionDocumentDto>>.Ok(documents));
+    }
+
+    [HttpPost("{id:guid}/documents")]
+    [Consumes("multipart/form-data")]
+    public async Task<IActionResult> UploadDocument(Guid id, [FromForm] UploadAdmissionDocumentForm form)
+    {
+        if (form.File is null || form.File.Length == 0)
+            return BadRequest(ApiResponse<object>.Fail("Select a file to upload."));
+        if (form.File.Length > MaxUploadBytes)
+            return BadRequest(ApiResponse<object>.Fail("Admission documents cannot exceed 20 MB."));
+
+        await using var stream = form.File.OpenReadStream();
+        var result = await _workflow.UploadDocumentAsync(
+            User,
+            id,
+            new UploadAdmissionDocumentRequest
+            {
+                DocumentType = form.DocumentType,
+                DisplayName = form.DisplayName,
+                Notes = form.Notes
+            },
+            stream,
+            form.File.FileName,
+            form.File.ContentType,
+            form.File.Length);
+
+        return result.Succeeded && result.Data is not null
+            ? StatusCode(StatusCodes.Status201Created, ApiResponse<AdmissionDocumentDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
+    [HttpGet("{id:guid}/documents/{documentId:guid}/download")]
+    public async Task<IActionResult> DownloadDocument(Guid id, Guid documentId)
+    {
+        var application = await _applications.GetAsync(id);
+        if (application is null || !await _branchAccess.CanAccessBranchAsync(User, application.BranchId))
+            return NotFound(ApiResponse<object>.Fail($"Admission application {id} was not found."));
+
+        var document = await _documents.GetAsync(documentId);
+        if (document is null || document.AdmissionApplicationId != id || string.IsNullOrWhiteSpace(document.StoragePath))
+            return NotFound(ApiResponse<object>.Fail($"Admission document {documentId} was not found."));
+
+        try
+        {
+            var stream = await _storage.OpenReadAsync(document.StoragePath);
+            return File(
+                stream,
+                string.IsNullOrWhiteSpace(document.ContentType) ? "application/octet-stream" : document.ContentType,
+                string.IsNullOrWhiteSpace(document.FileName) ? document.DisplayName : document.FileName);
+        }
+        catch (FileNotFoundException)
+        {
+            return NotFound(ApiResponse<object>.Fail($"Admission document {documentId} file was not found."));
+        }
+    }
+
+    [HttpPost("{id:guid}/documents/{documentId:guid}/verification")]
+    public async Task<IActionResult> SetDocumentVerification(Guid id, Guid documentId, [FromBody] VerifyAdmissionDocumentRequest request)
+    {
+        var result = await _workflow.SetDocumentVerificationAsync(User, id, documentId, request.IsVerified, request.Notes);
+        return result.Succeeded && result.Data is not null
+            ? Ok(ApiResponse<AdmissionDocumentDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
+    [HttpGet("{id:guid}/reviews")]
+    public async Task<IActionResult> GetReviews(Guid id)
+    {
+        var reviews = await _workflow.ListReviewsAsync(User, id);
+        return Ok(ApiResponse<IEnumerable<AdmissionReviewDto>>.Ok(reviews));
+    }
+
+    [HttpPost("{id:guid}/reviews")]
+    public async Task<IActionResult> Review(Guid id, [FromBody] ReviewAdmissionApplicationRequest request)
+    {
+        var result = await _workflow.ReviewAsync(User, id, request);
+        return result.Succeeded && result.Data is not null
+            ? Ok(ApiResponse<AdmissionApplicationDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
+    [HttpPost("{id:guid}/enroll")]
+    public async Task<IActionResult> ConvertToEnrollment(Guid id, [FromBody] ConvertAdmissionToEnrollmentRequest request)
+    {
+        var result = await _workflow.ConvertToEnrollmentAsync(User, id, request);
+        return result.Succeeded && result.Data is not null
+            ? Ok(ApiResponse<AdmissionEnrollmentResultDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
     private async Task<string?> ValidateReferencesAsync(CreateAdmissionApplicationRequest request)
     {
         if (await _branches.GetAsync(request.BranchId) is null)
@@ -127,11 +236,24 @@ public class AdmissionApplicationsController : ApiControllerBase
             return $"Batch {batchId} was not found in this tenant.";
         if (request.SectionId is Guid sectionId && await _sections.GetAsync(sectionId) is null)
             return $"Section {sectionId} was not found in this tenant.";
+        if (request.AdmissionFormTemplateId is Guid formId)
+        {
+            var form = await _forms.GetAsync(formId);
+            if (form is null)
+                return $"Admission form {formId} was not found in this tenant.";
+            if (form.BranchId.HasValue && form.BranchId.Value != request.BranchId)
+                return "Selected admission form is scoped to a different branch.";
+            if (form.CourseId.HasValue && form.CourseId.Value != request.CourseId)
+                return "Selected admission form is scoped to a different course.";
+            if (form.AcademicYearId.HasValue && request.AcademicYearId != form.AcademicYearId.Value)
+                return "Selected admission form is scoped to a different academic year.";
+        }
         return null;
     }
 
     private static AdmissionApplication Apply(AdmissionApplication entity, CreateAdmissionApplicationRequest request)
     {
+        entity.AdmissionFormTemplateId = request.AdmissionFormTemplateId;
         entity.BranchId = request.BranchId;
         entity.AcademicYearId = request.AcademicYearId;
         entity.CourseId = request.CourseId;
@@ -151,11 +273,13 @@ public class AdmissionApplicationsController : ApiControllerBase
         entity.AppliedOn = request.AppliedOn;
         entity.Status = request.Status;
         entity.ReviewNotes = request.ReviewNotes;
+        entity.FormResponseJson = request.FormResponseJson;
         return entity;
     }
 
     private static AdmissionApplicationDto Map(AdmissionApplication e) => new AdmissionApplicationDto
     {
+        AdmissionFormTemplateId = e.AdmissionFormTemplateId,
         BranchId = e.BranchId,
         AcademicYearId = e.AcademicYearId,
         CourseId = e.CourseId,
@@ -174,6 +298,22 @@ public class AdmissionApplicationsController : ApiControllerBase
         Address = e.Address,
         AppliedOn = e.AppliedOn,
         Status = e.Status,
-        ReviewNotes = e.ReviewNotes
+        ReviewNotes = e.ReviewNotes,
+        EnrolledStudentProfileId = e.EnrolledStudentProfileId,
+        FormResponseJson = e.FormResponseJson
     }.WithMetadata(e);
+
+    public class UploadAdmissionDocumentForm
+    {
+        public AdmissionDocumentType DocumentType { get; set; } = AdmissionDocumentType.Other;
+        public string DisplayName { get; set; } = string.Empty;
+        public string? Notes { get; set; }
+        public IFormFile? File { get; set; }
+    }
+
+    public class VerifyAdmissionDocumentRequest
+    {
+        public bool IsVerified { get; set; }
+        public string? Notes { get; set; }
+    }
 }

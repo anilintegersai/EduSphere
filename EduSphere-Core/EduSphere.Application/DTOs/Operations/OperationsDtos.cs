@@ -18,6 +18,7 @@ public abstract class OperationsTenantScopedDto
 
 public class AdmissionApplicationDto : OperationsTenantScopedDto
 {
+    public Guid? AdmissionFormTemplateId { get; set; }
     public Guid BranchId { get; set; }
     public Guid? AcademicYearId { get; set; }
     public Guid CourseId { get; set; }
@@ -37,10 +38,13 @@ public class AdmissionApplicationDto : OperationsTenantScopedDto
     public DateOnly AppliedOn { get; set; }
     public AdmissionApplicationStatus Status { get; set; }
     public string? ReviewNotes { get; set; }
+    public Guid? EnrolledStudentProfileId { get; set; }
+    public string? FormResponseJson { get; set; }
 }
 
 public class CreateAdmissionApplicationRequest
 {
+    public Guid? AdmissionFormTemplateId { get; set; }
     public Guid BranchId { get; set; }
     public Guid? AcademicYearId { get; set; }
     public Guid CourseId { get; set; }
@@ -60,9 +64,98 @@ public class CreateAdmissionApplicationRequest
     public DateOnly AppliedOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public AdmissionApplicationStatus Status { get; set; } = AdmissionApplicationStatus.Submitted;
     public string? ReviewNotes { get; set; }
+    public string? FormResponseJson { get; set; }
 }
 
 public class UpdateAdmissionApplicationRequest : CreateAdmissionApplicationRequest { }
+
+public class AdmissionFormTemplateDto : OperationsTenantScopedDto
+{
+    public Guid? BranchId { get; set; }
+    public Guid? AcademicYearId { get; set; }
+    public Guid? CourseId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Instructions { get; set; }
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; }
+    public DateOnly? EffectiveFrom { get; set; }
+    public DateOnly? EffectiveTo { get; set; }
+}
+
+public class CreateAdmissionFormTemplateRequest
+{
+    public Guid? BranchId { get; set; }
+    public Guid? AcademicYearId { get; set; }
+    public Guid? CourseId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? Instructions { get; set; }
+    public bool IsDefault { get; set; }
+    public bool IsActive { get; set; } = true;
+    public DateOnly? EffectiveFrom { get; set; }
+    public DateOnly? EffectiveTo { get; set; }
+}
+
+public class UpdateAdmissionFormTemplateRequest : CreateAdmissionFormTemplateRequest { }
+
+public class AdmissionFormFieldDto : OperationsTenantScopedDto
+{
+    public Guid AdmissionFormTemplateId { get; set; }
+    public string FieldKey { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public AdmissionFormFieldType FieldType { get; set; }
+    public bool IsRequired { get; set; }
+    public int SortOrder { get; set; }
+    public string? Placeholder { get; set; }
+    public string? HelpText { get; set; }
+    public string? OptionsJson { get; set; }
+    public string? ValidationRegex { get; set; }
+    public int? MaxLength { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class CreateAdmissionFormFieldRequest
+{
+    public Guid AdmissionFormTemplateId { get; set; }
+    public string FieldKey { get; set; } = string.Empty;
+    public string Label { get; set; } = string.Empty;
+    public AdmissionFormFieldType FieldType { get; set; } = AdmissionFormFieldType.Text;
+    public bool IsRequired { get; set; }
+    public int SortOrder { get; set; }
+    public string? Placeholder { get; set; }
+    public string? HelpText { get; set; }
+    public string? OptionsJson { get; set; }
+    public string? ValidationRegex { get; set; }
+    public int? MaxLength { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public class UpdateAdmissionFormFieldRequest : CreateAdmissionFormFieldRequest { }
+
+public class AdmissionDocumentRequirementDto : OperationsTenantScopedDto
+{
+    public Guid AdmissionFormTemplateId { get; set; }
+    public AdmissionDocumentType DocumentType { get; set; }
+    public string DisplayName { get; set; } = string.Empty;
+    public bool IsRequired { get; set; }
+    public int SortOrder { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; }
+}
+
+public class CreateAdmissionDocumentRequirementRequest
+{
+    public Guid AdmissionFormTemplateId { get; set; }
+    public AdmissionDocumentType DocumentType { get; set; } = AdmissionDocumentType.Other;
+    public string DisplayName { get; set; } = string.Empty;
+    public bool IsRequired { get; set; } = true;
+    public int SortOrder { get; set; }
+    public string? Notes { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public class UpdateAdmissionDocumentRequirementRequest : CreateAdmissionDocumentRequirementRequest { }
 
 public class AdmissionDocumentDto : OperationsTenantScopedDto
 {
@@ -72,6 +165,9 @@ public class AdmissionDocumentDto : OperationsTenantScopedDto
     public string? FileName { get; set; }
     public string? ContentType { get; set; }
     public string? StoragePath { get; set; }
+    public long? SizeBytes { get; set; }
+    public DateTime UploadedOn { get; set; }
+    public Guid? UploadedByUserId { get; set; }
     public bool IsVerified { get; set; }
     public Guid? VerifiedByUserId { get; set; }
     public DateTime? VerifiedOn { get; set; }
@@ -86,6 +182,9 @@ public class CreateAdmissionDocumentRequest
     public string? FileName { get; set; }
     public string? ContentType { get; set; }
     public string? StoragePath { get; set; }
+    public long? SizeBytes { get; set; }
+    public DateTime UploadedOn { get; set; } = DateTime.UtcNow;
+    public Guid? UploadedByUserId { get; set; }
     public bool IsVerified { get; set; }
     public Guid? VerifiedByUserId { get; set; }
     public DateTime? VerifiedOn { get; set; }
@@ -93,6 +192,40 @@ public class CreateAdmissionDocumentRequest
 }
 
 public class UpdateAdmissionDocumentRequest : CreateAdmissionDocumentRequest { }
+
+public class UploadAdmissionDocumentRequest
+{
+    public AdmissionDocumentType DocumentType { get; set; } = AdmissionDocumentType.Other;
+    public string DisplayName { get; set; } = string.Empty;
+    public string? Notes { get; set; }
+}
+
+public class ReviewAdmissionApplicationRequest
+{
+    public AdmissionApplicationStatus ToStatus { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class ConvertAdmissionToEnrollmentRequest
+{
+    public Guid? AcademicYearId { get; set; }
+    public Guid? CourseId { get; set; }
+    public Guid? BatchId { get; set; }
+    public Guid? SectionId { get; set; }
+    public string? AdmissionNumber { get; set; }
+    public string? EnrollmentNumber { get; set; }
+    public DateOnly EnrollmentDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public string? Notes { get; set; }
+}
+
+public class AdmissionEnrollmentResultDto
+{
+    public AdmissionApplicationDto Application { get; set; } = new();
+    public Guid StudentProfileId { get; set; }
+    public Guid EnrollmentId { get; set; }
+    public string AdmissionNumber { get; set; } = string.Empty;
+    public string EnrollmentNumber { get; set; } = string.Empty;
+}
 
 public class AdmissionReviewDto : OperationsTenantScopedDto
 {
