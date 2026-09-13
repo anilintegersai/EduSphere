@@ -61,6 +61,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<PromotionRecord> PromotionRecords { get; set; }
     public DbSet<AttendanceSession> AttendanceSessions { get; set; }
     public DbSet<AttendanceRecord> AttendanceRecords { get; set; }
+    public DbSet<AttendanceCorrectionRequest> AttendanceCorrectionRequests { get; set; }
     public DbSet<AttendancePolicy> AttendancePolicies { get; set; }
     public DbSet<LeaveApplication> LeaveApplications { get; set; }
     public DbSet<AttendanceAlert> AttendanceAlerts { get; set; }
@@ -68,6 +69,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<TimeSlot> TimeSlots { get; set; }
     public DbSet<Timetable> Timetables { get; set; }
     public DbSet<TimetableEntry> TimetableEntries { get; set; }
+    public DbSet<TimetableSubstitution> TimetableSubstitutions { get; set; }
 
     // Examinations / Results / Question Bank (Module 10-11)
     public DbSet<Exam> Exams { get; set; }
@@ -605,6 +607,22 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(r => r.MarkedByUser).WithMany()
             .HasForeignKey(r => r.MarkedByUserId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AttendanceCorrectionRequest>()
+            .HasOne(c => c.AttendanceRecord).WithMany()
+            .HasForeignKey(c => c.AttendanceRecordId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCorrectionRequest>()
+            .HasOne(c => c.AttendanceSession).WithMany()
+            .HasForeignKey(c => c.AttendanceSessionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCorrectionRequest>()
+            .HasOne(c => c.StudentProfile).WithMany()
+            .HasForeignKey(c => c.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCorrectionRequest>()
+            .HasOne(c => c.RequestedByUser).WithMany()
+            .HasForeignKey(c => c.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCorrectionRequest>()
+            .HasOne(c => c.ReviewedByUser).WithMany()
+            .HasForeignKey(c => c.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<AttendancePolicy>()
             .HasOne(p => p.Branch).WithMany()
             .HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
@@ -669,6 +687,25 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(e => e.Room).WithMany()
             .HasForeignKey(e => e.RoomId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<TimetableSubstitution>()
+            .HasOne(s => s.Branch).WithMany()
+            .HasForeignKey(s => s.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableSubstitution>()
+            .HasOne(s => s.TimetableEntry).WithMany()
+            .HasForeignKey(s => s.TimetableEntryId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableSubstitution>()
+            .HasOne(s => s.OriginalTeacherProfile).WithMany()
+            .HasForeignKey(s => s.OriginalTeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableSubstitution>()
+            .HasOne(s => s.SubstituteTeacherProfile).WithMany()
+            .HasForeignKey(s => s.SubstituteTeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableSubstitution>()
+            .HasOne(s => s.RequestedByUser).WithMany()
+            .HasForeignKey(s => s.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableSubstitution>()
+            .HasOne(s => s.ReviewedByUser).WithMany()
+            .HasForeignKey(s => s.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<AdmissionFormTemplate>().HasIndex(f => new { f.TenantId, f.Name }).IsUnique();
         modelBuilder.Entity<AdmissionFormTemplate>().HasIndex(f => new { f.TenantId, f.BranchId, f.CourseId, f.AcademicYearId, f.IsActive });
         modelBuilder.Entity<AdmissionFormField>().HasIndex(f => new { f.AdmissionFormTemplateId, f.FieldKey }).IsUnique();
@@ -694,6 +731,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AttendanceSession>().HasIndex(s => new { s.TenantId, s.SectionId, s.AttendanceDate });
         modelBuilder.Entity<AttendanceSession>().HasIndex(s => s.SubjectId);
         modelBuilder.Entity<AttendanceRecord>().HasIndex(r => new { r.TenantId, r.AttendanceSessionId, r.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<AttendanceCorrectionRequest>().HasIndex(c => new { c.TenantId, c.AttendanceSessionId, c.Status });
+        modelBuilder.Entity<AttendanceCorrectionRequest>().HasIndex(c => new { c.TenantId, c.AttendanceRecordId, c.Status });
+        modelBuilder.Entity<AttendanceCorrectionRequest>().HasIndex(c => c.StudentProfileId);
         modelBuilder.Entity<AttendancePolicy>().HasIndex(p => new { p.TenantId, p.Name }).IsUnique();
         modelBuilder.Entity<LeaveApplication>().HasIndex(l => new { l.TenantId, l.StudentProfileId, l.FromDate });
         modelBuilder.Entity<AttendanceAlert>().HasIndex(a => new { a.TenantId, a.StudentProfileId, a.Status });
@@ -704,6 +744,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<TimetableEntry>().HasIndex(e => new { e.TimetableId, e.SectionId, e.TimeSlotId }).IsUnique();
         modelBuilder.Entity<TimetableEntry>().HasIndex(e => new { e.TimetableId, e.TeacherProfileId, e.TimeSlotId }).IsUnique();
         modelBuilder.Entity<TimetableEntry>().HasIndex(e => new { e.TimetableId, e.RoomId, e.TimeSlotId });
+        modelBuilder.Entity<TimetableSubstitution>().HasIndex(s => new { s.TenantId, s.BranchId, s.SubstitutionDate, s.Status });
+        modelBuilder.Entity<TimetableSubstitution>().HasIndex(s => new { s.TenantId, s.TimetableEntryId, s.SubstitutionDate });
+        modelBuilder.Entity<TimetableSubstitution>().HasIndex(s => s.SubstituteTeacherProfileId);
     }
 
     private static void ConfigureExaminations(ModelBuilder modelBuilder)

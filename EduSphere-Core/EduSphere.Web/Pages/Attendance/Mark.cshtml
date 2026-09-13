@@ -21,10 +21,52 @@
 }
 else
 {
+    @if (!string.IsNullOrWhiteSpace(Model.Feedback))
+    {
+        <div class="alert alert-success">@Model.Feedback</div>
+    }
     @if (!string.IsNullOrWhiteSpace(Model.Notice))
     {
         <div class="alert alert-info">@Model.Notice</div>
     }
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card data-card h-100">
+                <div class="card-body">
+                    <span class="eyebrow">30-day attendance</span>
+                    <h2 class="mb-0">@Model.Analytics.AttendancePercentage.ToString("0.##")%</h2>
+                    <p class="text-muted mb-0">@Model.Analytics.TotalRecords marked records</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card data-card h-100">
+                <div class="card-body">
+                    <span class="eyebrow">Sessions</span>
+                    <h2 class="mb-0">@Model.Analytics.SessionCount</h2>
+                    <p class="text-muted mb-0">@Model.Analytics.From to @Model.Analytics.To</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card data-card h-100">
+                <div class="card-body">
+                    <span class="eyebrow">Exceptions</span>
+                    <h2 class="mb-0">@(Model.Analytics.AbsentRecords + Model.Analytics.LateRecords)</h2>
+                    <p class="text-muted mb-0">@Model.Analytics.AbsentRecords absent, @Model.Analytics.LateRecords late</p>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card data-card h-100">
+                <div class="card-body">
+                    <span class="eyebrow">Corrections</span>
+                    <h2 class="mb-0">@Model.CorrectionRequests.Count(c => c.Status == ApprovalStatus.UnderReview)</h2>
+                    <p class="text-muted mb-0">pending approvals</p>
+                </div>
+            </div>
+        </div>
+    </div>
     <div class="row g-4 workspace-grid">
         <div class="col-xl-4">
             <div class="card form-card mb-4">
@@ -126,6 +168,30 @@ else
                     </form>
                 </div>
             </div>
+            <div class="card form-card mt-4">
+                <div class="card-header"><span>Request correction</span><span class="stage-tag">Approval</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RequestCorrection">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <div class="mb-2">
+                            <label asp-for="CorrectionInput.AttendanceRecordId" class="form-label"></label>
+                            <select asp-for="CorrectionInput.AttendanceRecordId" class="form-select">
+                                <option value="">Select marked record</option>
+                                @foreach (var r in Model.Records) { <option value="@r.Id">@Model.RecordLabel(r.Id)</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="CorrectionInput.RequestedStatus" class="form-label"></label>
+                            <select asp-for="CorrectionInput.RequestedStatus" asp-items="Html.GetEnumSelectList<AttendanceStatus>()" class="form-select"></select>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="CorrectionInput.Reason" class="form-label"></label>
+                            <textarea asp-for="CorrectionInput.Reason" class="form-control" rows="2"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-outline-primary">Submit request</button>
+                    </form>
+                </div>
+            </div>
         </div>
         <div class="col-xl-8">
             <div class="card data-card mb-4">
@@ -145,6 +211,11 @@ else
                                 <td class="text-end">
                                     <span class="action-stack">
                                         <a asp-page="/Attendance/Mark" asp-route-sessionEditId="@item.Id" class="btn btn-sm btn-outline-secondary">Edit</a>
+                                        <form method="post" asp-page-handler="QueueNotifications" asp-route-sessionId="@item.Id" class="d-inline">
+                                            <input type="hidden" name="NotificationInput.Channel" value="@CommunicationChannel.Email" />
+                                            <input type="hidden" name="NotificationInput.OnlyExceptions" value="true" />
+                                            <button class="btn btn-sm btn-outline-primary">Queue notices</button>
+                                        </form>
                                         <form method="post" asp-page-handler="DeleteSession" asp-route-id="@item.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
                                     </span>
                                 </td>
@@ -177,6 +248,65 @@ else
                             </tr>
                         }
                         @if (Model.Records.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No attendance records yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card data-card mt-4">
+                <div class="card-header"><span>Attendance Corrections</span><span class="count-pill">@Model.CorrectionRequests.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Student</th><th>Session</th><th>Change</th><th>Status</th><th>Reason</th><th class="text-end">Review</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.CorrectionRequests)
+                        {
+                            <tr>
+                                <td>@Model.CorrectionStudentName(item)</td>
+                                <td>@Model.CorrectionSessionLabel(item)</td>
+                                <td>@item.CurrentStatus to @item.RequestedStatus</td>
+                                <td><span class="stage-tag">@item.Status</span></td>
+                                <td>@(item.Reason ?? "-")</td>
+                                <td class="text-end">
+                                    @if (item.Status == ApprovalStatus.UnderReview)
+                                    {
+                                        <form method="post" asp-page-handler="ReviewCorrection" asp-route-id="@item.Id" class="d-inline">
+                                            <textarea name="ReviewCorrectionInput.ReviewNotes" class="form-control form-control-sm mb-2" rows="1" placeholder="Review notes"></textarea>
+                                            <span class="action-stack">
+                                                <button name="status" value="@ApprovalStatus.Approved" class="btn btn-sm btn-success">Approve</button>
+                                                <button name="status" value="@ApprovalStatus.Rejected" class="btn btn-sm btn-outline-danger">Reject</button>
+                                            </span>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Reviewed</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.CorrectionRequests.Count == 0) { <tr><td colspan="6" class="text-center empty-state">No correction requests yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card data-card mt-4">
+                <div class="card-header"><span>Lowest Attendance</span><span class="count-pill">Analytics</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Student</th><th>Records</th><th>Present</th><th>Absent</th><th>Late</th><th>Attendance</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.Analytics.Students)
+                        {
+                            <tr>
+                                <td>@item.StudentName</td>
+                                <td>@item.TotalRecords</td>
+                                <td>@item.PresentRecords</td>
+                                <td>@item.AbsentRecords</td>
+                                <td>@item.LateRecords</td>
+                                <td><span class="stage-tag">@item.AttendancePercentage.ToString("0.##")%</span></td>
+                            </tr>
+                        }
+                        @if (Model.Analytics.Students.Count == 0) { <tr><td colspan="6" class="text-center empty-state">No attendance analytics yet.</td></tr> }
                         </tbody>
                     </table>
                 </div>

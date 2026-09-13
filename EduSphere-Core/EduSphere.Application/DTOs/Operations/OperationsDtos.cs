@@ -335,6 +335,68 @@ public class CreateAttendanceRecordRequest
 
 public class UpdateAttendanceRecordRequest : CreateAttendanceRecordRequest { }
 
+public class AttendanceCorrectionRequestDto : OperationsTenantScopedDto
+{
+    public Guid AttendanceRecordId { get; set; }
+    public Guid AttendanceSessionId { get; set; }
+    public Guid StudentProfileId { get; set; }
+    public AttendanceStatus CurrentStatus { get; set; }
+    public AttendanceStatus RequestedStatus { get; set; }
+    public Guid? RequestedByUserId { get; set; }
+    public DateTime RequestedOn { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTime? ReviewedOn { get; set; }
+    public ApprovalStatus Status { get; set; }
+    public string? Reason { get; set; }
+    public string? ReviewNotes { get; set; }
+}
+
+public class CreateAttendanceCorrectionRequest
+{
+    public Guid AttendanceRecordId { get; set; }
+    public AttendanceStatus RequestedStatus { get; set; } = AttendanceStatus.Present;
+    public string? Reason { get; set; }
+}
+
+public class ReviewAttendanceCorrectionRequest
+{
+    public ApprovalStatus Status { get; set; } = ApprovalStatus.Approved;
+    public string? ReviewNotes { get; set; }
+}
+
+public class StudentAttendanceSummaryDto
+{
+    public Guid StudentProfileId { get; set; }
+    public string StudentName { get; set; } = string.Empty;
+    public int TotalRecords { get; set; }
+    public int PresentRecords { get; set; }
+    public int AbsentRecords { get; set; }
+    public int LateRecords { get; set; }
+    public int ExcusedRecords { get; set; }
+    public decimal AttendancePercentage { get; set; }
+}
+
+public class AttendanceAnalyticsDto
+{
+    public DateOnly From { get; set; }
+    public DateOnly To { get; set; }
+    public int SessionCount { get; set; }
+    public int TotalRecords { get; set; }
+    public int PresentRecords { get; set; }
+    public int AbsentRecords { get; set; }
+    public int LateRecords { get; set; }
+    public decimal AttendancePercentage { get; set; }
+    public IReadOnlyList<StudentAttendanceSummaryDto> Students { get; set; } = Array.Empty<StudentAttendanceSummaryDto>();
+}
+
+public class QueueAttendanceNotificationsRequest
+{
+    public Guid AttendanceSessionId { get; set; }
+    public CommunicationChannel Channel { get; set; } = CommunicationChannel.Email;
+    public bool OnlyExceptions { get; set; } = true;
+    public string? Subject { get; set; }
+}
+
 public class AttendancePolicyDto : OperationsTenantScopedDto
 {
     public Guid? BranchId { get; set; }
@@ -504,3 +566,45 @@ public class CreateTimetableEntryRequest
 }
 
 public class UpdateTimetableEntryRequest : CreateTimetableEntryRequest { }
+
+public class TimetableSubstitutionDto : OperationsTenantScopedDto
+{
+    public Guid BranchId { get; set; }
+    public Guid TimetableEntryId { get; set; }
+    public DateOnly SubstitutionDate { get; set; }
+    public Guid OriginalTeacherProfileId { get; set; }
+    public Guid SubstituteTeacherProfileId { get; set; }
+    public Guid? RequestedByUserId { get; set; }
+    public DateTime RequestedOn { get; set; }
+    public Guid? ReviewedByUserId { get; set; }
+    public DateTime? ReviewedOn { get; set; }
+    public ApprovalStatus Status { get; set; }
+    public string? Reason { get; set; }
+    public string? ReviewNotes { get; set; }
+}
+
+public class CreateTimetableSubstitutionRequest
+{
+    public Guid TimetableEntryId { get; set; }
+    public DateOnly SubstitutionDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public Guid OriginalTeacherProfileId { get; set; }
+    public Guid SubstituteTeacherProfileId { get; set; }
+    public string? Reason { get; set; }
+}
+
+public class ReviewTimetableSubstitutionRequest
+{
+    public ApprovalStatus Status { get; set; } = ApprovalStatus.Approved;
+    public string? ReviewNotes { get; set; }
+}
+
+public class TimetableConflictDto
+{
+    public string Severity { get; set; } = "Warning";
+    public string Scope { get; set; } = string.Empty;
+    public Guid TimetableId { get; set; }
+    public string TimetableName { get; set; } = string.Empty;
+    public Guid TimeSlotId { get; set; }
+    public string TimeSlotLabel { get; set; } = string.Empty;
+    public string Description { get; set; } = string.Empty;
+}

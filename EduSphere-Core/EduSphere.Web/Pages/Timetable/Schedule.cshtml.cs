@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EduSphere.Application.DTOs.Operations;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
@@ -26,6 +27,7 @@ public class ScheduleModel : PageModel
     private readonly ICrudService<TeacherProfile> _teachers;
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
+    private readonly IAttendanceTimetableWorkflowService _workflow;
 
     public ScheduleModel(
         ICrudService<Room> rooms,
@@ -38,7 +40,8 @@ public class ScheduleModel : PageModel
         ICrudService<Subject> subjects,
         ICrudService<TeacherProfile> teachers,
         ITenantContext tenant,
-        IBranchAccessService branchAccess)
+        IBranchAccessService branchAccess,
+        IAttendanceTimetableWorkflowService workflow)
     {
         _rooms = rooms;
         _slots = slots;
@@ -51,6 +54,7 @@ public class ScheduleModel : PageModel
         _teachers = teachers;
         _tenant = tenant;
         _branchAccess = branchAccess;
+        _workflow = workflow;
     }
 
     public bool HasTenant => _tenant.HasTenant;
@@ -64,11 +68,16 @@ public class ScheduleModel : PageModel
     public IReadOnlyList<Section> Sections { get; private set; } = new List<Section>();
     public IReadOnlyList<Subject> Subjects { get; private set; } = new List<Subject>();
     public IReadOnlyList<TeacherProfile> Teachers { get; private set; } = new List<TeacherProfile>();
+    public IReadOnlyList<TimetableConflictDto> Conflicts { get; private set; } = new List<TimetableConflictDto>();
+    public IReadOnlyList<TimetableSubstitutionDto> Substitutions { get; private set; } = new List<TimetableSubstitutionDto>();
+    [TempData] public string? Feedback { get; set; }
 
     [BindProperty] public RoomInputModel RoomInput { get; set; } = new();
     [BindProperty] public SlotInputModel SlotInput { get; set; } = new();
     [BindProperty] public TimetableInputModel TimetableInput { get; set; } = new();
     [BindProperty] public EntryInputModel EntryInput { get; set; } = new();
+    [BindProperty] public SubstitutionInputModel SubstitutionInput { get; set; } = new();
+    [BindProperty] public ReviewSubstitutionInputModel ReviewSubstitutionInput { get; set; } = new();
 
     public bool IsEditingRoom => RoomInput.Id != Guid.Empty;
     public bool IsEditingSlot => SlotInput.Id != Guid.Empty;
@@ -91,6 +100,16 @@ public class ScheduleModel : PageModel
     }
     public string RoomName(Guid? id) => Rooms.FirstOrDefault(r => r.Id == id)?.Name ?? "-";
     public string TimetableName(Guid id) => Timetables.FirstOrDefault(t => t.Id == id)?.Name ?? "-";
+    public string EntryLabel(Guid id)
+    {
+        var entry = Entries.FirstOrDefault(e => e.Id == id);
+        return entry is null
+            ? "-"
+            : $"{TimetableName(entry.TimetableId)} / {SlotName(entry.TimeSlotId)} / {SectionName(entry.SectionId)} / {SubjectName(entry.SubjectId)}";
+    }
+    public string SubstitutionEntryLabel(TimetableSubstitutionDto item) => EntryLabel(item.TimetableEntryId);
+    public string SubstitutionOriginalTeacher(TimetableSubstitutionDto item) => TeacherName(item.OriginalTeacherProfileId);
+    public string SubstitutionReliefTeacher(TimetableSubstitutionDto item) => TeacherName(item.SubstituteTeacherProfileId);
 
     public class RoomInputModel
     {
@@ -139,6 +158,20 @@ public class ScheduleModel : PageModel
         [StringLength(500)] public string? Notes { get; set; }
     }
 
+    public class SubstitutionInputModel
+    {
+        [Display(Name = "Timetable entry"), Required] public Guid? TimetableEntryId { get; set; }
+        [Required, Display(Name = "Date")] public DateOnly SubstitutionDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+        [Display(Name = "Original teacher"), Required] public Guid? OriginalTeacherProfileId { get; set; }
+        [Display(Name = "Relief teacher"), Required] public Guid? SubstituteTeacherProfileId { get; set; }
+        [StringLength(500)] public string? Reason { get; set; }
+    }
+
+    public class ReviewSubstitutionInputModel
+    {
+        [StringLength(500), Display(Name = "Review notes")] public string? ReviewNotes { get; set; }
+    }
+
     public async Task OnGetAsync(Guid? roomEditId, Guid? slotEditId, Guid? timetableEditId, Guid? entryEditId)
     {
         if (!HasTenant) return;
@@ -177,6 +210,75 @@ public class ScheduleModel : PageModel
         else
             await _rooms.UpdateAsync(RoomInput.Id, e => Apply(e, branchId));
 
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveSubstitutionAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(SubstitutionInput));
+
+        var entryId = SubstitutionInput.TimetableEntryId ?? Guid.Empty;
+        var originalTeacherId = SubstitutionInput.OriginalTeacherProfileId ?? Guid.Empty;
+        var substituteTeacherId = SubstitutionInput.SubstituteTeacherProfileId ?? Guid.Empty;
+
+        if (entryId == Guid.Empty)
+            ModelState.AddModelError("SubstitutionInput.TimetableEntryId", "Select a timetable entry.");
+        if (originalTeacherId == Guid.Empty)
+            ModelState.AddModelError("SubstitutionInput.OriginalTeacherProfileId", "Select the original teacher.");
+        if (substituteTeacherId == Guid.Empty)
+            ModelState.AddModelError("SubstitutionInput.SubstituteTeacherProfileId", "Select the relief teacher.");
+
+        if (!ModelState.IsValid)
+        {
+            await LoadAsync();
+            return Page();
+        }
+
+        var result = await _workflow.CreateSubstitutionAsync(
+            User,
+            new CreateTimetableSubstitutionRequest
+            {
+                TimetableEntryId = entryId,
+                SubstitutionDate = SubstitutionInput.SubstitutionDate,
+                OriginalTeacherProfileId = originalTeacherId,
+                SubstituteTeacherProfileId = substituteTeacherId,
+                Reason = SubstitutionInput.Reason
+            });
+
+        if (!result.Succeeded)
+        {
+            AddErrors(result.Errors);
+            await LoadAsync();
+            return Page();
+        }
+
+        Feedback = result.Message;
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostReviewSubstitutionAsync(Guid id, ApprovalStatus status)
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(ReviewSubstitutionInput));
+
+        var result = await _workflow.ReviewSubstitutionAsync(
+            User,
+            id,
+            new ReviewTimetableSubstitutionRequest
+            {
+                Status = status,
+                ReviewNotes = ReviewSubstitutionInput.ReviewNotes
+            });
+
+        if (!result.Succeeded)
+        {
+            AddErrors(result.Errors);
+            await LoadAsync();
+            return Page();
+        }
+
+        Feedback = result.Message;
         return RedirectToPage();
     }
 
@@ -330,6 +432,8 @@ public class ScheduleModel : PageModel
             .OrderBy(e => TimetableName(e.TimetableId))
             .ThenBy(e => SlotName(e.TimeSlotId))
             .ToList();
+        Conflicts = await _workflow.DetectTimetableConflictsAsync(User);
+        Substitutions = await _workflow.ListSubstitutionsAsync(User);
 
         if (IsBranchAdminOnly && assignedBranchId.HasValue)
         {
@@ -343,6 +447,12 @@ public class ScheduleModel : PageModel
     {
         foreach (var key in ModelState.Keys.Where(k => !k.StartsWith(prefix + ".", StringComparison.Ordinal)).ToList())
             ModelState.Remove(key);
+    }
+
+    private void AddErrors(IEnumerable<string> errors)
+    {
+        foreach (var error in errors)
+            ModelState.AddModelError(string.Empty, error);
     }
 
     private async Task<string?> ValidateEntryAsync(EntryInputModel input, Guid? currentId)

@@ -210,6 +210,37 @@ public class UpdateAttendanceRecordRequestValidator : AbstractValidator<UpdateAt
     public UpdateAttendanceRecordRequestValidator() => Include(new CreateAttendanceRecordRequestValidator());
 }
 
+public class CreateAttendanceCorrectionRequestValidator : AbstractValidator<CreateAttendanceCorrectionRequest>
+{
+    public CreateAttendanceCorrectionRequestValidator()
+    {
+        RuleFor(x => x.AttendanceRecordId).NotEmpty();
+        RuleFor(x => x.RequestedStatus).IsInEnum();
+        RuleFor(x => x.Reason).MaximumLength(500);
+    }
+}
+
+public class ReviewAttendanceCorrectionRequestValidator : AbstractValidator<ReviewAttendanceCorrectionRequest>
+{
+    public ReviewAttendanceCorrectionRequestValidator()
+    {
+        RuleFor(x => x.Status)
+            .Must(s => s is ApprovalStatus.Approved or ApprovalStatus.Rejected)
+            .WithMessage("Correction requests can only be approved or rejected.");
+        RuleFor(x => x.ReviewNotes).MaximumLength(500);
+    }
+}
+
+public class QueueAttendanceNotificationsRequestValidator : AbstractValidator<QueueAttendanceNotificationsRequest>
+{
+    public QueueAttendanceNotificationsRequestValidator()
+    {
+        RuleFor(x => x.AttendanceSessionId).NotEmpty();
+        RuleFor(x => x.Channel).IsInEnum();
+        RuleFor(x => x.Subject).MaximumLength(250);
+    }
+}
+
 public class CreateAttendancePolicyRequestValidator : AbstractValidator<CreateAttendancePolicyRequest>
 {
     public CreateAttendancePolicyRequestValidator()
@@ -331,4 +362,29 @@ public class CreateTimetableEntryRequestValidator : AbstractValidator<CreateTime
 public class UpdateTimetableEntryRequestValidator : AbstractValidator<UpdateTimetableEntryRequest>
 {
     public UpdateTimetableEntryRequestValidator() => Include(new CreateTimetableEntryRequestValidator());
+}
+
+public class CreateTimetableSubstitutionRequestValidator : AbstractValidator<CreateTimetableSubstitutionRequest>
+{
+    public CreateTimetableSubstitutionRequestValidator()
+    {
+        RuleFor(x => x.TimetableEntryId).NotEmpty();
+        RuleFor(x => x.OriginalTeacherProfileId).NotEmpty();
+        RuleFor(x => x.SubstituteTeacherProfileId).NotEmpty();
+        RuleFor(x => x.SubstituteTeacherProfileId)
+            .NotEqual(x => x.OriginalTeacherProfileId)
+            .WithMessage("The relief teacher must be different from the original teacher.");
+        RuleFor(x => x.Reason).MaximumLength(500);
+    }
+}
+
+public class ReviewTimetableSubstitutionRequestValidator : AbstractValidator<ReviewTimetableSubstitutionRequest>
+{
+    public ReviewTimetableSubstitutionRequestValidator()
+    {
+        RuleFor(x => x.Status)
+            .Must(s => s is ApprovalStatus.Approved or ApprovalStatus.Rejected)
+            .WithMessage("Substitution requests can only be approved or rejected.");
+        RuleFor(x => x.ReviewNotes).MaximumLength(500);
+    }
 }

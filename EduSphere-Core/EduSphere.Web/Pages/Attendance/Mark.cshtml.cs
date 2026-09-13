@@ -1,4 +1,5 @@
 using System.ComponentModel.DataAnnotations;
+using EduSphere.Application.DTOs.Operations;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Constants;
 using EduSphere.Domain.Entities;
@@ -27,6 +28,7 @@ public class MarkModel : PageModel
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
+    private readonly IAttendanceTimetableWorkflowService _workflow;
 
     public MarkModel(
         ICrudService<AttendanceSession> sessions,
@@ -39,7 +41,8 @@ public class MarkModel : PageModel
         ICrudService<TeacherSubjectAssignment> teacherAssignments,
         UserManager<ApplicationUser> userManager,
         ITenantContext tenant,
-        IBranchAccessService branchAccess)
+        IBranchAccessService branchAccess,
+        IAttendanceTimetableWorkflowService workflow)
     {
         _sessions = sessions;
         _records = records;
@@ -52,6 +55,7 @@ public class MarkModel : PageModel
         _userManager = userManager;
         _tenant = tenant;
         _branchAccess = branchAccess;
+        _workflow = workflow;
     }
 
     public bool HasTenant => _tenant.HasTenant;
@@ -68,9 +72,15 @@ public class MarkModel : PageModel
     public IReadOnlyList<Section> Sections { get; private set; } = new List<Section>();
     public IReadOnlyList<Subject> Subjects { get; private set; } = new List<Subject>();
     public IReadOnlyList<StudentProfile> Students { get; private set; } = new List<StudentProfile>();
+    public IReadOnlyList<AttendanceCorrectionRequestDto> CorrectionRequests { get; private set; } = new List<AttendanceCorrectionRequestDto>();
+    public AttendanceAnalyticsDto Analytics { get; private set; } = new();
+    [TempData] public string? Feedback { get; set; }
 
     [BindProperty] public SessionInputModel SessionInput { get; set; } = new();
     [BindProperty] public RecordInputModel RecordInput { get; set; } = new();
+    [BindProperty] public CorrectionInputModel CorrectionInput { get; set; } = new();
+    [BindProperty] public ReviewCorrectionInputModel ReviewCorrectionInput { get; set; } = new();
+    [BindProperty] public NotificationInputModel NotificationInput { get; set; } = new();
     public bool IsEditingSession => SessionInput.Id != Guid.Empty;
     public bool IsEditingRecord => RecordInput.Id != Guid.Empty;
 
@@ -89,6 +99,14 @@ public class MarkModel : PageModel
             ? "-"
             : $"{session.AttendanceDate} / {SectionName(session.SectionId)} / {SubjectName(session.SubjectId)}";
     }
+    public string RecordLabel(Guid id)
+    {
+        var record = Records.FirstOrDefault(r => r.Id == id);
+        return record is null ? "-" : $"{StudentName(record.StudentProfileId)} / {SessionLabel(record.AttendanceSessionId)}";
+    }
+
+    public string CorrectionStudentName(AttendanceCorrectionRequestDto item) => StudentName(item.StudentProfileId);
+    public string CorrectionSessionLabel(AttendanceCorrectionRequestDto item) => SessionLabel(item.AttendanceSessionId);
 
     public class SessionInputModel
     {
@@ -112,6 +130,25 @@ public class MarkModel : PageModel
         [Display(Name = "Student"), Required] public Guid? StudentProfileId { get; set; }
         public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
         [StringLength(500)] public string? Remarks { get; set; }
+    }
+
+    public class CorrectionInputModel
+    {
+        [Display(Name = "Record"), Required] public Guid? AttendanceRecordId { get; set; }
+        [Display(Name = "Requested status")] public AttendanceStatus RequestedStatus { get; set; } = AttendanceStatus.Present;
+        [StringLength(500)] public string? Reason { get; set; }
+    }
+
+    public class ReviewCorrectionInputModel
+    {
+        [StringLength(500), Display(Name = "Review notes")] public string? ReviewNotes { get; set; }
+    }
+
+    public class NotificationInputModel
+    {
+        public CommunicationChannel Channel { get; set; } = CommunicationChannel.Email;
+        [Display(Name = "Only exceptions")] public bool OnlyExceptions { get; set; } = true;
+        [StringLength(250)] public string? Subject { get; set; }
     }
 
     public async Task OnGetAsync(Guid? sessionEditId, Guid? recordEditId)
@@ -196,10 +233,120 @@ public class MarkModel : PageModel
         }
 
         if (RecordInput.Id == Guid.Empty)
+        {
             await _records.CreateAsync(Apply(new AttendanceRecord(), sessionId, studentId));
-        else
-            await _records.UpdateAsync(RecordInput.Id, e => Apply(e, sessionId, studentId));
+        }
+        else if (IsTeacherOnly)
+        {
+            var correction = await _workflow.RequestCorrectionAsync(
+                User,
+                new CreateAttendanceCorrectionRequest
+                {
+                    AttendanceRecordId = RecordInput.Id,
+                    RequestedStatus = RecordInput.Status,
+                    Reason = RecordInput.Remarks
+                });
 
+            if (!correction.Succeeded)
+            {
+                AddErrors(correction.Errors);
+                await LoadAsync();
+                return Page();
+            }
+
+            Feedback = correction.Message;
+        }
+        else
+        {
+            await _records.UpdateAsync(RecordInput.Id, e => Apply(e, sessionId, studentId));
+        }
+
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRequestCorrectionAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(CorrectionInput));
+
+        var recordId = CorrectionInput.AttendanceRecordId ?? Guid.Empty;
+        if (recordId == Guid.Empty)
+            ModelState.AddModelError("CorrectionInput.AttendanceRecordId", "Select the attendance record to correct.");
+
+        if (!ModelState.IsValid)
+        {
+            await LoadAsync();
+            return Page();
+        }
+
+        var result = await _workflow.RequestCorrectionAsync(
+            User,
+            new CreateAttendanceCorrectionRequest
+            {
+                AttendanceRecordId = recordId,
+                RequestedStatus = CorrectionInput.RequestedStatus,
+                Reason = CorrectionInput.Reason
+            });
+
+        if (!result.Succeeded)
+        {
+            AddErrors(result.Errors);
+            await LoadAsync();
+            return Page();
+        }
+
+        Feedback = result.Message;
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostReviewCorrectionAsync(Guid id, ApprovalStatus status)
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(ReviewCorrectionInput));
+
+        var result = await _workflow.ReviewCorrectionAsync(
+            User,
+            id,
+            new ReviewAttendanceCorrectionRequest
+            {
+                Status = status,
+                ReviewNotes = ReviewCorrectionInput.ReviewNotes
+            });
+
+        if (!result.Succeeded)
+        {
+            AddErrors(result.Errors);
+            await LoadAsync();
+            return Page();
+        }
+
+        Feedback = result.Message;
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostQueueNotificationsAsync(Guid sessionId)
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(NotificationInput));
+
+        var result = await _workflow.QueueAttendanceNotificationsAsync(
+            User,
+            new QueueAttendanceNotificationsRequest
+            {
+                AttendanceSessionId = sessionId,
+                Channel = NotificationInput.Channel,
+                OnlyExceptions = NotificationInput.OnlyExceptions,
+                Subject = NotificationInput.Subject
+            });
+
+        if (!result.Succeeded)
+        {
+            AddErrors(result.Errors);
+            await LoadAsync();
+            return Page();
+        }
+
+        Feedback = result.Message;
         return RedirectToPage();
     }
 
@@ -247,6 +394,8 @@ public class MarkModel : PageModel
         Records = (await _records.ListAsync(r => sessionIds.Contains(r.AttendanceSessionId)))
             .OrderByDescending(r => r.MarkedOn)
             .ToList();
+        CorrectionRequests = await _workflow.ListCorrectionRequestsAsync(User);
+        Analytics = await _workflow.GetAttendanceAnalyticsAsync(User);
 
         if (IsTeacherOnly && Sections.Count == 0)
             Notice = "No sections are assigned to your teacher profile yet.";
@@ -260,6 +409,12 @@ public class MarkModel : PageModel
     {
         foreach (var key in ModelState.Keys.Where(k => !k.StartsWith(prefix + ".", StringComparison.Ordinal)).ToList())
             ModelState.Remove(key);
+    }
+
+    private void AddErrors(IEnumerable<string> errors)
+    {
+        foreach (var error in errors)
+            ModelState.AddModelError(string.Empty, error);
     }
 
     private async Task<IReadOnlyList<Section>> LoadSectionsAsync(Guid? assignedBranchId)

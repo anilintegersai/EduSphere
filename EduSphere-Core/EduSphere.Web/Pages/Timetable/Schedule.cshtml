@@ -21,6 +21,10 @@
 }
 else
 {
+    @if (!string.IsNullOrWhiteSpace(Model.Feedback))
+    {
+        <div class="alert alert-success">@Model.Feedback</div>
+    }
     <div class="row g-4 workspace-grid">
         <div class="col-xxl-3 col-xl-6">
             <div class="card form-card h-100">
@@ -142,6 +146,108 @@ else
                             @if (Model.IsEditingEntry) { <a asp-page="/Timetable/Schedule" class="btn btn-outline-secondary">Cancel</a> }
                         </div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Relief teacher</span><span class="stage-tag">Substitution</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveSubstitution">
+                        <div asp-validation-summary="All" class="text-danger small"></div>
+                        <div class="mb-2">
+                            <label asp-for="SubstitutionInput.TimetableEntryId" class="form-label"></label>
+                            <select asp-for="SubstitutionInput.TimetableEntryId" class="form-select">
+                                <option value="">Select class</option>
+                                @foreach (var entry in Model.Entries) { <option value="@entry.Id">@Model.EntryLabel(entry.Id)</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="SubstitutionInput.SubstitutionDate" class="form-label"></label>
+                            <input asp-for="SubstitutionInput.SubstitutionDate" type="date" class="form-control" />
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="SubstitutionInput.OriginalTeacherProfileId" class="form-label"></label>
+                            <select asp-for="SubstitutionInput.OriginalTeacherProfileId" class="form-select">
+                                <option value="">Select original teacher</option>
+                                @foreach (var teacher in Model.Teachers) { <option value="@teacher.Id">@teacher.FirstName @teacher.LastName</option> }
+                            </select>
+                        </div>
+                        <div class="mb-2">
+                            <label asp-for="SubstitutionInput.SubstituteTeacherProfileId" class="form-label"></label>
+                            <select asp-for="SubstitutionInput.SubstituteTeacherProfileId" class="form-select">
+                                <option value="">Select relief teacher</option>
+                                @foreach (var teacher in Model.Teachers) { <option value="@teacher.Id">@teacher.FirstName @teacher.LastName</option> }
+                            </select>
+                        </div>
+                        <div class="mb-3">
+                            <label asp-for="SubstitutionInput.Reason" class="form-label"></label>
+                            <textarea asp-for="SubstitutionInput.Reason" rows="2" class="form-control"></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-primary">Submit request</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-8">
+            <div class="card data-card mb-4">
+                <div class="card-header"><span>Conflict Detection</span><span class="count-pill">@Model.Conflicts.Count conflicts</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Scope</th><th>Slot</th><th>Timetable</th><th>Description</th></tr></thead>
+                        <tbody>
+                        @foreach (var conflict in Model.Conflicts)
+                        {
+                            <tr>
+                                <td><span class="stage-tag">@conflict.Scope</span></td>
+                                <td>@conflict.TimeSlotLabel</td>
+                                <td>@conflict.TimetableName</td>
+                                <td>@conflict.Description</td>
+                            </tr>
+                        }
+                        @if (Model.Conflicts.Count == 0) { <tr><td colspan="4" class="text-center empty-state">No timetable conflicts detected.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card data-card">
+                <div class="card-header"><span>Relief Teacher Requests</span><span class="count-pill">@Model.Substitutions.Count records</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Date</th><th>Class</th><th>Original</th><th>Relief</th><th>Status</th><th class="text-end">Review</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.Substitutions)
+                        {
+                            <tr>
+                                <td>@item.SubstitutionDate</td>
+                                <td>@Model.SubstitutionEntryLabel(item)</td>
+                                <td>@Model.SubstitutionOriginalTeacher(item)</td>
+                                <td>@Model.SubstitutionReliefTeacher(item)</td>
+                                <td><span class="stage-tag">@item.Status</span></td>
+                                <td class="text-end">
+                                    @if (item.Status == ApprovalStatus.UnderReview)
+                                    {
+                                        <form method="post" asp-page-handler="ReviewSubstitution" asp-route-id="@item.Id" class="d-inline">
+                                            <textarea name="ReviewSubstitutionInput.ReviewNotes" class="form-control form-control-sm mb-2" rows="1" placeholder="Review notes"></textarea>
+                                            <span class="action-stack">
+                                                <button name="status" value="@ApprovalStatus.Approved" class="btn btn-sm btn-success">Approve</button>
+                                                <button name="status" value="@ApprovalStatus.Rejected" class="btn btn-sm btn-outline-danger">Reject</button>
+                                            </span>
+                                        </form>
+                                    }
+                                    else
+                                    {
+                                        <span class="text-muted">Reviewed</span>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Substitutions.Count == 0) { <tr><td colspan="6" class="text-center empty-state">No relief teacher requests yet.</td></tr> }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
