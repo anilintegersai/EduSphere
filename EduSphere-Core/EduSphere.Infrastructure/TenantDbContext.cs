@@ -57,6 +57,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<AdmissionApplication> AdmissionApplications { get; set; }
     public DbSet<AdmissionDocument> AdmissionDocuments { get; set; }
     public DbSet<AdmissionReview> AdmissionReviews { get; set; }
+    public DbSet<AdmissionInterview> AdmissionInterviews { get; set; }
     public DbSet<Enrollment> Enrollments { get; set; }
     public DbSet<PromotionRecord> PromotionRecords { get; set; }
     public DbSet<AttendanceSession> AttendanceSessions { get; set; }
@@ -543,6 +544,16 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(r => r.ReviewedByUser).WithMany()
             .HasForeignKey(r => r.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AdmissionInterview>()
+            .HasOne(i => i.AdmissionApplication).WithMany(a => a.Interviews)
+            .HasForeignKey(i => i.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionInterview>()
+            .HasOne(i => i.Branch).WithMany()
+            .HasForeignKey(i => i.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionInterview>()
+            .HasOne(i => i.InterviewerUser).WithMany()
+            .HasForeignKey(i => i.InterviewerUserId).OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<Enrollment>()
             .HasOne(e => e.StudentProfile).WithMany()
             .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
@@ -724,6 +735,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.AdmissionApplicationId);
         modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.UploadedByUserId);
         modelBuilder.Entity<AdmissionReview>().HasIndex(r => r.AdmissionApplicationId);
+        modelBuilder.Entity<AdmissionInterview>().HasIndex(i => i.AdmissionApplicationId);
+        modelBuilder.Entity<AdmissionInterview>().HasIndex(i => new { i.TenantId, i.BranchId, i.StartsOn, i.Status });
+        modelBuilder.Entity<AdmissionInterview>().HasIndex(i => new { i.TenantId, i.InterviewerUserId, i.StartsOn, i.EndsOn });
         modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.EnrollmentNumber }).IsUnique();
         modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.AcademicYearId }).IsUnique();
         modelBuilder.Entity<PromotionRecord>().HasIndex(p => p.StudentProfileId);
@@ -1016,6 +1030,9 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(e => e.StudentProfile).WithMany()
             .HasForeignKey(e => e.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<FeeInvoice>()
+            .HasOne(e => e.AdmissionApplication).WithMany(e => e.FeeInvoices)
+            .HasForeignKey(e => e.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInvoice>()
             .Property(e => e.SubTotal).HasPrecision(12, 2);
         modelBuilder.Entity<FeeInvoice>()
             .Property(e => e.DiscountAmount).HasPrecision(12, 2);
@@ -1068,6 +1085,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<StudentFeeAssignment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.FeeStructureId }).IsUnique();
         modelBuilder.Entity<FeeInvoice>().HasIndex(e => new { e.TenantId, e.InvoiceNumber }).IsUnique();
         modelBuilder.Entity<FeeInvoice>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<FeeInvoice>().HasIndex(e => e.AdmissionApplicationId);
         modelBuilder.Entity<FeeInvoiceLine>().HasIndex(e => new { e.FeeInvoiceId, e.SortOrder });
         modelBuilder.Entity<FeePayment>().HasIndex(e => new { e.TenantId, e.PaymentNumber }).IsUnique();
         modelBuilder.Entity<FeeReceipt>().HasIndex(e => new { e.TenantId, e.ReceiptNumber }).IsUnique();

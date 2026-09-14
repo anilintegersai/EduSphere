@@ -169,8 +169,9 @@ public class UpdateStudentFeeAssignmentRequest : CreateStudentFeeAssignmentReque
 public class FeeInvoiceDto : EnterpriseTenantScopedDto
 {
     public Guid BranchId { get; set; }
-    public Guid StudentFeeAssignmentId { get; set; }
-    public Guid StudentProfileId { get; set; }
+    public Guid? StudentFeeAssignmentId { get; set; }
+    public Guid? StudentProfileId { get; set; }
+    public Guid? AdmissionApplicationId { get; set; }
     public string InvoiceNumber { get; set; } = string.Empty;
     public DateOnly InvoiceDate { get; set; }
     public DateOnly DueDate { get; set; }

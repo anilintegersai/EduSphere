@@ -1,0 +1,236 @@
+@page
+@model EduSphere.Web.Pages.Apply.IndexModel
+@{
+    ViewData["Title"] = "Apply for Admission";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Admissions</span>
+        <h1>Apply for Admission</h1>
+        <p>Submit your application, complete the configured admission form, and upload required documents.</p>
+    </div>
+</section>
+
+@if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
+{
+    <div class="alert alert-info">@Model.StatusMessage</div>
+}
+
+<div class="row g-4 workspace-grid">
+    <div class="col-xl-4">
+        <div class="card form-card">
+            <div class="card-header"><span>Choose program</span><span class="stage-tag">Public</span></div>
+            <div class="card-body">
+                <form method="get" class="row g-2">
+                    <div class="col-12">
+                        <label asp-for="TenantId" class="form-label">Institution</label>
+                        <select asp-for="TenantId" class="form-select">
+                            <option value="">Select institution</option>
+                            @foreach (var tenant in Model.Tenants)
+                            {
+                                <option value="@tenant.Id">@tenant.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="BranchId" class="form-label">Branch / campus</label>
+                        <select asp-for="BranchId" class="form-select">
+                            <option value="">Select branch</option>
+                            @foreach (var branch in Model.Branches)
+                            {
+                                <option value="@branch.Id">@branch.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <label asp-for="CourseId" class="form-label">Course</label>
+                        <select asp-for="CourseId" class="form-select">
+                            <option value="">Select course</option>
+                            @foreach (var course in Model.Courses)
+                            {
+                                <option value="@course.Id">@course.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="AcademicYearId" class="form-label">Academic year</label>
+                        <select asp-for="AcademicYearId" class="form-select">
+                            <option value="">Auto</option>
+                            @foreach (var year in Model.Years)
+                            {
+                                <option value="@year.Id">@year.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="AdmissionFormTemplateId" class="form-label">Admission form</label>
+                        <select asp-for="AdmissionFormTemplateId" class="form-select">
+                            <option value="">Default</option>
+                            @foreach (var form in Model.Forms)
+                            {
+                                <option value="@form.Id">@form.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="BatchId" class="form-label">Batch</label>
+                        <select asp-for="BatchId" class="form-select">
+                            <option value="">Unassigned</option>
+                            @foreach (var batch in Model.Batches)
+                            {
+                                <option value="@batch.Id">@batch.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label asp-for="SectionId" class="form-label">Section</label>
+                        <select asp-for="SectionId" class="form-select">
+                            <option value="">Unassigned</option>
+                            @foreach (var schoolSection in Model.Sections)
+                            {
+                                <option value="@schoolSection.Id">@schoolSection.Name</option>
+                            }
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button class="btn btn-primary" type="submit">Load form</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-xl-8">
+        <div class="card form-card">
+            <div class="card-header"><span>@(Model.SelectedForm?.Name ?? "Application form")</span><span class="stage-tag">Submit</span></div>
+            <div class="card-body">
+                @if (Model.AdmissionFormTemplateId is null)
+                {
+                    <div class="empty-state">Select an institution, branch, and course to load an admission form.</div>
+                }
+                else
+                {
+                    <form method="post" enctype="multipart/form-data" asp-page-handler="Submit">
+                        <div asp-validation-summary="All" class="text-danger small mb-3"></div>
+                        <input type="hidden" asp-for="TenantId" />
+                        <input type="hidden" asp-for="BranchId" />
+                        <input type="hidden" asp-for="CourseId" />
+                        <input type="hidden" asp-for="AcademicYearId" />
+                        <input type="hidden" asp-for="BatchId" />
+                        <input type="hidden" asp-for="SectionId" />
+                        <input type="hidden" asp-for="AdmissionFormTemplateId" />
+
+                        <div class="row g-2">
+                            <div class="col-md-4">
+                                <label asp-for="ApplicantInput.ApplicantFirstName" class="form-label"></label>
+                                <input asp-for="ApplicantInput.ApplicantFirstName" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="ApplicantInput.ApplicantMiddleName" class="form-label"></label>
+                                <input asp-for="ApplicantInput.ApplicantMiddleName" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="ApplicantInput.ApplicantLastName" class="form-label"></label>
+                                <input asp-for="ApplicantInput.ApplicantLastName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ApplicantInput.DateOfBirth" class="form-label"></label>
+                                <input asp-for="ApplicantInput.DateOfBirth" type="date" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ApplicantInput.Gender" class="form-label"></label>
+                                <select asp-for="ApplicantInput.Gender" asp-items="Html.GetEnumSelectList<Gender>()" class="form-select"></select>
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ApplicantInput.Email" class="form-label"></label>
+                                <input asp-for="ApplicantInput.Email" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ApplicantInput.PhoneNumber" class="form-label"></label>
+                                <input asp-for="ApplicantInput.PhoneNumber" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ApplicantInput.GuardianName" class="form-label"></label>
+                                <input asp-for="ApplicantInput.GuardianName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="ApplicantInput.GuardianPhone" class="form-label"></label>
+                                <input asp-for="ApplicantInput.GuardianPhone" class="form-control" />
+                            </div>
+                            <div class="col-12">
+                                <label asp-for="ApplicantInput.Address" class="form-label"></label>
+                                <textarea asp-for="ApplicantInput.Address" class="form-control" rows="2"></textarea>
+                            </div>
+
+                            @foreach (var field in Model.Fields)
+                            {
+                                var fieldId = $"publicFormResponse_{field.FieldKey}";
+                                var value = Model.DynamicValue(field);
+                                var options = Model.FieldOptions(field);
+                                <div class="@(field.FieldType == AdmissionFormFieldType.LongText ? "col-12" : "col-md-6")">
+                                    @if (field.FieldType == AdmissionFormFieldType.Checkbox)
+                                    {
+                                        <input type="hidden" name="FormResponses[@field.FieldKey]" value="false" />
+                                        <div class="form-check mt-4">
+                                            <input id="@fieldId" name="FormResponses[@field.FieldKey]" value="true" type="checkbox" class="form-check-input" checked="@(value == "true")" />
+                                            <label for="@fieldId" class="form-check-label">@field.Label</label>
+                                        </div>
+                                    }
+                                    else
+                                    {
+                                        <label for="@fieldId" class="form-label">@field.Label</label>
+                                        @if (field.FieldType == AdmissionFormFieldType.Select)
+                                        {
+                                            <select id="@fieldId" name="FormResponses[@field.FieldKey]" class="form-select" required="@field.IsRequired">
+                                                <option value="">Select</option>
+                                                @foreach (var option in options)
+                                                {
+                                                    <option value="@option" selected="@(option == value)">@option</option>
+                                                }
+                                            </select>
+                                        }
+                                        else if (field.FieldType == AdmissionFormFieldType.LongText)
+                                        {
+                                            <textarea id="@fieldId" name="FormResponses[@field.FieldKey]" class="form-control" rows="3" maxlength="@field.MaxLength" placeholder="@field.Placeholder" required="@field.IsRequired">@value</textarea>
+                                        }
+                                        else
+                                        {
+                                            <input id="@fieldId" name="FormResponses[@field.FieldKey]" value="@value" type="@Model.InputType(field.FieldType)" class="form-control" maxlength="@field.MaxLength" placeholder="@field.Placeholder" required="@field.IsRequired" />
+                                        }
+                                    }
+                                </div>
+                            }
+
+                            @if (Model.DocumentRequirements.Count > 0)
+                            {
+                                <div class="col-12 mt-2">
+                                    <div class="section-kicker">Documents</div>
+                                </div>
+                                @foreach (var requirement in Model.DocumentRequirements)
+                                {
+                                    <div class="col-md-6">
+                                        <label class="form-label" for="@EduSphere.Web.Pages.Apply.IndexModel.DocumentInputName(requirement)">
+                                            @requirement.DisplayName @(requirement.IsRequired ? "*" : "")
+                                        </label>
+                                        <input id="@EduSphere.Web.Pages.Apply.IndexModel.DocumentInputName(requirement)" name="@EduSphere.Web.Pages.Apply.IndexModel.DocumentInputName(requirement)" type="file" class="form-control" required="@requirement.IsRequired" />
+                                        @if (!string.IsNullOrWhiteSpace(requirement.Notes))
+                                        {
+                                            <div class="form-text">@requirement.Notes</div>
+                                        }
+                                    </div>
+                                }
+                            }
+                        </div>
+
+                        <div class="form-actions mt-3">
+                            <button class="btn btn-success" type="submit">Submit application</button>
+                        </div>
+                    </form>
+                }
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

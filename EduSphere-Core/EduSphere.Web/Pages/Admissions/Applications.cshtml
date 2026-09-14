@@ -15,7 +15,11 @@
     </div>
     @if (Model.HasTenant)
     {
-        <span class="count-pill">@Model.Items.Count applications</span>
+        <span class="action-stack">
+            <a asp-page-handler="Export" class="btn btn-sm btn-outline-secondary">Export CSV</a>
+            <a asp-page="/Apply/Index" class="btn btn-sm btn-outline-primary">Public portal</a>
+            <span class="count-pill">@Model.Items.Count applications</span>
+        </span>
     }
 </section>
 
@@ -41,7 +45,7 @@ else
                         <div class="row g-2">
                             <div class="col-md-7">
                                 <label asp-for="ApplicationInput.AdmissionFormTemplateId" class="form-label"></label>
-                                <select asp-for="ApplicationInput.AdmissionFormTemplateId" class="form-select">
+                                <select asp-for="ApplicationInput.AdmissionFormTemplateId" class="form-select" data-form-selector>
                                     <option value="">No configured form</option>
                                     @foreach (var form in Model.FormTemplates)
                                     {
@@ -154,11 +158,60 @@ else
                                 <label asp-for="ApplicationInput.Address" class="form-label"></label>
                                 <textarea asp-for="ApplicationInput.Address" class="form-control" rows="2"></textarea>
                             </div>
-                            <div class="col-12">
-                                <label asp-for="ApplicationInput.FormResponseJson" class="form-label"></label>
-                                <textarea asp-for="ApplicationInput.FormResponseJson" class="form-control font-monospace" rows="5" placeholder="{ &quot;previousSchool&quot;: &quot;Green Valley School&quot;, &quot;preferredSecondLanguage&quot;: &quot;French&quot; }"></textarea>
-                                <span asp-validation-for="ApplicationInput.FormResponseJson" class="text-danger small"></span>
-                            </div>
+                            @if (Model.ApplicationFormFields.Count > 0)
+                            {
+                                <div class="col-12">
+                                    <div class="section-kicker">Configured form responses</div>
+                                </div>
+                                @foreach (var field in Model.ApplicationFormFields)
+                                {
+                                    var fieldId = $"formResponse_{field.FieldKey}";
+                                    var value = Model.DynamicValue(field);
+                                    var options = Model.FieldOptions(field);
+                                    <div class="@(field.FieldType == AdmissionFormFieldType.LongText ? "col-12" : "col-md-6")">
+                                        @if (field.FieldType == AdmissionFormFieldType.Checkbox)
+                                        {
+                                            <input type="hidden" name="FormResponses[@field.FieldKey]" value="false" />
+                                            <div class="form-check mt-4">
+                                                <input id="@fieldId" name="FormResponses[@field.FieldKey]" value="true" type="checkbox" class="form-check-input" checked="@(value == "true")" />
+                                                <label for="@fieldId" class="form-check-label">@field.Label</label>
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <label for="@fieldId" class="form-label">@field.Label</label>
+                                            @if (field.FieldType == AdmissionFormFieldType.Select)
+                                            {
+                                                <select id="@fieldId" name="FormResponses[@field.FieldKey]" class="form-select" required="@field.IsRequired">
+                                                    <option value="">Select</option>
+                                                    @foreach (var option in options)
+                                                    {
+                                                        <option value="@option" selected="@(option == value)">@option</option>
+                                                    }
+                                                </select>
+                                            }
+                                            else if (field.FieldType == AdmissionFormFieldType.LongText)
+                                            {
+                                                <textarea id="@fieldId" name="FormResponses[@field.FieldKey]" class="form-control" rows="3" maxlength="@field.MaxLength" placeholder="@field.Placeholder" required="@field.IsRequired">@value</textarea>
+                                            }
+                                            else
+                                            {
+                                                <input id="@fieldId" name="FormResponses[@field.FieldKey]" value="@value" type="@Model.InputType(field.FieldType)" class="form-control" maxlength="@field.MaxLength" placeholder="@field.Placeholder" required="@field.IsRequired" />
+                                            }
+                                            @if (!string.IsNullOrWhiteSpace(field.HelpText))
+                                            {
+                                                <div class="form-text">@field.HelpText</div>
+                                            }
+                                        }
+                                    </div>
+                                }
+                            }
+                            else if (Model.ApplicationInput.AdmissionFormTemplateId.HasValue)
+                            {
+                                <div class="col-12">
+                                    <div class="empty-state">This admission form has no active custom fields yet.</div>
+                                </div>
+                            }
                             <div class="col-12">
                                 <label asp-for="ApplicationInput.ReviewNotes" class="form-label"></label>
                                 <textarea asp-for="ApplicationInput.ReviewNotes" class="form-control" rows="2"></textarea>
@@ -304,6 +357,96 @@ else
                                         <button class="btn btn-primary" type="submit">Record review</button>
                                     </div>
                                 </form>
+
+                                <div class="border rounded-3 p-3 mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>Interview schedule</strong>
+                                        <span class="stage-tag">@Model.SelectedInterviews.Count slots</span>
+                                    </div>
+                                    <form method="post" asp-page-handler="ScheduleInterview" asp-route-applicationId="@Model.SelectedApplication.Id" class="row g-2">
+                                        <div class="col-md-6">
+                                            <label asp-for="InterviewInput.StartsOn" class="form-label"></label>
+                                            <input asp-for="InterviewInput.StartsOn" type="datetime-local" class="form-control" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label asp-for="InterviewInput.EndsOn" class="form-label"></label>
+                                            <input asp-for="InterviewInput.EndsOn" type="datetime-local" class="form-control" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label asp-for="InterviewInput.InterviewerUserId" class="form-label"></label>
+                                            <input asp-for="InterviewInput.InterviewerUserId" class="form-control" placeholder="Optional user id" />
+                                        </div>
+                                        <div class="col-md-6">
+                                            <label asp-for="InterviewInput.Location" class="form-label"></label>
+                                            <input asp-for="InterviewInput.Location" class="form-control" placeholder="Room A-102 or online" />
+                                        </div>
+                                        <div class="col-12">
+                                            <label asp-for="InterviewInput.MeetingLink" class="form-label"></label>
+                                            <input asp-for="InterviewInput.MeetingLink" class="form-control" placeholder="Optional meeting link" />
+                                        </div>
+                                        <div class="col-12">
+                                            <label asp-for="InterviewInput.Notes" class="form-label"></label>
+                                            <input asp-for="InterviewInput.Notes" class="form-control" placeholder="Panel, instructions, or preparation notes" />
+                                        </div>
+                                        <div class="col-12">
+                                            <button class="btn btn-outline-primary" type="submit">Schedule interview</button>
+                                        </div>
+                                    </form>
+                                    @if (Model.SelectedInterviews.Count > 0)
+                                    {
+                                        <div class="table-responsive mt-3">
+                                            <table class="table table-sm align-middle">
+                                                <thead><tr><th>Slot</th><th>Status</th><th>Location</th></tr></thead>
+                                                <tbody>
+                                                @foreach (var interview in Model.SelectedInterviews)
+                                                {
+                                                    <tr>
+                                                        <td>@interview.StartsOn.ToLocalTime().ToString("g") - @interview.EndsOn.ToLocalTime().ToString("t")</td>
+                                                        <td><span class="stage-tag">@interview.Status</span></td>
+                                                        <td>@(string.IsNullOrWhiteSpace(interview.Location) ? interview.MeetingLink : interview.Location)</td>
+                                                    </tr>
+                                                }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
+
+                                <div class="border rounded-3 p-3 mb-4">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <strong>Admission fee readiness</strong>
+                                        <span class="stage-tag">@(Model.SelectedFinanceReadiness?.Message ?? "Not checked")</span>
+                                    </div>
+                                    <form method="post" asp-page-handler="GenerateAdmissionInvoice" asp-route-applicationId="@Model.SelectedApplication.Id" class="mb-3">
+                                        <button class="btn btn-outline-primary btn-sm" type="submit">Generate admission fee invoice</button>
+                                    </form>
+                                    @if (Model.SelectedFinanceReadiness?.Invoices.Count > 0)
+                                    {
+                                        <div class="table-responsive">
+                                            <table class="table table-sm align-middle">
+                                                <thead><tr><th>Invoice</th><th>Status</th><th>Due</th><th class="text-end">Action</th></tr></thead>
+                                                <tbody>
+                                                @foreach (var invoice in Model.SelectedFinanceReadiness.Invoices)
+                                                {
+                                                    <tr>
+                                                        <td>@invoice.InvoiceNumber<div class="text-muted small">Due @invoice.DueDate</div></td>
+                                                        <td><span class="stage-tag">@invoice.Status</span></td>
+                                                        <td>@invoice.TotalAmount.ToString("N2")</td>
+                                                        <td class="text-end">
+                                                            @if (!Model.SelectedFinanceReadiness.IsPaid)
+                                                            {
+                                                                <form method="post" asp-page-handler="MarkAdmissionInvoicePaid" asp-route-applicationId="@Model.SelectedApplication.Id" asp-route-invoiceId="@invoice.Id" class="d-inline">
+                                                                    <button class="btn btn-sm btn-outline-success" type="submit">Mark paid</button>
+                                                                </form>
+                                                            }
+                                                        </td>
+                                                    </tr>
+                                                }
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    }
+                                </div>
 
                                 <form method="post" asp-page-handler="Enroll" asp-route-applicationId="@Model.SelectedApplication.Id" class="row g-2">
                                     <div class="col-md-6">
@@ -647,4 +790,16 @@ else
     </div>
 }
 
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+    <script>
+        document.querySelector('[data-form-selector]')?.addEventListener('change', (event) => {
+            const value = event.target.value;
+            if (!value) return;
+            const url = new URL(window.location.href);
+            url.searchParams.set('formId', value);
+            url.searchParams.delete('editId');
+            window.location.href = url.toString();
+        });
+    </script>
+}

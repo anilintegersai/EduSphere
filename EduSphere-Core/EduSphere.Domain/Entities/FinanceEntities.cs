@@ -147,11 +147,14 @@ public class FeeInvoice : TenantEntityBase
     public Guid BranchId { get; set; }
     public Branch? Branch { get; set; }
 
-    public Guid StudentFeeAssignmentId { get; set; }
+    public Guid? StudentFeeAssignmentId { get; set; }
     public StudentFeeAssignment? StudentFeeAssignment { get; set; }
 
-    public Guid StudentProfileId { get; set; }
+    public Guid? StudentProfileId { get; set; }
     public StudentProfile? StudentProfile { get; set; }
+
+    public Guid? AdmissionApplicationId { get; set; }
+    public AdmissionApplication? AdmissionApplication { get; set; }
 
     [Required]
     [StringLength(60)]

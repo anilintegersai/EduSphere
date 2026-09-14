@@ -18,17 +18,20 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
     private readonly ITenantContext _tenantContext;
     private readonly IBranchAccessService _branchAccess;
     private readonly IAdmissionDocumentStorageService _storage;
+    private readonly INotificationDispatcher _notificationDispatcher;
 
     public AdmissionWorkflowService(
         TenantDbContext dbContext,
         ITenantContext tenantContext,
         IBranchAccessService branchAccess,
-        IAdmissionDocumentStorageService storage)
+        IAdmissionDocumentStorageService storage,
+        INotificationDispatcher notificationDispatcher)
     {
         _dbContext = dbContext;
         _tenantContext = tenantContext;
         _branchAccess = branchAccess;
         _storage = storage;
+        _notificationDispatcher = notificationDispatcher;
     }
 
     public async Task<IReadOnlyList<AdmissionFormTemplateDto>> ListFormTemplatesAsync(
@@ -128,6 +131,164 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         return reviews.Select(Map).ToList();
     }
 
+    public async Task<IReadOnlyList<AdmissionInterviewDto>> ListInterviewsAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await GetApplicationAsync(admissionApplicationId, cancellationToken);
+        if (application is null || !await _branchAccess.CanAccessBranchAsync(actor, application.BranchId))
+            return Array.Empty<AdmissionInterviewDto>();
+
+        var interviews = await _dbContext.AdmissionInterviews
+            .AsNoTracking()
+            .Where(i => i.AdmissionApplicationId == admissionApplicationId)
+            .OrderByDescending(i => i.StartsOn)
+            .ToListAsync(cancellationToken);
+
+        return interviews.Select(Map).ToList();
+    }
+
+    public async Task<OperationsWorkflowResult<AdmissionInterviewDto>> ScheduleInterviewAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        ScheduleAdmissionInterviewRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await GetApplicationAsync(admissionApplicationId, cancellationToken);
+        if (application is null)
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("Admission application was not found.");
+        if (!await _branchAccess.CanAccessBranchAsync(actor, application.BranchId))
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("You cannot schedule interviews for this branch.");
+        if (request.EndsOn <= request.StartsOn)
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("Interview end time must be after start time.");
+
+        if (request.InterviewerUserId.HasValue && await HasInterviewerConflictAsync(
+                request.InterviewerUserId.Value,
+                request.StartsOn,
+                request.EndsOn,
+                null,
+                cancellationToken))
+        {
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("The interviewer already has an interview in this time slot.");
+        }
+
+        var fromStatus = application.Status;
+        var interview = new AdmissionInterview
+        {
+            TenantId = application.TenantId,
+            AdmissionApplicationId = application.Id,
+            BranchId = application.BranchId,
+            InterviewerUserId = request.InterviewerUserId,
+            StartsOn = request.StartsOn,
+            EndsOn = request.EndsOn,
+            Status = AdmissionInterviewStatus.Scheduled,
+            Location = Normalize(request.Location),
+            MeetingLink = Normalize(request.MeetingLink),
+            Notes = Normalize(request.Notes)
+        };
+
+        _dbContext.AdmissionInterviews.Add(interview);
+
+        if (application.Status != AdmissionApplicationStatus.InterviewScheduled)
+        {
+            application.Status = AdmissionApplicationStatus.InterviewScheduled;
+            application.ReviewNotes = Normalize(request.Notes) ?? application.ReviewNotes;
+
+            _dbContext.AdmissionReviews.Add(new AdmissionReview
+            {
+                TenantId = application.TenantId,
+                AdmissionApplicationId = application.Id,
+                ReviewedByUserId = _branchAccess.GetUserId(actor),
+                FromStatus = fromStatus,
+                ToStatus = AdmissionApplicationStatus.InterviewScheduled,
+                ReviewedOn = DateTime.UtcNow,
+                Notes = Normalize(request.Notes) ?? "Interview scheduled."
+            });
+        }
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        await QueueAdmissionNotificationAsync(application, AdmissionApplicationStatus.InterviewScheduled, cancellationToken);
+        return OperationsWorkflowResult<AdmissionInterviewDto>.Success(Map(interview), "Interview scheduled.");
+    }
+
+    public async Task<OperationsWorkflowResult<AdmissionInterviewDto>> UpdateInterviewAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        Guid interviewId,
+        UpdateAdmissionInterviewRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await GetApplicationAsync(admissionApplicationId, cancellationToken);
+        if (application is null)
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("Admission application was not found.");
+        if (!await _branchAccess.CanAccessBranchAsync(actor, application.BranchId))
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("You cannot update interviews for this branch.");
+        if (request.EndsOn <= request.StartsOn)
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("Interview end time must be after start time.");
+
+        var interview = await _dbContext.AdmissionInterviews
+            .FirstOrDefaultAsync(i => i.Id == interviewId && i.AdmissionApplicationId == admissionApplicationId, cancellationToken);
+        if (interview is null)
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("Admission interview was not found.");
+
+        if (request.InterviewerUserId.HasValue && await HasInterviewerConflictAsync(
+                request.InterviewerUserId.Value,
+                request.StartsOn,
+                request.EndsOn,
+                interview.Id,
+                cancellationToken))
+        {
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("The interviewer already has an interview in this time slot.");
+        }
+
+        interview.InterviewerUserId = request.InterviewerUserId;
+        interview.StartsOn = request.StartsOn;
+        interview.EndsOn = request.EndsOn;
+        interview.Status = request.Status;
+        interview.Location = Normalize(request.Location);
+        interview.MeetingLink = Normalize(request.MeetingLink);
+        interview.Notes = Normalize(request.Notes);
+        interview.OutcomeNotes = Normalize(request.OutcomeNotes);
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return OperationsWorkflowResult<AdmissionInterviewDto>.Success(Map(interview), "Interview updated.");
+    }
+
+    public async Task<OperationsWorkflowResult<AdmissionFinanceReadinessDto>> GetFinanceReadinessAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await GetApplicationAsync(admissionApplicationId, cancellationToken);
+        if (application is null)
+            return OperationsWorkflowResult<AdmissionFinanceReadinessDto>.Failure("Admission application was not found.");
+        if (!await _branchAccess.CanAccessBranchAsync(actor, application.BranchId))
+            return OperationsWorkflowResult<AdmissionFinanceReadinessDto>.Failure("You cannot view finance details for this branch.");
+
+        return OperationsWorkflowResult<AdmissionFinanceReadinessDto>.Success(
+            await BuildFinanceReadinessAsync(application, cancellationToken));
+    }
+
+    public async Task<OperationsWorkflowResult<AdmissionFeeInvoiceDto>> GenerateAdmissionFeeInvoiceAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        CancellationToken cancellationToken = default)
+    {
+        var application = await GetApplicationAsync(admissionApplicationId, cancellationToken);
+        if (application is null)
+            return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Failure("Admission application was not found.");
+        if (!await _branchAccess.CanAccessBranchAsync(actor, application.BranchId))
+            return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Failure("You cannot create fee invoices for this branch.");
+
+        var invoiceResult = await EnsureAdmissionFeeInvoiceAsync(application, cancellationToken);
+        if (!invoiceResult.Succeeded || invoiceResult.Data is null)
+            return invoiceResult;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+        return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Success(invoiceResult.Data, "Admission fee invoice is ready.");
+    }
+
     public async Task<OperationsWorkflowResult<AdmissionDocumentDto>> UploadDocumentAsync(
         ClaimsPrincipal actor,
         Guid admissionApplicationId,
@@ -216,6 +377,12 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
             return OperationsWorkflowResult<AdmissionApplicationDto>.Failure("You cannot review applications for this branch.");
         if (request.ToStatus == AdmissionApplicationStatus.Enrolled)
             return OperationsWorkflowResult<AdmissionApplicationDto>.Failure("Use the enroll action to move an accepted application to enrolled.");
+        if (request.ToStatus == AdmissionApplicationStatus.FeePending)
+        {
+            var invoiceResult = await EnsureAdmissionFeeInvoiceAsync(application, cancellationToken);
+            if (!invoiceResult.Succeeded)
+                return OperationsWorkflowResult<AdmissionApplicationDto>.Failure(invoiceResult.Errors.ToArray());
+        }
 
         var fromStatus = application.Status;
         application.Status = request.ToStatus;
@@ -233,6 +400,7 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         });
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        await QueueAdmissionNotificationAsync(application, request.ToStatus, cancellationToken);
         return OperationsWorkflowResult<AdmissionApplicationDto>.Success(Map(application), "Application reviewed.");
     }
 
@@ -371,6 +539,12 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
             application.EnrolledStudentProfileId = student.Id;
             application.ReviewNotes = Normalize(request.Notes) ?? application.ReviewNotes;
 
+            var admissionInvoices = await _dbContext.FeeInvoices
+                .Where(i => i.AdmissionApplicationId == application.Id)
+                .ToListAsync(cancellationToken);
+            foreach (var invoice in admissionInvoices)
+                invoice.StudentProfileId = student.Id;
+
             _dbContext.AdmissionReviews.Add(new AdmissionReview
             {
                 TenantId = application.TenantId,
@@ -391,6 +565,7 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         if (student is null || enrollment is null)
             return OperationsWorkflowResult<AdmissionEnrollmentResultDto>.Failure("Enrollment could not be completed.");
 
+        await QueueAdmissionNotificationAsync(application, AdmissionApplicationStatus.Enrolled, cancellationToken);
         return OperationsWorkflowResult<AdmissionEnrollmentResultDto>.Success(new AdmissionEnrollmentResultDto
         {
             Application = Map(application),
@@ -447,7 +622,158 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
                 errors.Add($"Required document '{requirement.DisplayName}' must be uploaded and verified.");
         }
 
+        if (application.Status == AdmissionApplicationStatus.FeePending)
+        {
+            var finance = await BuildFinanceReadinessAsync(application, cancellationToken);
+            if (!finance.RequiresPayment)
+                errors.Add("Generate an admission fee invoice before enrolling a fee-pending application.");
+            else if (!finance.IsPaid)
+                errors.Add("Admission fee payment must be completed before enrollment.");
+        }
+
         return errors;
+    }
+
+    private async Task<OperationsWorkflowResult<AdmissionFeeInvoiceDto>> EnsureAdmissionFeeInvoiceAsync(
+        AdmissionApplication application,
+        CancellationToken cancellationToken)
+    {
+        var existing = await _dbContext.FeeInvoices
+            .AsNoTracking()
+            .FirstOrDefaultAsync(i => i.AdmissionApplicationId == application.Id, cancellationToken);
+        if (existing is not null)
+            return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Success(MapAdmissionFeeInvoice(existing));
+
+        if (!application.AcademicYearId.HasValue)
+            return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Failure("Select an academic year before generating an admission fee invoice.");
+
+        var feeStructures = await _dbContext.FeeStructures
+            .Include(s => s.Components)
+            .Where(s => s.TenantId == application.TenantId &&
+                        s.BranchId == application.BranchId &&
+                        s.AcademicYearId == application.AcademicYearId.Value &&
+                        s.IsActive &&
+                        (s.CourseId == null || s.CourseId == application.CourseId) &&
+                        (s.BatchId == null || s.BatchId == application.BatchId))
+            .ToListAsync(cancellationToken);
+
+        var feeStructure = feeStructures
+            .OrderByDescending(s => s.CourseId == application.CourseId)
+            .ThenByDescending(s => application.BatchId.HasValue && s.BatchId == application.BatchId)
+            .ThenBy(s => s.Name)
+            .FirstOrDefault();
+
+        if (feeStructure is null)
+            return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Failure("No active fee structure was found for this applicant's branch, academic year, and course.");
+
+        var components = feeStructure.Components
+            .Where(c => c.Type == FeeComponentType.Admission && !c.IsOptional && c.Amount > 0)
+            .OrderBy(c => c.SortOrder)
+            .ThenBy(c => c.Name)
+            .ToList();
+
+        if (components.Count == 0)
+            return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Failure("The matching fee structure does not contain a required admission fee component.");
+
+        var invoiceDate = DateOnly.FromDateTime(DateTime.UtcNow);
+        var total = components.Sum(c => c.Amount);
+        var invoice = new FeeInvoice
+        {
+            Id = Guid.NewGuid(),
+            TenantId = application.TenantId,
+            BranchId = application.BranchId,
+            AdmissionApplicationId = application.Id,
+            InvoiceNumber = await NextAdmissionFeeInvoiceNumberAsync(application.TenantId, cancellationToken),
+            InvoiceDate = invoiceDate,
+            DueDate = invoiceDate.AddDays(7),
+            Status = InvoiceStatus.Issued,
+            SubTotal = total,
+            TotalAmount = total,
+            PaidAmount = 0,
+            Notes = $"Admission fee invoice for {application.ApplicationNumber}."
+        };
+        _dbContext.FeeInvoices.Add(invoice);
+
+        var order = 1;
+        foreach (var component in components)
+        {
+            _dbContext.FeeInvoiceLines.Add(new FeeInvoiceLine
+            {
+                TenantId = application.TenantId,
+                BranchId = application.BranchId,
+                FeeInvoiceId = invoice.Id,
+                FeeComponentId = component.Id,
+                Description = component.Name,
+                ComponentType = component.Type,
+                Amount = component.Amount,
+                SortOrder = order++
+            });
+        }
+
+        return OperationsWorkflowResult<AdmissionFeeInvoiceDto>.Success(MapAdmissionFeeInvoice(invoice));
+    }
+
+    private async Task<AdmissionFinanceReadinessDto> BuildFinanceReadinessAsync(
+        AdmissionApplication application,
+        CancellationToken cancellationToken)
+    {
+        var invoices = await _dbContext.FeeInvoices
+            .AsNoTracking()
+            .Where(i => i.AdmissionApplicationId == application.Id)
+            .OrderByDescending(i => i.InvoiceDate)
+            .ToListAsync(cancellationToken);
+
+        var totalDue = invoices.Sum(i => i.TotalAmount);
+        var totalPaid = invoices.Sum(i => i.PaidAmount);
+        var isPaid = invoices.Count > 0 &&
+                     invoices.All(i => i.Status == InvoiceStatus.Paid || i.PaidAmount >= i.TotalAmount);
+
+        var message = invoices.Count == 0
+            ? "No admission fee invoice has been generated."
+            : isPaid
+                ? "Admission fee is paid."
+                : "Admission fee is pending.";
+
+        return new AdmissionFinanceReadinessDto
+        {
+            RequiresPayment = invoices.Count > 0,
+            IsPaid = isPaid,
+            TotalDue = totalDue,
+            TotalPaid = totalPaid,
+            Message = message,
+            Invoices = invoices.Select(MapAdmissionFeeInvoice).ToList()
+        };
+    }
+
+    private async Task<bool> HasInterviewerConflictAsync(
+        Guid interviewerUserId,
+        DateTime startsOn,
+        DateTime endsOn,
+        Guid? excludingInterviewId,
+        CancellationToken cancellationToken)
+    {
+        return await _dbContext.AdmissionInterviews.AnyAsync(i =>
+            i.InterviewerUserId == interviewerUserId &&
+            i.Status == AdmissionInterviewStatus.Scheduled &&
+            (!excludingInterviewId.HasValue || i.Id != excludingInterviewId.Value) &&
+            startsOn < i.EndsOn &&
+            endsOn > i.StartsOn,
+            cancellationToken);
+    }
+
+    private async Task<string> NextAdmissionFeeInvoiceNumberAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        for (var i = 1; i < 100_000; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var number = $"AFI-{DateTime.UtcNow:yyyy}-{i:0000}";
+            if (!await _dbContext.FeeInvoices
+                    .IgnoreQueryFilters()
+                    .AnyAsync(e => e.TenantId == tenantId && e.InvoiceNumber == number, cancellationToken))
+                return number;
+        }
+
+        throw new InvalidOperationException("Could not generate a unique admission fee invoice number.");
     }
 
     private async Task<string?> ValidateEnrollmentReferencesAsync(
@@ -531,6 +857,87 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         catch (JsonException)
         {
             return new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task QueueAdmissionNotificationAsync(
+        AdmissionApplication application,
+        AdmissionApplicationStatus status,
+        CancellationToken cancellationToken)
+    {
+        var applicantName = string.Join(' ', new[] { application.ApplicantFirstName, application.ApplicantMiddleName, application.ApplicantLastName }
+            .Where(s => !string.IsNullOrWhiteSpace(s)));
+        var subject = status switch
+        {
+            AdmissionApplicationStatus.Submitted => $"Admission application {application.ApplicationNumber} submitted",
+            AdmissionApplicationStatus.InterviewScheduled => $"Interview scheduled for application {application.ApplicationNumber}",
+            AdmissionApplicationStatus.Accepted => $"Admission application {application.ApplicationNumber} accepted",
+            AdmissionApplicationStatus.Rejected => $"Admission application {application.ApplicationNumber} reviewed",
+            AdmissionApplicationStatus.Waitlisted => $"Admission application {application.ApplicationNumber} waitlisted",
+            AdmissionApplicationStatus.FeePending => $"Admission fee pending for application {application.ApplicationNumber}",
+            AdmissionApplicationStatus.Enrolled => $"Enrollment completed for application {application.ApplicationNumber}",
+            _ => $"Admission application {application.ApplicationNumber} update"
+        };
+        var body = status switch
+        {
+            AdmissionApplicationStatus.Submitted =>
+                $"Dear {applicantName},\n\nWe have received your admission application {application.ApplicationNumber}.",
+            AdmissionApplicationStatus.InterviewScheduled =>
+                $"Dear {applicantName},\n\nAn interview has been scheduled for admission application {application.ApplicationNumber}. Please check with the admissions office for slot details.",
+            AdmissionApplicationStatus.Accepted =>
+                $"Dear {applicantName},\n\nCongratulations. Your admission application {application.ApplicationNumber} has been accepted.",
+            AdmissionApplicationStatus.Rejected =>
+                $"Dear {applicantName},\n\nYour admission application {application.ApplicationNumber} has been reviewed. Please contact the admissions office for details.",
+            AdmissionApplicationStatus.Waitlisted =>
+                $"Dear {applicantName},\n\nYour admission application {application.ApplicationNumber} has been waitlisted.",
+            AdmissionApplicationStatus.FeePending =>
+                $"Dear {applicantName},\n\nYour admission application {application.ApplicationNumber} is accepted pending admission fee payment.",
+            AdmissionApplicationStatus.Enrolled =>
+                $"Dear {applicantName},\n\nYour enrollment is complete for application {application.ApplicationNumber}.",
+            _ =>
+                $"Dear {applicantName},\n\nYour admission application {application.ApplicationNumber} status is now {status}."
+        };
+
+        if (!string.IsNullOrWhiteSpace(application.Email))
+        {
+            var message = new NotificationMessage
+            {
+                TenantId = application.TenantId,
+                BranchId = application.BranchId,
+                Channel = CommunicationChannel.Email,
+                Subject = subject,
+                Body = body,
+                Status = NotificationStatus.Queued
+            };
+            message.Recipients.Add(new NotificationRecipient
+            {
+                TenantId = application.TenantId,
+                BranchId = application.BranchId,
+                DisplayName = applicantName,
+                DestinationAddress = application.Email!,
+                Status = NotificationStatus.Queued
+            });
+            _dbContext.NotificationMessages.Add(message);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+            await _notificationDispatcher.DispatchAsync(message.Id, cancellationToken);
+        }
+
+        var smsDestination = Normalize(application.PhoneNumber) ?? Normalize(application.GuardianPhone);
+        if (!string.IsNullOrWhiteSpace(smsDestination))
+        {
+            _dbContext.CommunicationLogs.Add(new CommunicationLog
+            {
+                TenantId = application.TenantId,
+                BranchId = application.BranchId,
+                Channel = CommunicationChannel.Sms,
+                Direction = CommunicationDirection.Outbound,
+                Recipient = smsDestination,
+                Subject = subject,
+                Status = NotificationStatus.Queued,
+                PayloadSummary = body.Length > 500 ? body[..500] : body,
+                OccurredOn = DateTime.UtcNow
+            });
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
     }
 
@@ -625,6 +1032,37 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         FromStatus = e.FromStatus,
         ToStatus = e.ToStatus,
         ReviewedOn = e.ReviewedOn,
+        Notes = e.Notes
+    }.WithMetadata(e);
+
+    private static AdmissionInterviewDto Map(AdmissionInterview e) => new AdmissionInterviewDto
+    {
+        AdmissionApplicationId = e.AdmissionApplicationId,
+        BranchId = e.BranchId,
+        InterviewerUserId = e.InterviewerUserId,
+        StartsOn = e.StartsOn,
+        EndsOn = e.EndsOn,
+        Status = e.Status,
+        Location = e.Location,
+        MeetingLink = e.MeetingLink,
+        Notes = e.Notes,
+        OutcomeNotes = e.OutcomeNotes
+    }.WithMetadata(e);
+
+    private static AdmissionFeeInvoiceDto MapAdmissionFeeInvoice(FeeInvoice e) => new AdmissionFeeInvoiceDto
+    {
+        BranchId = e.BranchId,
+        AdmissionApplicationId = e.AdmissionApplicationId,
+        StudentProfileId = e.StudentProfileId,
+        InvoiceNumber = e.InvoiceNumber,
+        InvoiceDate = e.InvoiceDate,
+        DueDate = e.DueDate,
+        Status = e.Status,
+        SubTotal = e.SubTotal,
+        DiscountAmount = e.DiscountAmount,
+        FineAmount = e.FineAmount,
+        TotalAmount = e.TotalAmount,
+        PaidAmount = e.PaidAmount,
         Notes = e.Notes
     }.WithMetadata(e);
 

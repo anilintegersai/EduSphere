@@ -29,6 +29,34 @@ public interface IAdmissionWorkflowService
         Guid admissionApplicationId,
         CancellationToken cancellationToken = default);
 
+    Task<IReadOnlyList<AdmissionInterviewDto>> ListInterviewsAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationsWorkflowResult<AdmissionInterviewDto>> ScheduleInterviewAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        ScheduleAdmissionInterviewRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationsWorkflowResult<AdmissionInterviewDto>> UpdateInterviewAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        Guid interviewId,
+        UpdateAdmissionInterviewRequest request,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationsWorkflowResult<AdmissionFinanceReadinessDto>> GetFinanceReadinessAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        CancellationToken cancellationToken = default);
+
+    Task<OperationsWorkflowResult<AdmissionFeeInvoiceDto>> GenerateAdmissionFeeInvoiceAsync(
+        ClaimsPrincipal actor,
+        Guid admissionApplicationId,
+        CancellationToken cancellationToken = default);
+
     Task<OperationsWorkflowResult<AdmissionDocumentDto>> UploadDocumentAsync(
         ClaimsPrincipal actor,
         Guid admissionApplicationId,

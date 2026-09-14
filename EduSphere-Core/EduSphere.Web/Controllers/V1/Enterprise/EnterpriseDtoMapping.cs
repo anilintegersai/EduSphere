@@ -97,6 +97,7 @@ internal static class EnterpriseDtoMapping
         BranchId = e.BranchId,
         StudentFeeAssignmentId = e.StudentFeeAssignmentId,
         StudentProfileId = e.StudentProfileId,
+        AdmissionApplicationId = e.AdmissionApplicationId,
         InvoiceNumber = e.InvoiceNumber,
         InvoiceDate = e.InvoiceDate,
         DueDate = e.DueDate,

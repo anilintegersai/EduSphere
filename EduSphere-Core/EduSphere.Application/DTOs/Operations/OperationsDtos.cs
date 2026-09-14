@@ -237,6 +237,63 @@ public class AdmissionReviewDto : OperationsTenantScopedDto
     public string? Notes { get; set; }
 }
 
+public class AdmissionInterviewDto : OperationsTenantScopedDto
+{
+    public Guid AdmissionApplicationId { get; set; }
+    public Guid BranchId { get; set; }
+    public Guid? InterviewerUserId { get; set; }
+    public DateTime StartsOn { get; set; }
+    public DateTime EndsOn { get; set; }
+    public AdmissionInterviewStatus Status { get; set; }
+    public string? Location { get; set; }
+    public string? MeetingLink { get; set; }
+    public string? Notes { get; set; }
+    public string? OutcomeNotes { get; set; }
+}
+
+public class ScheduleAdmissionInterviewRequest
+{
+    public Guid? InterviewerUserId { get; set; }
+    public DateTime StartsOn { get; set; } = DateTime.UtcNow.AddDays(1);
+    public DateTime EndsOn { get; set; } = DateTime.UtcNow.AddDays(1).AddMinutes(30);
+    public string? Location { get; set; }
+    public string? MeetingLink { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class UpdateAdmissionInterviewRequest : ScheduleAdmissionInterviewRequest
+{
+    public AdmissionInterviewStatus Status { get; set; } = AdmissionInterviewStatus.Scheduled;
+    public string? OutcomeNotes { get; set; }
+}
+
+public class AdmissionFeeInvoiceDto : OperationsTenantScopedDto
+{
+    public Guid BranchId { get; set; }
+    public Guid? AdmissionApplicationId { get; set; }
+    public Guid? StudentProfileId { get; set; }
+    public string InvoiceNumber { get; set; } = string.Empty;
+    public DateOnly InvoiceDate { get; set; }
+    public DateOnly DueDate { get; set; }
+    public InvoiceStatus Status { get; set; }
+    public decimal SubTotal { get; set; }
+    public decimal DiscountAmount { get; set; }
+    public decimal FineAmount { get; set; }
+    public decimal TotalAmount { get; set; }
+    public decimal PaidAmount { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class AdmissionFinanceReadinessDto
+{
+    public bool RequiresPayment { get; set; }
+    public bool IsPaid { get; set; }
+    public decimal TotalDue { get; set; }
+    public decimal TotalPaid { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public IReadOnlyList<AdmissionFeeInvoiceDto> Invoices { get; set; } = Array.Empty<AdmissionFeeInvoiceDto>();
+}
+
 public class CreateAdmissionReviewRequest
 {
     public Guid AdmissionApplicationId { get; set; }

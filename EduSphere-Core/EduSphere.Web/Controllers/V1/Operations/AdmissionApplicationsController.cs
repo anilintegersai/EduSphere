@@ -206,12 +206,55 @@ public class AdmissionApplicationsController : ApiControllerBase
         return Ok(ApiResponse<IEnumerable<AdmissionReviewDto>>.Ok(reviews));
     }
 
+    [HttpGet("{id:guid}/interviews")]
+    public async Task<IActionResult> GetInterviews(Guid id)
+    {
+        var interviews = await _workflow.ListInterviewsAsync(User, id);
+        return Ok(ApiResponse<IEnumerable<AdmissionInterviewDto>>.Ok(interviews));
+    }
+
+    [HttpPost("{id:guid}/interviews")]
+    public async Task<IActionResult> ScheduleInterview(Guid id, [FromBody] ScheduleAdmissionInterviewRequest request)
+    {
+        var result = await _workflow.ScheduleInterviewAsync(User, id, request);
+        return result.Succeeded && result.Data is not null
+            ? StatusCode(StatusCodes.Status201Created, ApiResponse<AdmissionInterviewDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
+    [HttpPut("{id:guid}/interviews/{interviewId:guid}")]
+    public async Task<IActionResult> UpdateInterview(Guid id, Guid interviewId, [FromBody] UpdateAdmissionInterviewRequest request)
+    {
+        var result = await _workflow.UpdateInterviewAsync(User, id, interviewId, request);
+        return result.Succeeded && result.Data is not null
+            ? Ok(ApiResponse<AdmissionInterviewDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
     [HttpPost("{id:guid}/reviews")]
     public async Task<IActionResult> Review(Guid id, [FromBody] ReviewAdmissionApplicationRequest request)
     {
         var result = await _workflow.ReviewAsync(User, id, request);
         return result.Succeeded && result.Data is not null
             ? Ok(ApiResponse<AdmissionApplicationDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
+    [HttpGet("{id:guid}/finance-readiness")]
+    public async Task<IActionResult> GetFinanceReadiness(Guid id)
+    {
+        var result = await _workflow.GetFinanceReadinessAsync(User, id);
+        return result.Succeeded && result.Data is not null
+            ? Ok(ApiResponse<AdmissionFinanceReadinessDto>.Ok(result.Data, result.Message))
+            : BadRequest(ApiResponse<object>.Fail(result.Errors));
+    }
+
+    [HttpPost("{id:guid}/admission-fee-invoice")]
+    public async Task<IActionResult> GenerateAdmissionFeeInvoice(Guid id)
+    {
+        var result = await _workflow.GenerateAdmissionFeeInvoiceAsync(User, id);
+        return result.Succeeded && result.Data is not null
+            ? Ok(ApiResponse<AdmissionFeeInvoiceDto>.Ok(result.Data, result.Message))
             : BadRequest(ApiResponse<object>.Fail(result.Errors));
     }
 

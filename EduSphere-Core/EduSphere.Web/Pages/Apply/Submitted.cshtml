@@ -1,0 +1,48 @@
+@page
+@model EduSphere.Web.Pages.Apply.SubmittedModel
+@{
+    ViewData["Title"] = "Application Submitted";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Admissions</span>
+        <h1>Application Submitted</h1>
+        <p>Your application has been received by the admissions team.</p>
+    </div>
+</section>
+
+<div class="card data-card">
+    <div class="card-body">
+        @if (Model.Application is null)
+        {
+            <div class="empty-state">The submitted application could not be found.</div>
+        }
+        else
+        {
+            <div class="row g-3">
+                <div class="col-md-4">
+                    <div class="metric-card">
+                        <span class="metric-label">Application #</span>
+                        <strong>@Model.Application.ApplicationNumber</strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card">
+                        <span class="metric-label">Institution</span>
+                        <strong>@(Model.Tenant?.Name ?? "-")</strong>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="metric-card">
+                        <span class="metric-label">Status</span>
+                        <strong>@Model.Application.Status</strong>
+                    </div>
+                </div>
+            </div>
+            <div class="form-actions mt-4">
+                <a asp-page="/Apply/Index" asp-route-tenantId="@Model.Application.TenantId" class="btn btn-outline-primary">Submit another application</a>
+            </div>
+        }
+    </div>
+</div>

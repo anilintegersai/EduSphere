@@ -134,6 +134,30 @@ public class CreateAdmissionReviewRequestValidator : AbstractValidator<CreateAdm
     }
 }
 
+public class ScheduleAdmissionInterviewRequestValidator : AbstractValidator<ScheduleAdmissionInterviewRequest>
+{
+    public ScheduleAdmissionInterviewRequestValidator()
+    {
+        RuleFor(x => x.StartsOn).NotEmpty();
+        RuleFor(x => x.EndsOn)
+            .GreaterThan(x => x.StartsOn)
+            .WithMessage("Interview end time must be after start time.");
+        RuleFor(x => x.Location).MaximumLength(180);
+        RuleFor(x => x.MeetingLink).MaximumLength(500);
+        RuleFor(x => x.Notes).MaximumLength(1000);
+    }
+}
+
+public class UpdateAdmissionInterviewRequestValidator : AbstractValidator<UpdateAdmissionInterviewRequest>
+{
+    public UpdateAdmissionInterviewRequestValidator()
+    {
+        Include(new ScheduleAdmissionInterviewRequestValidator());
+        RuleFor(x => x.Status).IsInEnum();
+        RuleFor(x => x.OutcomeNotes).MaximumLength(1000);
+    }
+}
+
 public class ReviewAdmissionApplicationRequestValidator : AbstractValidator<ReviewAdmissionApplicationRequest>
 {
     public ReviewAdmissionApplicationRequestValidator()

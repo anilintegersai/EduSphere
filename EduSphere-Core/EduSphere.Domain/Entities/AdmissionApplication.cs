@@ -71,4 +71,6 @@ public class AdmissionApplication : TenantEntityBase
 
     public ICollection<AdmissionDocument> Documents { get; set; } = new List<AdmissionDocument>();
     public ICollection<AdmissionReview> Reviews { get; set; } = new List<AdmissionReview>();
+    public ICollection<AdmissionInterview> Interviews { get; set; } = new List<AdmissionInterview>();
+    public ICollection<FeeInvoice> FeeInvoices { get; set; } = new List<FeeInvoice>();
 }

@@ -172,8 +172,11 @@ public class FinanceModel : EnterprisePageModel
     public string BatchName(Guid? id) => Batches.FirstOrDefault(b => b.Id == id)?.Name ?? "-";
     public string StructureName(Guid id) => Structures.FirstOrDefault(s => s.Id == id)?.Name ?? "-";
     public string DiscountName(Guid? id) => Discounts.FirstOrDefault(d => d.Id == id)?.Name ?? "-";
-    public string StudentName(Guid id)
+    public string StudentName(Guid? id)
     {
+        if (!id.HasValue)
+            return "Admission applicant";
+
         var student = Students.FirstOrDefault(s => s.Id == id);
         return student is null ? "-" : $"{student.FirstName} {student.LastName}";
     }
@@ -346,8 +349,11 @@ public class FinanceModel : EnterprisePageModel
         KeepOnlyModelStateFor(nameof(PaymentInput));
         if (!await ValidateBranchSelectionAsync("PaymentInput.BranchId", PaymentInput.BranchId, _branches))
             ModelState.AddModelError(string.Empty, "Fix branch selection.");
-        if (PaymentInput.FeeInvoiceId is not Guid invoiceId || await _invoices.GetAsync(invoiceId) is not { } invoice || invoice.BranchId != PaymentInput.BranchId)
+        FeeInvoice? invoice = null;
+        if (PaymentInput.FeeInvoiceId is not Guid invoiceId || await _invoices.GetAsync(invoiceId) is not { } selectedInvoice || selectedInvoice.BranchId != PaymentInput.BranchId)
             ModelState.AddModelError("PaymentInput.FeeInvoiceId", "Selected invoice was not found for this branch.");
+        else
+            invoice = selectedInvoice;
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
         await _payments.CreateAsync(new FeePayment
@@ -361,6 +367,18 @@ public class FinanceModel : EnterprisePageModel
             Status = PaymentInput.Status,
             TransactionReference = PaymentInput.TransactionReference
         });
+        if (invoice is not null && PaymentInput.Status == PaymentStatus.Completed)
+        {
+            await _invoices.UpdateAsync(invoice.Id, e =>
+            {
+                e.PaidAmount = Math.Min(e.TotalAmount, e.PaidAmount + PaymentInput.Amount);
+                e.Status = e.PaidAmount >= e.TotalAmount
+                    ? InvoiceStatus.Paid
+                    : e.PaidAmount > 0
+                        ? InvoiceStatus.PartiallyPaid
+                        : e.Status;
+            });
+        }
         return RedirectToPage();
     }
 

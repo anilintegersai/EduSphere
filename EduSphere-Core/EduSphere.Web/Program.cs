@@ -218,6 +218,7 @@ var app = builder.Build();
 
 await app.Services.ApplyDatabaseMigrationStrategyAsync();
 await app.Services.ApplyConfiguredAccountEmailProviderAsync();
+await app.Services.ApplyAdmissionDefaultsAsync();
 
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())

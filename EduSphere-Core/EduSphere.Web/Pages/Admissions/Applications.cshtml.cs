@@ -1,14 +1,18 @@
 using System.ComponentModel.DataAnnotations;
+using System.Text;
+using System.Text.Json;
 using EduSphere.Application.DTOs.Operations;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
+using EduSphere.Infrastructure;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduSphere.Web.Pages.Admissions;
 
@@ -30,6 +34,7 @@ public class ApplicationsModel : PageModel
     private readonly IBranchAccessService _branchAccess;
     private readonly IAdmissionWorkflowService _workflow;
     private readonly IAdmissionDocumentStorageService _storage;
+    private readonly TenantDbContext _dbContext;
 
     public ApplicationsModel(
         ICrudService<AdmissionApplication> applications,
@@ -44,7 +49,8 @@ public class ApplicationsModel : PageModel
         ITenantContext tenant,
         IBranchAccessService branchAccess,
         IAdmissionWorkflowService workflow,
-        IAdmissionDocumentStorageService storage)
+        IAdmissionDocumentStorageService storage,
+        TenantDbContext dbContext)
     {
         _applications = applications;
         _forms = forms;
@@ -59,6 +65,7 @@ public class ApplicationsModel : PageModel
         _branchAccess = branchAccess;
         _workflow = workflow;
         _storage = storage;
+        _dbContext = dbContext;
     }
 
     public bool HasTenant => _tenant.HasTenant;
@@ -69,19 +76,24 @@ public class ApplicationsModel : PageModel
     public IReadOnlyList<Batch> Batches { get; private set; } = new List<Batch>();
     public IReadOnlyList<Section> Sections { get; private set; } = new List<Section>();
     public IReadOnlyList<AdmissionFormTemplateDto> FormTemplates { get; private set; } = new List<AdmissionFormTemplateDto>();
+    public IReadOnlyList<AdmissionFormFieldDto> ApplicationFormFields { get; private set; } = new List<AdmissionFormFieldDto>();
     public IReadOnlyList<AdmissionFormFieldDto> SelectedFormFields { get; private set; } = new List<AdmissionFormFieldDto>();
     public IReadOnlyList<AdmissionDocumentRequirementDto> SelectedDocumentRequirements { get; private set; } = new List<AdmissionDocumentRequirementDto>();
     public IReadOnlyList<AdmissionDocumentDto> SelectedDocuments { get; private set; } = new List<AdmissionDocumentDto>();
     public IReadOnlyList<AdmissionReviewDto> SelectedReviews { get; private set; } = new List<AdmissionReviewDto>();
+    public IReadOnlyList<AdmissionInterviewDto> SelectedInterviews { get; private set; } = new List<AdmissionInterviewDto>();
+    public AdmissionFinanceReadinessDto? SelectedFinanceReadiness { get; private set; }
     public AdmissionApplication? SelectedApplication { get; private set; }
 
     [BindProperty] public ApplicationInputModel ApplicationInput { get; set; } = new();
+    [BindProperty] public Dictionary<string, string?> FormResponses { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     [BindProperty] public TemplateInputModel TemplateInput { get; set; } = new();
     [BindProperty] public FieldInputModel FieldInput { get; set; } = new();
     [BindProperty] public RequirementInputModel RequirementInput { get; set; } = new();
     [BindProperty] public DocumentInputModel DocumentInput { get; set; } = new();
     [BindProperty] public ReviewInputModel ReviewInput { get; set; } = new();
     [BindProperty] public EnrollmentInputModel EnrollmentInput { get; set; } = new();
+    [BindProperty] public InterviewInputModel InterviewInput { get; set; } = new();
     [TempData] public string? StatusMessage { get; set; }
 
     public bool IsEditing => ApplicationInput.Id != Guid.Empty;
@@ -105,6 +117,8 @@ public class ApplicationsModel : PageModel
         await LoadAsync(editId, formId);
         if (SelectedApplication is not null)
             ApplicationInput = Map(SelectedApplication);
+        else if (formId.HasValue)
+            ApplicationInput.AdmissionFormTemplateId = formId.Value;
         if (formId.HasValue && FormTemplates.Any(f => f.Id == formId.Value))
             TemplateInput.Id = formId.Value;
     }
@@ -117,6 +131,7 @@ public class ApplicationsModel : PageModel
         var branchId = ApplicationInput.BranchId ?? Guid.Empty;
         var courseId = ApplicationInput.CourseId ?? Guid.Empty;
         await ValidateApplicationInputAsync(branchId, courseId);
+        await ApplyDynamicFormResponsesAsync();
 
         if (!ModelState.IsValid)
         {
@@ -293,6 +308,102 @@ public class ApplicationsModel : PageModel
         return RedirectToPage(new { editId = applicationId });
     }
 
+    public async Task<IActionResult> OnPostScheduleInterviewAsync(Guid applicationId)
+    {
+        var result = await _workflow.ScheduleInterviewAsync(User, applicationId, new ScheduleAdmissionInterviewRequest
+        {
+            InterviewerUserId = InterviewInput.InterviewerUserId,
+            StartsOn = InterviewInput.StartsOn,
+            EndsOn = InterviewInput.EndsOn,
+            Location = InterviewInput.Location,
+            MeetingLink = InterviewInput.MeetingLink,
+            Notes = InterviewInput.Notes
+        });
+        StatusMessage = result.Succeeded ? result.Message : string.Join(" ", result.Errors);
+        return RedirectToPage(new { editId = applicationId });
+    }
+
+    public async Task<IActionResult> OnPostGenerateAdmissionInvoiceAsync(Guid applicationId)
+    {
+        var result = await _workflow.GenerateAdmissionFeeInvoiceAsync(User, applicationId);
+        StatusMessage = result.Succeeded ? result.Message : string.Join(" ", result.Errors);
+        return RedirectToPage(new { editId = applicationId });
+    }
+
+    public async Task<IActionResult> OnPostMarkAdmissionInvoicePaidAsync(Guid applicationId, Guid invoiceId)
+    {
+        var application = await _applications.GetAsync(applicationId);
+        if (application is null || !await CanUseBranchAsync(application.BranchId))
+            return RedirectToPage();
+
+        var invoice = await _dbContext.FeeInvoices
+            .FirstOrDefaultAsync(i => i.Id == invoiceId && i.AdmissionApplicationId == applicationId);
+        if (invoice is null || invoice.BranchId != application.BranchId)
+        {
+            StatusMessage = "Admission fee invoice was not found.";
+            return RedirectToPage(new { editId = applicationId });
+        }
+
+        var outstanding = Math.Max(invoice.TotalAmount - invoice.PaidAmount, 0);
+        if (outstanding > 0)
+        {
+            _dbContext.FeePayments.Add(new FeePayment
+            {
+                TenantId = invoice.TenantId,
+                BranchId = invoice.BranchId,
+                FeeInvoiceId = invoice.Id,
+                PaymentNumber = await NextAdmissionPaymentNumberAsync(invoice.TenantId),
+                Amount = outstanding,
+                PaidOn = DateTime.UtcNow,
+                Mode = PaymentMode.OnlineGateway,
+                Status = PaymentStatus.Completed,
+                Notes = "Admission fee marked paid from admissions workflow."
+            });
+        }
+
+        invoice.PaidAmount = invoice.TotalAmount;
+        invoice.Status = InvoiceStatus.Paid;
+        await _dbContext.SaveChangesAsync();
+        StatusMessage = "Admission fee marked paid.";
+        return RedirectToPage(new { editId = applicationId });
+    }
+
+    public async Task<IActionResult> OnGetExportAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+
+        var assignedBranchId = await _branchAccess.GetAssignedBranchIdAsync(User);
+        var items = (await _applications.ListAsync(a =>
+                !_branchAccess.IsBranchAdminOnly(User) ||
+                (assignedBranchId.HasValue && a.BranchId == assignedBranchId.Value)))
+            .OrderByDescending(a => a.AppliedOn)
+            .ThenBy(a => a.ApplicationNumber)
+            .ToList();
+
+        Branches = await _branchAccess.FilterBranchesAsync(User, await _branches.ListAsync());
+        Courses = (await _courses.ListAsync()).OrderBy(c => c.Name).ToList();
+        var csv = new StringBuilder();
+        csv.AppendLine("ApplicationNumber,ApplicantName,Email,Phone,Guardian,Branch,Course,AppliedOn,Status,ReviewNotes");
+        foreach (var item in items)
+        {
+            csv.AppendLine(string.Join(',', new[]
+            {
+                Csv(item.ApplicationNumber),
+                Csv(ApplicantName(item)),
+                Csv(item.Email),
+                Csv(item.PhoneNumber),
+                Csv(item.GuardianName),
+                Csv(BranchName(item.BranchId)),
+                Csv(CourseName(item.CourseId)),
+                Csv(item.AppliedOn.ToString("yyyy-MM-dd")),
+                Csv(item.Status.ToString()),
+                Csv(item.ReviewNotes)
+            }));
+        }
+
+        return File(Encoding.UTF8.GetBytes(csv.ToString()), "text/csv", $"admission-applications-{DateTime.UtcNow:yyyyMMddHHmm}.csv");
+    }
+
     public async Task<IActionResult> OnPostVerifyDocumentAsync(Guid applicationId, Guid documentId, bool isVerified)
     {
         var result = await _workflow.SetDocumentVerificationAsync(User, applicationId, documentId, isVerified, DocumentInput.Notes);
@@ -371,12 +482,27 @@ public class ApplicationsModel : PageModel
             {
                 SelectedDocuments = await _workflow.ListDocumentsAsync(User, SelectedApplication.Id);
                 SelectedReviews = await _workflow.ListReviewsAsync(User, SelectedApplication.Id);
+                SelectedInterviews = await _workflow.ListInterviewsAsync(User, SelectedApplication.Id);
+                var readiness = await _workflow.GetFinanceReadinessAsync(User, SelectedApplication.Id);
+                SelectedFinanceReadiness = readiness.Succeeded ? readiness.Data : null;
                 selectedFormId ??= SelectedApplication.AdmissionFormTemplateId;
                 EnrollmentInput.AcademicYearId ??= SelectedApplication.AcademicYearId;
                 EnrollmentInput.CourseId ??= SelectedApplication.CourseId;
                 EnrollmentInput.BatchId ??= SelectedApplication.BatchId;
                 EnrollmentInput.SectionId ??= SelectedApplication.SectionId;
+                if (FormResponses.Count == 0)
+                    FormResponses = ParseResponses(SelectedApplication.FormResponseJson);
             }
+        }
+
+        var applicationFormId = ApplicationInput.AdmissionFormTemplateId
+                                ?? SelectedApplication?.AdmissionFormTemplateId
+                                ?? selectedFormId
+                                ?? FormTemplates.FirstOrDefault(f => f.IsDefault || f.IsActive)?.Id;
+        if (applicationFormId.HasValue)
+        {
+            ApplicationInput.AdmissionFormTemplateId ??= applicationFormId.Value;
+            ApplicationFormFields = await _workflow.ListFormFieldsAsync(applicationFormId.Value);
         }
 
         if (selectedFormId.HasValue)
@@ -460,6 +586,112 @@ public class ApplicationsModel : PageModel
             return !_branchAccess.IsBranchAdminOnly(User);
 
         return await CanUseBranchAsync(form.BranchId.Value);
+    }
+
+    private async Task ApplyDynamicFormResponsesAsync()
+    {
+        if (ApplicationInput.AdmissionFormTemplateId is not Guid formId)
+        {
+            ApplicationInput.FormResponseJson = null;
+            return;
+        }
+
+        var fields = await _workflow.ListFormFieldsAsync(formId);
+        ApplicationFormFields = fields;
+        var responses = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var field in fields)
+        {
+            FormResponses.TryGetValue(field.FieldKey, out var rawValue);
+            var value = Normalize(rawValue);
+            if (field.FieldType == AdmissionFormFieldType.Checkbox)
+                value = string.Equals(rawValue, "true", StringComparison.OrdinalIgnoreCase) ? "true" : "false";
+
+            if (field.IsRequired &&
+                (string.IsNullOrWhiteSpace(value) ||
+                 (field.FieldType == AdmissionFormFieldType.Checkbox && value != "true")))
+                ModelState.AddModelError($"FormResponses[{field.FieldKey}]", $"{field.Label} is required.");
+            if (field.MaxLength.HasValue && value?.Length > field.MaxLength.Value)
+                ModelState.AddModelError($"FormResponses[{field.FieldKey}]", $"{field.Label} cannot exceed {field.MaxLength.Value} characters.");
+
+            if (!string.IsNullOrWhiteSpace(value))
+                responses[field.FieldKey] = value;
+        }
+
+        var json = responses.Count == 0 ? null : JsonSerializer.Serialize(responses);
+        if (json?.Length > 4000)
+            ModelState.AddModelError("ApplicationInput.FormResponseJson", "Form responses cannot exceed 4000 characters.");
+
+        ApplicationInput.FormResponseJson = json;
+    }
+
+    public string DynamicValue(AdmissionFormFieldDto field)
+        => FormResponses.TryGetValue(field.FieldKey, out var value) ? value ?? string.Empty : string.Empty;
+
+    public IReadOnlyList<string> FieldOptions(AdmissionFormFieldDto field)
+    {
+        if (string.IsNullOrWhiteSpace(field.OptionsJson))
+            return Array.Empty<string>();
+
+        try
+        {
+            var options = JsonSerializer.Deserialize<List<string>>(field.OptionsJson);
+            return options is null
+                ? Array.Empty<string>()
+                : options.Where(o => !string.IsNullOrWhiteSpace(o)).ToList();
+        }
+        catch (JsonException)
+        {
+            return field.OptionsJson
+                .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                .Where(o => !string.IsNullOrWhiteSpace(o))
+                .ToList();
+        }
+    }
+
+    public string InputType(AdmissionFormFieldType type) => type switch
+    {
+        AdmissionFormFieldType.Email => "email",
+        AdmissionFormFieldType.Phone => "tel",
+        AdmissionFormFieldType.Date => "date",
+        AdmissionFormFieldType.Number => "number",
+        _ => "text"
+    };
+
+    private static Dictionary<string, string?> ParseResponses(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+
+        try
+        {
+            return JsonSerializer.Deserialize<Dictionary<string, string?>>(json) ??
+                   new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        }
+        catch (JsonException)
+        {
+            return new Dictionary<string, string?>(StringComparer.OrdinalIgnoreCase);
+        }
+    }
+
+    private async Task<string> NextAdmissionPaymentNumberAsync(Guid tenantId)
+    {
+        for (var i = 1; i < 100_000; i++)
+        {
+            var number = $"ADMPAY-{DateTime.UtcNow:yyyy}-{i:0000}";
+            if (!await _dbContext.FeePayments
+                    .IgnoreQueryFilters()
+                    .AnyAsync(p => p.TenantId == tenantId && p.PaymentNumber == number))
+                return number;
+        }
+
+        throw new InvalidOperationException("Could not generate a unique admission payment number.");
+    }
+
+    private static string Csv(string? value)
+    {
+        value ??= string.Empty;
+        return "\"" + value.Replace("\"", "\"\"") + "\"";
     }
 
     private AdmissionApplication Apply(AdmissionApplication entity, Guid branchId, Guid courseId)
@@ -653,5 +885,15 @@ public class ApplicationsModel : PageModel
         [StringLength(50), Display(Name = "Enrollment #")] public string? EnrollmentNumber { get; set; }
         [Display(Name = "Enrollment date")] public DateOnly EnrollmentDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
         [StringLength(500)] public string? Notes { get; set; }
+    }
+
+    public class InterviewInputModel
+    {
+        [Display(Name = "Interviewer user id")] public Guid? InterviewerUserId { get; set; }
+        [Display(Name = "Starts on")] public DateTime StartsOn { get; set; } = DateTime.Today.AddDays(1).AddHours(10);
+        [Display(Name = "Ends on")] public DateTime EndsOn { get; set; } = DateTime.Today.AddDays(1).AddHours(10).AddMinutes(30);
+        [StringLength(180)] public string? Location { get; set; }
+        [StringLength(500), Display(Name = "Meeting link")] public string? MeetingLink { get; set; }
+        [StringLength(1000)] public string? Notes { get; set; }
     }
 }

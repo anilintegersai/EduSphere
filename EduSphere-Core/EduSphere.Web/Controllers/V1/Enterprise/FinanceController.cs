@@ -249,6 +249,18 @@ public class FinanceController : EnterpriseControllerBase
     {
         if (await ValidateInvoiceChildAsync(request.FeeInvoiceId, request.BranchId) is { } invalid) return invalid;
         var created = await _payments.CreateAsync(Apply(new FeePayment(), request));
+        if (request.Status == EduSphere.Domain.Enums.PaymentStatus.Completed)
+        {
+            await _invoices.UpdateAsync(request.FeeInvoiceId, invoice =>
+            {
+                invoice.PaidAmount = Math.Min(invoice.TotalAmount, invoice.PaidAmount + request.Amount);
+                invoice.Status = invoice.PaidAmount >= invoice.TotalAmount
+                    ? EduSphere.Domain.Enums.InvoiceStatus.Paid
+                    : invoice.PaidAmount > 0
+                        ? EduSphere.Domain.Enums.InvoiceStatus.PartiallyPaid
+                        : invoice.Status;
+            });
+        }
         return StatusCode(StatusCodes.Status201Created, ApiResponse<FeePaymentDto>.Ok(created.Map()));
     }
 
