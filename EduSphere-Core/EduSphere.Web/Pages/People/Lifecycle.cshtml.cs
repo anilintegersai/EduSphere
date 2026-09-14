@@ -146,8 +146,8 @@ public class LifecycleModel : PageModel
         if (!HasTenant)
             return RedirectToPage();
 
-        ModelState.Remove("TeacherInput.TeacherProfileId");
-        RemoveDocumentModelState();
+        RemoveModelStateForPrefix(nameof(TeacherInput));
+        RemoveModelStateForPrefix(nameof(DocumentInput));
 
         if (!ModelState.IsValid)
         {
@@ -187,8 +187,8 @@ public class LifecycleModel : PageModel
         if (!HasTenant)
             return RedirectToPage();
 
-        ModelState.Remove("StudentInput.StudentProfileId");
-        RemoveDocumentModelState();
+        RemoveModelStateForPrefix(nameof(StudentInput));
+        RemoveModelStateForPrefix(nameof(DocumentInput));
 
         if (!ModelState.IsValid)
         {
@@ -586,10 +586,14 @@ dd{margin:0}
 """;
     }
 
-    private void RemoveDocumentModelState()
+    private void RemoveModelStateForPrefix(string prefix)
     {
-        foreach (var key in ModelState.Keys.Where(k => k.StartsWith("DocumentInput.", StringComparison.Ordinal)).ToList())
+        foreach (var key in ModelState.Keys.Where(k =>
+            k.Equals(prefix, StringComparison.Ordinal) ||
+            k.StartsWith(prefix + ".", StringComparison.Ordinal)).ToList())
+        {
             ModelState.Remove(key);
+        }
     }
 
     private static string? Normalize(string? value)
