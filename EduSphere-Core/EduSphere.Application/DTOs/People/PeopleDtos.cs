@@ -130,6 +130,29 @@ public class StudentLifecycleEventDto : PeopleTenantScopedDto
     public string? Notes { get; set; }
 }
 
+public class StudentLifecycleRequestDto : PeopleTenantScopedDto
+{
+    public Guid StudentProfileId { get; set; }
+    public Guid BranchId { get; set; }
+    public StudentLifecycleEventType EventType { get; set; }
+    public StudentStatus ToStatus { get; set; }
+    public ApprovalStatus Status { get; set; }
+    public Guid? ToBranchId { get; set; }
+    public Guid? ToAcademicYearId { get; set; }
+    public Guid? ToCourseId { get; set; }
+    public Guid? ToBatchId { get; set; }
+    public Guid? ToSectionId { get; set; }
+    public DateOnly EffectiveOn { get; set; }
+    public DateTime RequestedOn { get; set; }
+    public Guid? RequestedByUserId { get; set; }
+    public DateTime? DecidedOn { get; set; }
+    public Guid? DecidedByUserId { get; set; }
+    public Guid? AppliedStudentLifecycleEventId { get; set; }
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+    public string? DecisionNotes { get; set; }
+}
+
 public class CreateStudentLifecycleEventRequest
 {
     public Guid StudentProfileId { get; set; }
@@ -142,6 +165,29 @@ public class CreateStudentLifecycleEventRequest
     public Guid? ToSectionId { get; set; }
     public DateOnly EffectiveOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public string? Reason { get; set; }
+    public string? Notes { get; set; }
+}
+
+public class CreateStudentLifecycleRequestRequest : CreateStudentLifecycleEventRequest { }
+
+public class DecideStudentLifecycleRequestRequest
+{
+    public string? DecisionNotes { get; set; }
+}
+
+public class StudentAlumniRecordDto : PeopleTenantScopedDto
+{
+    public Guid StudentProfileId { get; set; }
+    public Guid BranchId { get; set; }
+    public Guid? AcademicYearId { get; set; }
+    public Guid? CourseId { get; set; }
+    public Guid? BatchId { get; set; }
+    public string AlumniNumber { get; set; } = string.Empty;
+    public DateOnly GraduationDate { get; set; }
+    public string? ContactEmail { get; set; }
+    public string? ContactPhone { get; set; }
+    public string? HigherEducation { get; set; }
+    public string? EmployerOrInstitution { get; set; }
     public string? Notes { get; set; }
 }
 
@@ -163,6 +209,26 @@ public class TeacherLifecycleEventDto : PeopleTenantScopedDto
     public string? Notes { get; set; }
 }
 
+public class TeacherLifecycleRequestDto : PeopleTenantScopedDto
+{
+    public Guid TeacherProfileId { get; set; }
+    public Guid BranchId { get; set; }
+    public TeacherLifecycleEventType EventType { get; set; }
+    public TeacherStatus ToStatus { get; set; }
+    public ApprovalStatus Status { get; set; }
+    public Guid? ToBranchId { get; set; }
+    public Guid? ToDepartmentId { get; set; }
+    public DateOnly EffectiveOn { get; set; }
+    public DateTime RequestedOn { get; set; }
+    public Guid? RequestedByUserId { get; set; }
+    public DateTime? DecidedOn { get; set; }
+    public Guid? DecidedByUserId { get; set; }
+    public Guid? AppliedTeacherLifecycleEventId { get; set; }
+    public string? Reason { get; set; }
+    public string? Notes { get; set; }
+    public string? DecisionNotes { get; set; }
+}
+
 public class CreateTeacherLifecycleEventRequest
 {
     public Guid TeacherProfileId { get; set; }
@@ -173,6 +239,13 @@ public class CreateTeacherLifecycleEventRequest
     public DateOnly EffectiveOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public string? Reason { get; set; }
     public string? Notes { get; set; }
+}
+
+public class CreateTeacherLifecycleRequestRequest : CreateTeacherLifecycleEventRequest { }
+
+public class DecideTeacherLifecycleRequestRequest
+{
+    public string? DecisionNotes { get; set; }
 }
 
 public class PeopleOperationResult

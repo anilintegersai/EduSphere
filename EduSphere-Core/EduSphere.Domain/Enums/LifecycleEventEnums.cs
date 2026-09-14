@@ -27,5 +27,6 @@ public enum TeacherLifecycleEventType
     LeaveReturned = 7,
     Deactivated = 8,
     Relieved = 9,
-    Reactivated = 10
+    Reactivated = 10,
+    Rehired = 11
 }

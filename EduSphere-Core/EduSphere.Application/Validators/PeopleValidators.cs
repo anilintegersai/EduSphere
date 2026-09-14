@@ -71,6 +71,22 @@ public class CreateStudentLifecycleEventRequestValidator : AbstractValidator<Cre
     }
 }
 
+public class CreateStudentLifecycleRequestRequestValidator : AbstractValidator<CreateStudentLifecycleRequestRequest>
+{
+    public CreateStudentLifecycleRequestRequestValidator()
+    {
+        Include(new CreateStudentLifecycleEventRequestValidator());
+    }
+}
+
+public class DecideStudentLifecycleRequestRequestValidator : AbstractValidator<DecideStudentLifecycleRequestRequest>
+{
+    public DecideStudentLifecycleRequestRequestValidator()
+    {
+        RuleFor(x => x.DecisionNotes).MaximumLength(1000);
+    }
+}
+
 public class CreateTeacherLifecycleEventRequestValidator : AbstractValidator<CreateTeacherLifecycleEventRequest>
 {
     public CreateTeacherLifecycleEventRequestValidator()
@@ -81,6 +97,22 @@ public class CreateTeacherLifecycleEventRequestValidator : AbstractValidator<Cre
         RuleFor(x => x.EffectiveOn).NotEmpty();
         RuleFor(x => x.Reason).MaximumLength(500);
         RuleFor(x => x.Notes).MaximumLength(1000);
+    }
+}
+
+public class CreateTeacherLifecycleRequestRequestValidator : AbstractValidator<CreateTeacherLifecycleRequestRequest>
+{
+    public CreateTeacherLifecycleRequestRequestValidator()
+    {
+        Include(new CreateTeacherLifecycleEventRequestValidator());
+    }
+}
+
+public class DecideTeacherLifecycleRequestRequestValidator : AbstractValidator<DecideTeacherLifecycleRequestRequest>
+{
+    public DecideTeacherLifecycleRequestRequestValidator()
+    {
+        RuleFor(x => x.DecisionNotes).MaximumLength(1000);
     }
 }
 

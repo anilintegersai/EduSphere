@@ -161,6 +161,207 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
             "Student lifecycle event recorded.");
     }
 
+    public async Task<IReadOnlyList<StudentLifecycleRequestDto>> ListStudentRequestsAsync(
+        ClaimsPrincipal actor,
+        Guid? studentProfileId = null,
+        Guid? branchId = null,
+        int take = 100,
+        CancellationToken cancellationToken = default)
+    {
+        if (branchId.HasValue && !await _branchAccess.CanAccessBranchAsync(actor, branchId.Value))
+            return Array.Empty<StudentLifecycleRequestDto>();
+
+        var assignedBranchId = await _branchAccess.GetAssignedBranchIdAsync(actor);
+        var query = _dbContext.StudentLifecycleRequests.AsNoTracking();
+
+        if (_branchAccess.IsBranchAdminOnly(actor))
+        {
+            query = assignedBranchId.HasValue
+                ? query.Where(e => e.BranchId == assignedBranchId.Value)
+                : query.Where(_ => false);
+        }
+
+        if (studentProfileId.HasValue)
+            query = query.Where(e => e.StudentProfileId == studentProfileId.Value);
+        if (branchId.HasValue)
+            query = query.Where(e => e.BranchId == branchId.Value);
+
+        var pageSize = Math.Clamp(take, 1, 500);
+        var requests = await query
+            .OrderBy(e => e.Status == ApprovalStatus.UnderReview ? 0 : 1)
+            .ThenByDescending(e => e.RequestedOn)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return requests.Select(Map).ToList();
+    }
+
+    public async Task<PeopleOperationResult<StudentLifecycleRequestDto>> CreateStudentRequestAsync(
+        ClaimsPrincipal actor,
+        CreateStudentLifecycleRequestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_tenantContext.HasTenant)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("Select a tenant before creating lifecycle requests.");
+
+        var student = await _dbContext.StudentProfiles
+            .FirstOrDefaultAsync(s => s.Id == request.StudentProfileId, cancellationToken);
+        if (student is null)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("Student profile was not found.");
+
+        if (!await _branchAccess.CanAccessBranchAsync(actor, student.BranchId))
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("You cannot create lifecycle requests for this student's branch.");
+
+        var targetBranchId = request.ToBranchId ?? student.BranchId;
+        if (!await _branchAccess.CanAccessBranchAsync(actor, targetBranchId))
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("You cannot request movement to the selected branch.");
+
+        var placementResult = await ResolveTargetStudentPlacementAsync(student, request, cancellationToken);
+        if (!placementResult.Succeeded)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure(placementResult.Errors.ToArray());
+
+        var hasPending = await _dbContext.StudentLifecycleRequests.AnyAsync(e =>
+            e.StudentProfileId == student.Id &&
+            e.Status == ApprovalStatus.UnderReview,
+            cancellationToken);
+        if (hasPending)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("This student already has a lifecycle request under review.");
+
+        var lifecycleRequest = new StudentLifecycleRequest
+        {
+            TenantId = student.TenantId,
+            StudentProfileId = student.Id,
+            BranchId = student.BranchId,
+            EventType = request.EventType,
+            ToStatus = request.ToStatus,
+            Status = ApprovalStatus.UnderReview,
+            ToBranchId = request.ToBranchId,
+            ToAcademicYearId = request.ToAcademicYearId,
+            ToCourseId = request.ToCourseId,
+            ToBatchId = request.ToBatchId,
+            ToSectionId = request.ToSectionId,
+            EffectiveOn = request.EffectiveOn,
+            RequestedOn = DateTime.UtcNow,
+            RequestedByUserId = _branchAccess.GetUserId(actor),
+            Reason = Normalize(request.Reason),
+            Notes = Normalize(request.Notes)
+        };
+
+        _dbContext.StudentLifecycleRequests.Add(lifecycleRequest);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return PeopleOperationResult<StudentLifecycleRequestDto>.Success(
+            Map(lifecycleRequest),
+            "Student lifecycle request submitted for approval.");
+    }
+
+    public async Task<PeopleOperationResult<StudentLifecycleRequestDto>> ApproveStudentRequestAsync(
+        ClaimsPrincipal actor,
+        Guid requestId,
+        string? decisionNotes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var lifecycleRequest = await _dbContext.StudentLifecycleRequests
+            .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+        if (lifecycleRequest is null)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("Student lifecycle request was not found.");
+
+        if (!await _branchAccess.CanAccessBranchAsync(actor, lifecycleRequest.BranchId))
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("You cannot approve requests for this branch.");
+
+        if (lifecycleRequest.Status != ApprovalStatus.UnderReview)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("Only requests under review can be approved.");
+
+        var eventResult = await RecordStudentEventAsync(actor, new CreateStudentLifecycleEventRequest
+        {
+            StudentProfileId = lifecycleRequest.StudentProfileId,
+            EventType = lifecycleRequest.EventType,
+            ToStatus = lifecycleRequest.ToStatus,
+            ToBranchId = lifecycleRequest.ToBranchId,
+            ToAcademicYearId = lifecycleRequest.ToAcademicYearId,
+            ToCourseId = lifecycleRequest.ToCourseId,
+            ToBatchId = lifecycleRequest.ToBatchId,
+            ToSectionId = lifecycleRequest.ToSectionId,
+            EffectiveOn = lifecycleRequest.EffectiveOn,
+            Reason = lifecycleRequest.Reason,
+            Notes = lifecycleRequest.Notes
+        }, cancellationToken);
+
+        if (!eventResult.Succeeded || eventResult.Data is null)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure(eventResult.Errors.ToArray());
+
+        lifecycleRequest.Status = ApprovalStatus.Approved;
+        lifecycleRequest.DecidedOn = DateTime.UtcNow;
+        lifecycleRequest.DecidedByUserId = _branchAccess.GetUserId(actor);
+        lifecycleRequest.DecisionNotes = Normalize(decisionNotes);
+        lifecycleRequest.AppliedStudentLifecycleEventId = eventResult.Data.Id;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return PeopleOperationResult<StudentLifecycleRequestDto>.Success(
+            Map(lifecycleRequest),
+            "Student lifecycle request approved and applied.");
+    }
+
+    public async Task<PeopleOperationResult<StudentLifecycleRequestDto>> RejectStudentRequestAsync(
+        ClaimsPrincipal actor,
+        Guid requestId,
+        string? decisionNotes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var lifecycleRequest = await _dbContext.StudentLifecycleRequests
+            .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+        if (lifecycleRequest is null)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("Student lifecycle request was not found.");
+
+        if (!await _branchAccess.CanAccessBranchAsync(actor, lifecycleRequest.BranchId))
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("You cannot reject requests for this branch.");
+
+        if (lifecycleRequest.Status != ApprovalStatus.UnderReview)
+            return PeopleOperationResult<StudentLifecycleRequestDto>.Failure("Only requests under review can be rejected.");
+
+        lifecycleRequest.Status = ApprovalStatus.Rejected;
+        lifecycleRequest.DecidedOn = DateTime.UtcNow;
+        lifecycleRequest.DecidedByUserId = _branchAccess.GetUserId(actor);
+        lifecycleRequest.DecisionNotes = Normalize(decisionNotes);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return PeopleOperationResult<StudentLifecycleRequestDto>.Success(
+            Map(lifecycleRequest),
+            "Student lifecycle request rejected.");
+    }
+
+    public async Task<IReadOnlyList<StudentAlumniRecordDto>> ListAlumniRecordsAsync(
+        ClaimsPrincipal actor,
+        Guid? branchId = null,
+        int take = 100,
+        CancellationToken cancellationToken = default)
+    {
+        if (branchId.HasValue && !await _branchAccess.CanAccessBranchAsync(actor, branchId.Value))
+            return Array.Empty<StudentAlumniRecordDto>();
+
+        var assignedBranchId = await _branchAccess.GetAssignedBranchIdAsync(actor);
+        var query = _dbContext.StudentAlumniRecords.AsNoTracking();
+
+        if (_branchAccess.IsBranchAdminOnly(actor))
+        {
+            query = assignedBranchId.HasValue
+                ? query.Where(e => e.BranchId == assignedBranchId.Value)
+                : query.Where(_ => false);
+        }
+
+        if (branchId.HasValue)
+            query = query.Where(e => e.BranchId == branchId.Value);
+
+        var pageSize = Math.Clamp(take, 1, 500);
+        var records = await query
+            .OrderByDescending(e => e.GraduationDate)
+            .ThenBy(e => e.AlumniNumber)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return records.Select(Map).ToList();
+    }
+
     public async Task<IReadOnlyList<TeacherLifecycleEventDto>> ListTeacherEventsAsync(
         ClaimsPrincipal actor,
         Guid? teacherProfileId = null,
@@ -269,6 +470,169 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         return PeopleOperationResult<TeacherLifecycleEventDto>.Success(
             recordedEvent ?? Map(lifecycleEvent),
             "Teacher lifecycle event recorded.");
+    }
+
+    public async Task<IReadOnlyList<TeacherLifecycleRequestDto>> ListTeacherRequestsAsync(
+        ClaimsPrincipal actor,
+        Guid? teacherProfileId = null,
+        Guid? branchId = null,
+        int take = 100,
+        CancellationToken cancellationToken = default)
+    {
+        if (branchId.HasValue && !await _branchAccess.CanAccessBranchAsync(actor, branchId.Value))
+            return Array.Empty<TeacherLifecycleRequestDto>();
+
+        var assignedBranchId = await _branchAccess.GetAssignedBranchIdAsync(actor);
+        var query = _dbContext.TeacherLifecycleRequests.AsNoTracking();
+
+        if (_branchAccess.IsBranchAdminOnly(actor))
+        {
+            query = assignedBranchId.HasValue
+                ? query.Where(e => e.BranchId == assignedBranchId.Value)
+                : query.Where(_ => false);
+        }
+
+        if (teacherProfileId.HasValue)
+            query = query.Where(e => e.TeacherProfileId == teacherProfileId.Value);
+        if (branchId.HasValue)
+            query = query.Where(e => e.BranchId == branchId.Value);
+
+        var pageSize = Math.Clamp(take, 1, 500);
+        var requests = await query
+            .OrderBy(e => e.Status == ApprovalStatus.UnderReview ? 0 : 1)
+            .ThenByDescending(e => e.RequestedOn)
+            .Take(pageSize)
+            .ToListAsync(cancellationToken);
+
+        return requests.Select(Map).ToList();
+    }
+
+    public async Task<PeopleOperationResult<TeacherLifecycleRequestDto>> CreateTeacherRequestAsync(
+        ClaimsPrincipal actor,
+        CreateTeacherLifecycleRequestRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        if (!_tenantContext.HasTenant)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("Select a tenant before creating lifecycle requests.");
+
+        var teacher = await _dbContext.TeacherProfiles
+            .FirstOrDefaultAsync(t => t.Id == request.TeacherProfileId, cancellationToken);
+        if (teacher is null)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("Teacher profile was not found.");
+
+        if (!await _branchAccess.CanAccessBranchAsync(actor, teacher.BranchId))
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("You cannot create lifecycle requests for this teacher's branch.");
+
+        var targetBranchId = request.ToBranchId ?? teacher.BranchId;
+        if (!await _branchAccess.CanAccessBranchAsync(actor, targetBranchId))
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("You cannot request movement to the selected branch.");
+
+        var validationError = await ValidateTeacherTargetsAsync(request, targetBranchId, cancellationToken);
+        if (validationError is not null)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure(validationError);
+
+        var hasPending = await _dbContext.TeacherLifecycleRequests.AnyAsync(e =>
+            e.TeacherProfileId == teacher.Id &&
+            e.Status == ApprovalStatus.UnderReview,
+            cancellationToken);
+        if (hasPending)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("This teacher already has a lifecycle request under review.");
+
+        var lifecycleRequest = new TeacherLifecycleRequest
+        {
+            TenantId = teacher.TenantId,
+            TeacherProfileId = teacher.Id,
+            BranchId = teacher.BranchId,
+            EventType = request.EventType,
+            ToStatus = request.ToStatus,
+            Status = ApprovalStatus.UnderReview,
+            ToBranchId = request.ToBranchId,
+            ToDepartmentId = request.ToDepartmentId,
+            EffectiveOn = request.EffectiveOn,
+            RequestedOn = DateTime.UtcNow,
+            RequestedByUserId = _branchAccess.GetUserId(actor),
+            Reason = Normalize(request.Reason),
+            Notes = Normalize(request.Notes)
+        };
+
+        _dbContext.TeacherLifecycleRequests.Add(lifecycleRequest);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return PeopleOperationResult<TeacherLifecycleRequestDto>.Success(
+            Map(lifecycleRequest),
+            "Teacher lifecycle request submitted for approval.");
+    }
+
+    public async Task<PeopleOperationResult<TeacherLifecycleRequestDto>> ApproveTeacherRequestAsync(
+        ClaimsPrincipal actor,
+        Guid requestId,
+        string? decisionNotes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var lifecycleRequest = await _dbContext.TeacherLifecycleRequests
+            .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+        if (lifecycleRequest is null)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("Teacher lifecycle request was not found.");
+
+        if (!await _branchAccess.CanAccessBranchAsync(actor, lifecycleRequest.BranchId))
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("You cannot approve requests for this branch.");
+
+        if (lifecycleRequest.Status != ApprovalStatus.UnderReview)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("Only requests under review can be approved.");
+
+        var eventResult = await RecordTeacherEventAsync(actor, new CreateTeacherLifecycleEventRequest
+        {
+            TeacherProfileId = lifecycleRequest.TeacherProfileId,
+            EventType = lifecycleRequest.EventType,
+            ToStatus = lifecycleRequest.ToStatus,
+            ToBranchId = lifecycleRequest.ToBranchId,
+            ToDepartmentId = lifecycleRequest.ToDepartmentId,
+            EffectiveOn = lifecycleRequest.EffectiveOn,
+            Reason = lifecycleRequest.Reason,
+            Notes = lifecycleRequest.Notes
+        }, cancellationToken);
+
+        if (!eventResult.Succeeded || eventResult.Data is null)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure(eventResult.Errors.ToArray());
+
+        lifecycleRequest.Status = ApprovalStatus.Approved;
+        lifecycleRequest.DecidedOn = DateTime.UtcNow;
+        lifecycleRequest.DecidedByUserId = _branchAccess.GetUserId(actor);
+        lifecycleRequest.DecisionNotes = Normalize(decisionNotes);
+        lifecycleRequest.AppliedTeacherLifecycleEventId = eventResult.Data.Id;
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return PeopleOperationResult<TeacherLifecycleRequestDto>.Success(
+            Map(lifecycleRequest),
+            "Teacher lifecycle request approved and applied.");
+    }
+
+    public async Task<PeopleOperationResult<TeacherLifecycleRequestDto>> RejectTeacherRequestAsync(
+        ClaimsPrincipal actor,
+        Guid requestId,
+        string? decisionNotes = null,
+        CancellationToken cancellationToken = default)
+    {
+        var lifecycleRequest = await _dbContext.TeacherLifecycleRequests
+            .FirstOrDefaultAsync(r => r.Id == requestId, cancellationToken);
+        if (lifecycleRequest is null)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("Teacher lifecycle request was not found.");
+
+        if (!await _branchAccess.CanAccessBranchAsync(actor, lifecycleRequest.BranchId))
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("You cannot reject requests for this branch.");
+
+        if (lifecycleRequest.Status != ApprovalStatus.UnderReview)
+            return PeopleOperationResult<TeacherLifecycleRequestDto>.Failure("Only requests under review can be rejected.");
+
+        lifecycleRequest.Status = ApprovalStatus.Rejected;
+        lifecycleRequest.DecidedOn = DateTime.UtcNow;
+        lifecycleRequest.DecidedByUserId = _branchAccess.GetUserId(actor);
+        lifecycleRequest.DecisionNotes = Normalize(decisionNotes);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return PeopleOperationResult<TeacherLifecycleRequestDto>.Success(
+            Map(lifecycleRequest),
+            "Teacher lifecycle request rejected.");
     }
 
     private async Task<PeopleOperationResult<StudentPlacement>> ResolveTargetStudentPlacementAsync(
@@ -479,6 +843,27 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         {
             foreach (var enrollment in activeEnrollments)
                 enrollment.Status = EnrollmentStatus.Completed;
+
+            var hasAlumniRecord = await _dbContext.StudentAlumniRecords.AnyAsync(e =>
+                e.StudentProfileId == student.Id,
+                cancellationToken);
+            if (!hasAlumniRecord)
+            {
+                _dbContext.StudentAlumniRecords.Add(new StudentAlumniRecord
+                {
+                    TenantId = student.TenantId,
+                    StudentProfileId = student.Id,
+                    BranchId = targetPlacement.BranchId,
+                    AcademicYearId = currentPlacement.AcademicYearId ?? targetPlacement.AcademicYearId,
+                    CourseId = currentPlacement.CourseId ?? targetPlacement.CourseId,
+                    BatchId = currentPlacement.BatchId ?? targetPlacement.BatchId,
+                    AlumniNumber = await NextAlumniNumberAsync(student.TenantId, cancellationToken),
+                    GraduationDate = lifecycleEvent.EffectiveOn,
+                    ContactEmail = student.Email,
+                    ContactPhone = student.PhoneNumber,
+                    Notes = lifecycleEvent.Notes ?? lifecycleEvent.Reason
+                });
+            }
         }
 
         return null;
@@ -571,6 +956,21 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         throw new InvalidOperationException("Could not generate a unique enrollment number.");
     }
 
+    private async Task<string> NextAlumniNumberAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        for (var i = 1; i < 100_000; i++)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var number = $"ALU-{DateTime.UtcNow:yyyy}-{i:0000}";
+            if (!await _dbContext.StudentAlumniRecords
+                    .IgnoreQueryFilters()
+                    .AnyAsync(e => e.TenantId == tenantId && e.AlumniNumber == number, cancellationToken))
+                return number;
+        }
+
+        throw new InvalidOperationException("Could not generate a unique alumni number.");
+    }
+
     private static StudentLifecycleEventDto Map(StudentLifecycleEvent e) => new()
     {
         Id = e.Id,
@@ -605,6 +1005,65 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         Notes = e.Notes
     };
 
+    private static StudentLifecycleRequestDto Map(StudentLifecycleRequest e) => new()
+    {
+        Id = e.Id,
+        TenantId = e.TenantId,
+        IsDeleted = e.IsDeleted,
+        CreatedBy = e.CreatedBy,
+        CreatedOn = e.CreatedOn,
+        ModifiedBy = e.ModifiedBy,
+        ModifiedOn = e.ModifiedOn,
+        DeletedBy = e.DeletedBy,
+        DeletedOn = e.DeletedOn,
+        ConcurrencyToken = e.ConcurrencyToken,
+        StudentProfileId = e.StudentProfileId,
+        BranchId = e.BranchId,
+        EventType = e.EventType,
+        ToStatus = e.ToStatus,
+        Status = e.Status,
+        ToBranchId = e.ToBranchId,
+        ToAcademicYearId = e.ToAcademicYearId,
+        ToCourseId = e.ToCourseId,
+        ToBatchId = e.ToBatchId,
+        ToSectionId = e.ToSectionId,
+        EffectiveOn = e.EffectiveOn,
+        RequestedOn = e.RequestedOn,
+        RequestedByUserId = e.RequestedByUserId,
+        DecidedOn = e.DecidedOn,
+        DecidedByUserId = e.DecidedByUserId,
+        AppliedStudentLifecycleEventId = e.AppliedStudentLifecycleEventId,
+        Reason = e.Reason,
+        Notes = e.Notes,
+        DecisionNotes = e.DecisionNotes
+    };
+
+    private static StudentAlumniRecordDto Map(StudentAlumniRecord e) => new()
+    {
+        Id = e.Id,
+        TenantId = e.TenantId,
+        IsDeleted = e.IsDeleted,
+        CreatedBy = e.CreatedBy,
+        CreatedOn = e.CreatedOn,
+        ModifiedBy = e.ModifiedBy,
+        ModifiedOn = e.ModifiedOn,
+        DeletedBy = e.DeletedBy,
+        DeletedOn = e.DeletedOn,
+        ConcurrencyToken = e.ConcurrencyToken,
+        StudentProfileId = e.StudentProfileId,
+        BranchId = e.BranchId,
+        AcademicYearId = e.AcademicYearId,
+        CourseId = e.CourseId,
+        BatchId = e.BatchId,
+        AlumniNumber = e.AlumniNumber,
+        GraduationDate = e.GraduationDate,
+        ContactEmail = e.ContactEmail,
+        ContactPhone = e.ContactPhone,
+        HigherEducation = e.HigherEducation,
+        EmployerOrInstitution = e.EmployerOrInstitution,
+        Notes = e.Notes
+    };
+
     private static TeacherLifecycleEventDto Map(TeacherLifecycleEvent e) => new()
     {
         Id = e.Id,
@@ -631,6 +1090,36 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         RecordedByUserId = e.RecordedByUserId,
         Reason = e.Reason,
         Notes = e.Notes
+    };
+
+    private static TeacherLifecycleRequestDto Map(TeacherLifecycleRequest e) => new()
+    {
+        Id = e.Id,
+        TenantId = e.TenantId,
+        IsDeleted = e.IsDeleted,
+        CreatedBy = e.CreatedBy,
+        CreatedOn = e.CreatedOn,
+        ModifiedBy = e.ModifiedBy,
+        ModifiedOn = e.ModifiedOn,
+        DeletedBy = e.DeletedBy,
+        DeletedOn = e.DeletedOn,
+        ConcurrencyToken = e.ConcurrencyToken,
+        TeacherProfileId = e.TeacherProfileId,
+        BranchId = e.BranchId,
+        EventType = e.EventType,
+        ToStatus = e.ToStatus,
+        Status = e.Status,
+        ToBranchId = e.ToBranchId,
+        ToDepartmentId = e.ToDepartmentId,
+        EffectiveOn = e.EffectiveOn,
+        RequestedOn = e.RequestedOn,
+        RequestedByUserId = e.RequestedByUserId,
+        DecidedOn = e.DecidedOn,
+        DecidedByUserId = e.DecidedByUserId,
+        AppliedTeacherLifecycleEventId = e.AppliedTeacherLifecycleEventId,
+        Reason = e.Reason,
+        Notes = e.Notes,
+        DecisionNotes = e.DecisionNotes
     };
 
     private static string? Normalize(string? value)

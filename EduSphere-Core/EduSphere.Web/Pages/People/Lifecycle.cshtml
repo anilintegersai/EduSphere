@@ -8,11 +8,11 @@
     <div>
         <span class="eyebrow">People registry</span>
         <h1>Student & Teacher Lifecycle</h1>
-        <p>Record promotions, transfers, withdrawals, confirmations, leave movements, and exit events with an auditable timeline.</p>
+        <p>Route transfers, exits, rejoining, promotions, graduation, relieving, and rehiring through approval with auditable outcomes.</p>
     </div>
     @if (Model.HasTenant)
     {
-        <span class="count-pill">@(Model.StudentEvents.Count + Model.TeacherEvents.Count) recent events</span>
+        <span class="count-pill">@(Model.StudentRequests.Count + Model.TeacherRequests.Count) workflow requests</span>
     }
 </section>
 
@@ -24,7 +24,7 @@ else
 {
     @if (!string.IsNullOrWhiteSpace(Model.StatusMessage))
     {
-        <div class="alert alert-success">@Model.StatusMessage</div>
+        <div class="alert alert-info">@Model.StatusMessage</div>
     }
 
     @if (!ViewData.ModelState.IsValid)
@@ -32,10 +32,17 @@ else
         <div asp-validation-summary="All" class="alert alert-danger" role="alert"></div>
     }
 
+    <div class="d-flex flex-wrap gap-2 mb-3">
+        <a asp-page-handler="Export" asp-route-kind="requests" class="btn btn-outline-primary btn-sm">Export lifecycle report</a>
+        <a asp-page-handler="Export" asp-route-kind="alumni" class="btn btn-outline-primary btn-sm">Export alumni report</a>
+        <a asp-page-handler="SampleDocument" asp-route-ownerType="@ProfileDocumentOwnerType.Student" class="btn btn-outline-secondary btn-sm">Download student sample</a>
+        <a asp-page-handler="SampleDocument" asp-route-ownerType="@ProfileDocumentOwnerType.Teacher" class="btn btn-outline-secondary btn-sm">Download teacher sample</a>
+    </div>
+
     <div class="row g-4 workspace-grid">
         <div class="col-xl-6">
             <div class="card form-card">
-                <div class="card-header"><span>Student action</span><span class="stage-tag">Lifecycle</span></div>
+                <div class="card-header"><span>Student request</span><span class="stage-tag">Approval</span></div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="Student">
                         <div class="row g-2">
@@ -123,7 +130,7 @@ else
                             </div>
                         </div>
                         <div class="form-actions mt-3">
-                            <button type="submit" class="btn btn-primary">Record student event</button>
+                            <button type="submit" class="btn btn-primary">Submit student request</button>
                         </div>
                     </form>
                 </div>
@@ -132,7 +139,7 @@ else
 
         <div class="col-xl-6">
             <div class="card form-card">
-                <div class="card-header"><span>Teacher action</span><span class="stage-tag">Lifecycle</span></div>
+                <div class="card-header"><span>Teacher request</span><span class="stage-tag">Approval</span></div>
                 <div class="card-body">
                     <form method="post" asp-page-handler="Teacher">
                         <div class="row g-2">
@@ -190,16 +197,205 @@ else
                             </div>
                         </div>
                         <div class="form-actions mt-3">
-                            <button type="submit" class="btn btn-primary">Record teacher event</button>
+                            <button type="submit" class="btn btn-primary">Submit teacher request</button>
                         </div>
                     </form>
                 </div>
             </div>
         </div>
 
+        <div class="col-12">
+            <div class="card data-card">
+                <div class="card-header"><span>Student approval queue</span><span class="count-pill">@Model.StudentRequests.Count requests</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Requested</th><th>Student</th><th>Action</th><th>Target</th><th>Status</th><th class="text-end">Decision</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.StudentRequests)
+                        {
+                            <tr>
+                                <td>@item.RequestedOn.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td>@Model.StudentName(item.StudentProfileId)</td>
+                                <td><span class="stage-tag">@item.EventType</span><div class="small text-muted">@item.ToStatus on @item.EffectiveOn</div></td>
+                                <td>@Model.BranchName(item.ToBranchId) / @Model.SectionName(item.ToSectionId)</td>
+                                <td><span class="stage-tag">@item.Status</span></td>
+                                <td class="text-end">
+                                    <div class="action-stack justify-content-end">
+                                        <a asp-page-handler="PrintStudentRequest" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" target="_blank">Print</a>
+                                        @if (item.Status == ApprovalStatus.UnderReview)
+                                        {
+                                            <form method="post" asp-page-handler="ApproveStudentRequest" asp-route-id="@item.Id" class="d-inline">
+                                                <input name="decisionNotes" class="form-control form-control-sm mb-1" placeholder="Approval notes" />
+                                                <button class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form method="post" asp-page-handler="RejectStudentRequest" asp-route-id="@item.Id" class="d-inline">
+                                                <input name="decisionNotes" class="form-control form-control-sm mb-1" placeholder="Rejection notes" />
+                                                <button class="btn btn-sm btn-outline-danger">Reject</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.StudentRequests.Count == 0)
+                        {
+                            <tr><td colspan="6" class="text-center empty-state">No student lifecycle requests yet.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12">
+            <div class="card data-card">
+                <div class="card-header"><span>Teacher approval queue</span><span class="count-pill">@Model.TeacherRequests.Count requests</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Requested</th><th>Teacher</th><th>Action</th><th>Target</th><th>Status</th><th class="text-end">Decision</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.TeacherRequests)
+                        {
+                            <tr>
+                                <td>@item.RequestedOn.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td>@Model.TeacherName(item.TeacherProfileId)</td>
+                                <td><span class="stage-tag">@item.EventType</span><div class="small text-muted">@item.ToStatus on @item.EffectiveOn</div></td>
+                                <td>@Model.BranchName(item.ToBranchId) / @Model.DepartmentName(item.ToDepartmentId)</td>
+                                <td><span class="stage-tag">@item.Status</span></td>
+                                <td class="text-end">
+                                    <div class="action-stack justify-content-end">
+                                        <a asp-page-handler="PrintTeacherRequest" asp-route-id="@item.Id" class="btn btn-sm btn-outline-secondary" target="_blank">Print</a>
+                                        @if (item.Status == ApprovalStatus.UnderReview)
+                                        {
+                                            <form method="post" asp-page-handler="ApproveTeacherRequest" asp-route-id="@item.Id" class="d-inline">
+                                                <input name="decisionNotes" class="form-control form-control-sm mb-1" placeholder="Approval notes" />
+                                                <button class="btn btn-sm btn-success">Approve</button>
+                                            </form>
+                                            <form method="post" asp-page-handler="RejectTeacherRequest" asp-route-id="@item.Id" class="d-inline">
+                                                <input name="decisionNotes" class="form-control form-control-sm mb-1" placeholder="Rejection notes" />
+                                                <button class="btn btn-sm btn-outline-danger">Reject</button>
+                                            </form>
+                                        }
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.TeacherRequests.Count == 0)
+                        {
+                            <tr><td colspan="6" class="text-center empty-state">No teacher lifecycle requests yet.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-7">
+            <div class="card data-card">
+                <div class="card-header"><span>Profile documents</span><span class="count-pill">@Model.ProfileDocuments.Count files</span></div>
+                <div class="card-body border-bottom">
+                    <form method="post" asp-page-handler="UploadDocument" enctype="multipart/form-data">
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-3">
+                                <label asp-for="DocumentInput.OwnerType" class="form-label"></label>
+                                <select asp-for="DocumentInput.OwnerType" class="form-select">
+                                    <option value="@ProfileDocumentOwnerType.Student">Student</option>
+                                    <option value="@ProfileDocumentOwnerType.Teacher">Teacher</option>
+                                </select>
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="DocumentInput.OwnerId" class="form-label"></label>
+                                <select asp-for="DocumentInput.OwnerId" class="form-select">
+                                    <option value="">Select owner</option>
+                                    <optgroup label="Students">
+                                        @foreach (var student in Model.Students)
+                                        {
+                                            <option value="@student.Id">@student.AdmissionNumber - @student.FirstName @student.LastName</option>
+                                        }
+                                    </optgroup>
+                                    <optgroup label="Teachers">
+                                        @foreach (var teacher in Model.Teachers)
+                                        {
+                                            <option value="@teacher.Id">@teacher.EmployeeNumber - @teacher.FirstName @teacher.LastName</option>
+                                        }
+                                    </optgroup>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label asp-for="DocumentInput.DocumentType" class="form-label"></label>
+                                <input asp-for="DocumentInput.DocumentType" class="form-control" placeholder="Transfer certificate" />
+                            </div>
+                            <div class="col-md-2">
+                                <label asp-for="DocumentInput.File" class="form-label"></label>
+                                <input asp-for="DocumentInput.File" type="file" class="form-control" />
+                            </div>
+                            <div class="col-md-4">
+                                <label asp-for="DocumentInput.DisplayName" class="form-label"></label>
+                                <input asp-for="DocumentInput.DisplayName" class="form-control" />
+                            </div>
+                            <div class="col-md-6">
+                                <label asp-for="DocumentInput.Notes" class="form-label"></label>
+                                <input asp-for="DocumentInput.Notes" class="form-control" />
+                            </div>
+                            <div class="col-md-2">
+                                <button type="submit" class="btn btn-primary w-100">Upload</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Owner</th><th>Document</th><th>Uploaded</th><th>Size</th><th class="text-end">File</th></tr></thead>
+                        <tbody>
+                        @foreach (var document in Model.ProfileDocuments)
+                        {
+                            <tr>
+                                <td>@Model.DocumentOwnerName(document)</td>
+                                <td><strong>@document.DisplayName</strong><div class="small text-muted">@document.DocumentType</div></td>
+                                <td>@document.UploadedOn.ToLocalTime().ToString("dd MMM yyyy")</td>
+                                <td>@((document.SizeBytes ?? 0) / 1024) KB</td>
+                                <td class="text-end"><a asp-page-handler="DownloadDocument" asp-route-id="@document.Id" class="btn btn-sm btn-outline-primary">Download</a></td>
+                            </tr>
+                        }
+                        @if (Model.ProfileDocuments.Count == 0)
+                        {
+                            <tr><td colspan="5" class="text-center empty-state">No uploaded lifecycle documents yet.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl-5">
+            <div class="card data-card">
+                <div class="card-header"><span>Alumni records</span><span class="count-pill">@Model.AlumniRecords.Count alumni</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Alumni #</th><th>Student</th><th>Graduated</th><th>Program</th></tr></thead>
+                        <tbody>
+                        @foreach (var item in Model.AlumniRecords)
+                        {
+                            <tr>
+                                <td><code>@item.AlumniNumber</code></td>
+                                <td>@Model.StudentName(item.StudentProfileId)</td>
+                                <td>@item.GraduationDate</td>
+                                <td>@Model.CourseName(item.CourseId) / @Model.BatchName(item.BatchId)</td>
+                            </tr>
+                        }
+                        @if (Model.AlumniRecords.Count == 0)
+                        {
+                            <tr><td colspan="4" class="text-center empty-state">No alumni records yet.</td></tr>
+                        }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <div class="col-xl-6">
             <div class="card data-card">
-                <div class="card-header"><span>Student timeline</span><span class="count-pill">@Model.StudentEvents.Count events</span></div>
+                <div class="card-header"><span>Student event timeline</span><span class="count-pill">@Model.StudentEvents.Count events</span></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead><tr><th>Date</th><th>Student</th><th>Action</th><th>Status</th><th>Placement</th></tr></thead>
@@ -226,7 +422,7 @@ else
 
         <div class="col-xl-6">
             <div class="card data-card">
-                <div class="card-header"><span>Teacher timeline</span><span class="count-pill">@Model.TeacherEvents.Count events</span></div>
+                <div class="card-header"><span>Teacher event timeline</span><span class="count-pill">@Model.TeacherEvents.Count events</span></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
                         <thead><tr><th>Date</th><th>Teacher</th><th>Action</th><th>Status</th><th>Assignment</th></tr></thead>

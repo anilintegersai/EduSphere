@@ -54,4 +54,5 @@ public class TeacherProfile : TenantEntityBase
 
     public ICollection<TeacherSubjectAssignment> SubjectAssignments { get; set; } = new List<TeacherSubjectAssignment>();
     public ICollection<TeacherLifecycleEvent> LifecycleEvents { get; set; } = new List<TeacherLifecycleEvent>();
+    public ICollection<TeacherLifecycleRequest> LifecycleRequests { get; set; } = new List<TeacherLifecycleRequest>();
 }
