@@ -19,6 +19,9 @@ public class HostelModel : EnterprisePageModel
     private readonly ICrudService<HostelBed> _beds;
     private readonly ICrudService<HostelAllocation> _allocations;
     private readonly ICrudService<HostelFee> _fees;
+    private readonly ICrudService<HostelVisitorLog> _visitorLogs;
+    private readonly ICrudService<HostelMaintenanceRequest> _maintenanceRequests;
+    private readonly ICrudService<HostelAllocationTransferRequest> _transferRequests;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<StudentProfile> _students;
 
@@ -28,6 +31,9 @@ public class HostelModel : EnterprisePageModel
         ICrudService<HostelBed> beds,
         ICrudService<HostelAllocation> allocations,
         ICrudService<HostelFee> fees,
+        ICrudService<HostelVisitorLog> visitorLogs,
+        ICrudService<HostelMaintenanceRequest> maintenanceRequests,
+        ICrudService<HostelAllocationTransferRequest> transferRequests,
         ICrudService<Branch> branches,
         ICrudService<StudentProfile> students,
         ITenantContext tenant,
@@ -39,6 +45,9 @@ public class HostelModel : EnterprisePageModel
         _beds = beds;
         _allocations = allocations;
         _fees = fees;
+        _visitorLogs = visitorLogs;
+        _maintenanceRequests = maintenanceRequests;
+        _transferRequests = transferRequests;
         _branches = branches;
         _students = students;
     }
@@ -48,6 +57,9 @@ public class HostelModel : EnterprisePageModel
     public IReadOnlyList<HostelBed> Beds { get; private set; } = new List<HostelBed>();
     public IReadOnlyList<HostelAllocation> Allocations { get; private set; } = new List<HostelAllocation>();
     public IReadOnlyList<HostelFee> Fees { get; private set; } = new List<HostelFee>();
+    public IReadOnlyList<HostelVisitorLog> VisitorLogs { get; private set; } = new List<HostelVisitorLog>();
+    public IReadOnlyList<HostelMaintenanceRequest> MaintenanceRequests { get; private set; } = new List<HostelMaintenanceRequest>();
+    public IReadOnlyList<HostelAllocationTransferRequest> TransferRequests { get; private set; } = new List<HostelAllocationTransferRequest>();
     public IReadOnlyList<StudentProfile> Students { get; private set; } = new List<StudentProfile>();
 
     [BindProperty] public BlockInputModel BlockInput { get; set; } = new();
@@ -55,6 +67,9 @@ public class HostelModel : EnterprisePageModel
     [BindProperty] public BedInputModel BedInput { get; set; } = new();
     [BindProperty] public AllocationInputModel AllocationInput { get; set; } = new();
     [BindProperty] public FeeInputModel FeeInput { get; set; } = new();
+    [BindProperty] public VisitorInputModel VisitorInput { get; set; } = new();
+    [BindProperty] public MaintenanceRequestInputModel MaintenanceRequestInput { get; set; } = new();
+    [BindProperty] public TransferInputModel TransferInput { get; set; } = new();
 
     public class BlockInputModel
     {
@@ -107,6 +122,41 @@ public class HostelModel : EnterprisePageModel
         [Range(0, 100000)] public decimal Amount { get; set; }
         [Range(0, 100000), Display(Name = "Paid")] public decimal PaidAmount { get; set; }
         public InvoiceStatus Status { get; set; } = InvoiceStatus.Issued;
+    }
+
+    public class VisitorInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Display(Name = "Allocation")] public Guid? HostelAllocationId { get; set; }
+        [Display(Name = "Student")] public Guid? StudentProfileId { get; set; }
+        [Required, StringLength(120), Display(Name = "Visitor")] public string VisitorName { get; set; } = string.Empty;
+        [StringLength(80)] public string? Relationship { get; set; }
+        [Required, StringLength(30), Display(Name = "Phone")] public string PhoneNumber { get; set; } = string.Empty;
+        [StringLength(250)] public string? Purpose { get; set; }
+        [StringLength(80), Display(Name = "ID document")] public string? IdDocumentNumber { get; set; }
+    }
+
+    public class MaintenanceRequestInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Display(Name = "Block")] public Guid? HostelBlockId { get; set; }
+        [Display(Name = "Room")] public Guid? HostelRoomId { get; set; }
+        [Display(Name = "Bed")] public Guid? HostelBedId { get; set; }
+        [Required, StringLength(120)] public string Category { get; set; } = "General";
+        public HostelMaintenancePriority Priority { get; set; } = HostelMaintenancePriority.Medium;
+        public HostelMaintenanceStatus Status { get; set; } = HostelMaintenanceStatus.Open;
+        [Display(Name = "Due on")] public DateTime? DueOn { get; set; }
+        [Required, StringLength(1000)] public string Description { get; set; } = string.Empty;
+    }
+
+    public class TransferInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Allocation")] public Guid? HostelAllocationId { get; set; }
+        [Required, Display(Name = "To room")] public Guid? ToRoomId { get; set; }
+        [Display(Name = "To bed")] public Guid? ToBedId { get; set; }
+        [Display(Name = "Effective on")] public DateOnly EffectiveOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+        [Required, StringLength(500)] public string Reason { get; set; } = string.Empty;
     }
 
     public string BlockName(Guid id) => Blocks.FirstOrDefault(b => b.Id == id)?.Name ?? "-";
@@ -241,6 +291,122 @@ public class HostelModel : EnterprisePageModel
     public async Task<IActionResult> OnPostDeleteAllocationAsync(Guid id) { await DeleteIfAllowedAsync(_allocations, id, x => x.BranchId); return RedirectToPage(); }
     public async Task<IActionResult> OnPostDeleteFeeAsync(Guid id) { await DeleteIfAllowedAsync(_fees, id, x => x.BranchId); return RedirectToPage(); }
 
+    public async Task<IActionResult> OnPostSaveVisitorAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(VisitorInput));
+        if (!await ValidateBranchSelectionAsync("VisitorInput.BranchId", VisitorInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (VisitorInput.HostelAllocationId is Guid allocationId && (await _allocations.GetAsync(allocationId) is not { } allocation || allocation.BranchId != VisitorInput.BranchId))
+            ModelState.AddModelError("VisitorInput.HostelAllocationId", "Selected allocation was not found for this branch.");
+        if (VisitorInput.StudentProfileId is Guid studentId && (await _students.GetAsync(studentId) is not { } student || student.BranchId != VisitorInput.BranchId))
+            ModelState.AddModelError("VisitorInput.StudentProfileId", "Selected student was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _visitorLogs.CreateAsync(new HostelVisitorLog
+        {
+            BranchId = VisitorInput.BranchId!.Value,
+            HostelAllocationId = VisitorInput.HostelAllocationId,
+            StudentProfileId = VisitorInput.StudentProfileId,
+            VisitorName = VisitorInput.VisitorName,
+            Relationship = VisitorInput.Relationship,
+            PhoneNumber = VisitorInput.PhoneNumber,
+            Purpose = VisitorInput.Purpose,
+            IdDocumentNumber = VisitorInput.IdDocumentNumber
+        });
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveMaintenanceRequestAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(MaintenanceRequestInput));
+        if (!await ValidateBranchSelectionAsync("MaintenanceRequestInput.BranchId", MaintenanceRequestInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (MaintenanceRequestInput.HostelBlockId is Guid blockId && (await _blocks.GetAsync(blockId) is not { } block || block.BranchId != MaintenanceRequestInput.BranchId))
+            ModelState.AddModelError("MaintenanceRequestInput.HostelBlockId", "Selected block was not found for this branch.");
+        if (MaintenanceRequestInput.HostelRoomId is Guid roomId && (await _rooms.GetAsync(roomId) is not { } room || room.BranchId != MaintenanceRequestInput.BranchId))
+            ModelState.AddModelError("MaintenanceRequestInput.HostelRoomId", "Selected room was not found for this branch.");
+        if (MaintenanceRequestInput.HostelBedId is Guid bedId && (await _beds.GetAsync(bedId) is not { } bed || bed.BranchId != MaintenanceRequestInput.BranchId))
+            ModelState.AddModelError("MaintenanceRequestInput.HostelBedId", "Selected bed was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _maintenanceRequests.CreateAsync(new HostelMaintenanceRequest
+        {
+            BranchId = MaintenanceRequestInput.BranchId!.Value,
+            HostelBlockId = MaintenanceRequestInput.HostelBlockId,
+            HostelRoomId = MaintenanceRequestInput.HostelRoomId,
+            HostelBedId = MaintenanceRequestInput.HostelBedId,
+            Category = MaintenanceRequestInput.Category,
+            Priority = MaintenanceRequestInput.Priority,
+            Status = MaintenanceRequestInput.Status,
+            DueOn = MaintenanceRequestInput.DueOn,
+            Description = MaintenanceRequestInput.Description
+        });
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRequestTransferAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(TransferInput));
+        if (!await ValidateBranchSelectionAsync("TransferInput.BranchId", TransferInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        HostelAllocation? allocation = null;
+        if (TransferInput.HostelAllocationId is not Guid allocationId || await _allocations.GetAsync(allocationId) is not { } selectedAllocation || selectedAllocation.BranchId != TransferInput.BranchId)
+            ModelState.AddModelError("TransferInput.HostelAllocationId", "Selected allocation was not found for this branch.");
+        else
+            allocation = selectedAllocation;
+        if (TransferInput.ToRoomId is not Guid roomId || await _rooms.GetAsync(roomId) is not { } room || room.BranchId != TransferInput.BranchId)
+            ModelState.AddModelError("TransferInput.ToRoomId", "Selected destination room was not found for this branch.");
+        if (TransferInput.ToBedId is Guid bedId && (await _beds.GetAsync(bedId) is not { } bed || bed.BranchId != TransferInput.BranchId || bed.HostelRoomId != TransferInput.ToRoomId))
+            ModelState.AddModelError("TransferInput.ToBedId", "Selected destination bed was not found for this room.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _transferRequests.CreateAsync(new HostelAllocationTransferRequest
+        {
+            BranchId = TransferInput.BranchId!.Value,
+            HostelAllocationId = TransferInput.HostelAllocationId!.Value,
+            FromRoomId = allocation!.HostelRoomId,
+            FromBedId = allocation.HostelBedId,
+            ToRoomId = TransferInput.ToRoomId!.Value,
+            ToBedId = TransferInput.ToBedId,
+            EffectiveOn = TransferInput.EffectiveOn,
+            Reason = TransferInput.Reason,
+            Status = HostelTransferStatus.Requested
+        });
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostUpdateTransferStatusAsync(Guid id, HostelTransferStatus status, string? decisionNotes)
+    {
+        var request = await _transferRequests.GetAsync(id);
+        if (request is not null && await CanUseBranchAsync(request.BranchId))
+        {
+            await _transferRequests.UpdateAsync(id, r =>
+            {
+                r.Status = status;
+                r.DecisionNotes = decisionNotes;
+                if (status == HostelTransferStatus.Approved)
+                    r.ApprovedOn = DateTime.UtcNow;
+            });
+
+            if (status == HostelTransferStatus.Completed)
+            {
+                await _allocations.UpdateAsync(request.HostelAllocationId, a =>
+                {
+                    a.HostelRoomId = request.ToRoomId;
+                    a.HostelBedId = request.ToBedId;
+                });
+                if (request.FromBedId is Guid fromBedId)
+                    await _beds.UpdateAsync(fromBedId, b => b.Status = HostelBedStatus.Available);
+                if (request.ToBedId is Guid toBedId)
+                    await _beds.UpdateAsync(toBedId, b => b.Status = HostelBedStatus.Occupied);
+            }
+        }
+        return RedirectToPage();
+    }
+
     private async Task LoadAsync()
     {
         await LoadBranchesAsync(_branches);
@@ -249,6 +415,9 @@ public class HostelModel : EnterprisePageModel
         Beds = (await FilterBranchScopedAsync(_beds, x => x.BranchId)).OrderBy(b => b.BedNumber).ToList();
         Allocations = (await FilterBranchScopedAsync(_allocations, x => x.BranchId)).OrderByDescending(a => a.AllocatedOn).ToList();
         Fees = (await FilterBranchScopedAsync(_fees, x => x.BranchId)).OrderByDescending(f => f.BillingMonth).ToList();
+        VisitorLogs = (await FilterBranchScopedAsync(_visitorLogs, x => x.BranchId)).OrderByDescending(v => v.CheckInOn).ToList();
+        MaintenanceRequests = (await FilterBranchScopedAsync(_maintenanceRequests, x => x.BranchId)).OrderByDescending(m => m.ReportedOn).ToList();
+        TransferRequests = (await FilterBranchScopedAsync(_transferRequests, x => x.BranchId)).OrderByDescending(t => t.RequestedOn).ToList();
         Students = (await FilterBranchScopedAsync(_students, x => x.BranchId)).OrderBy(s => s.FirstName).ThenBy(s => s.LastName).ToList();
 
         if (await DefaultBranchIdAsync() is Guid branchId)
@@ -258,6 +427,9 @@ public class HostelModel : EnterprisePageModel
             BedInput.BranchId ??= branchId;
             AllocationInput.BranchId ??= branchId;
             FeeInput.BranchId ??= branchId;
+            VisitorInput.BranchId ??= branchId;
+            MaintenanceRequestInput.BranchId ??= branchId;
+            TransferInput.BranchId ??= branchId;
         }
     }
 

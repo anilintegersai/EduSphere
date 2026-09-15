@@ -248,3 +248,161 @@ public class FeeReceipt : TenantEntityBase
     [StringLength(500)]
     public string? Notes { get; set; }
 }
+
+public class OnlinePaymentTransaction : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid FeeInvoiceId { get; set; }
+    public FeeInvoice? FeeInvoice { get; set; }
+
+    [Required]
+    [StringLength(80)]
+    public string GatewayProviderKey { get; set; } = "manual-gateway";
+
+    [Required]
+    [StringLength(120)]
+    public string GatewayOrderId { get; set; } = null!;
+
+    [StringLength(120)]
+    public string? GatewayPaymentId { get; set; }
+
+    public decimal Amount { get; set; }
+
+    [Required]
+    [StringLength(3)]
+    public string Currency { get; set; } = "INR";
+
+    public PaymentGatewayStatus Status { get; set; } = PaymentGatewayStatus.Initiated;
+    public DateTime InitiatedOn { get; set; } = DateTime.UtcNow;
+    public DateTime? CompletedOn { get; set; }
+
+    [StringLength(4000)]
+    public string? CallbackPayloadJson { get; set; }
+
+    [StringLength(1000)]
+    public string? FailureReason { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class FeeReminder : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid FeeInvoiceId { get; set; }
+    public FeeInvoice? FeeInvoice { get; set; }
+
+    public Guid? StudentProfileId { get; set; }
+    public StudentProfile? StudentProfile { get; set; }
+
+    public CommunicationChannel Channel { get; set; } = CommunicationChannel.Email;
+
+    [Required]
+    [StringLength(250)]
+    public string Recipient { get; set; } = null!;
+
+    public DateTime ReminderOn { get; set; } = DateTime.UtcNow;
+    public FeeReminderStatus Status { get; set; } = FeeReminderStatus.Scheduled;
+    public DateTime? SentOn { get; set; }
+    public int AttemptCount { get; set; }
+
+    [StringLength(1000)]
+    public string? LastError { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class FeeRefund : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid FeePaymentId { get; set; }
+    public FeePayment? FeePayment { get; set; }
+
+    public Guid FeeInvoiceId { get; set; }
+    public FeeInvoice? FeeInvoice { get; set; }
+
+    public decimal Amount { get; set; }
+
+    [Required]
+    [StringLength(500)]
+    public string Reason { get; set; } = null!;
+
+    public FinanceApprovalStatus Status { get; set; } = FinanceApprovalStatus.Requested;
+    public Guid? RequestedByUserId { get; set; }
+    public ApplicationUser? RequestedByUser { get; set; }
+    public DateTime RequestedOn { get; set; } = DateTime.UtcNow;
+    public Guid? ApprovedByUserId { get; set; }
+    public ApplicationUser? ApprovedByUser { get; set; }
+    public DateTime? ApprovedOn { get; set; }
+    public DateTime? ProcessedOn { get; set; }
+
+    [StringLength(120)]
+    public string? GatewayRefundId { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class FeeConcessionRequest : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid StudentProfileId { get; set; }
+    public StudentProfile? StudentProfile { get; set; }
+
+    public Guid? FeeInvoiceId { get; set; }
+    public FeeInvoice? FeeInvoice { get; set; }
+
+    public Guid? FeeStructureId { get; set; }
+    public FeeStructure? FeeStructure { get; set; }
+
+    public DiscountType DiscountType { get; set; } = DiscountType.Amount;
+    public decimal RequestedValue { get; set; }
+    public decimal? ApprovedAmount { get; set; }
+    public FinanceApprovalStatus Status { get; set; } = FinanceApprovalStatus.Requested;
+    public Guid? RequestedByUserId { get; set; }
+    public ApplicationUser? RequestedByUser { get; set; }
+    public DateTime RequestedOn { get; set; } = DateTime.UtcNow;
+    public Guid? DecidedByUserId { get; set; }
+    public ApplicationUser? DecidedByUser { get; set; }
+    public DateTime? DecidedOn { get; set; }
+
+    [Required]
+    [StringLength(500)]
+    public string Reason { get; set; } = null!;
+
+    [StringLength(500)]
+    public string? DecisionNotes { get; set; }
+}
+
+public class LedgerExportBatch : TenantEntityBase
+{
+    public Guid? BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public LedgerExportType ExportType { get; set; } = LedgerExportType.Receivables;
+    public DateOnly FromDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddMonths(-1));
+    public DateOnly ToDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
+    public LedgerExportFormat Format { get; set; } = LedgerExportFormat.Csv;
+    public LedgerExportStatus Status { get; set; } = LedgerExportStatus.Requested;
+    public DateTime RequestedOn { get; set; } = DateTime.UtcNow;
+    public DateTime? GeneratedOn { get; set; }
+    public Guid? GeneratedByUserId { get; set; }
+    public ApplicationUser? GeneratedByUser { get; set; }
+
+    [StringLength(500)]
+    public string? StoragePath { get; set; }
+
+    public int RowCount { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}

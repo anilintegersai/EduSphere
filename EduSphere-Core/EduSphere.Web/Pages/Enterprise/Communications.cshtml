@@ -35,7 +35,10 @@ else
                             <div class="col-md-6"><label asp-for="ProviderInput.ProviderKey" class="form-label"></label><input asp-for="ProviderInput.ProviderKey" class="form-control" /></div>
                             <div class="col-md-6"><label asp-for="ProviderInput.DisplayName" class="form-label"></label><input asp-for="ProviderInput.DisplayName" class="form-control" /></div>
                             <div class="col-md-6"><label asp-for="ProviderInput.FromAddress" class="form-label"></label><input asp-for="ProviderInput.FromAddress" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="ProviderInput.FromDisplayName" class="form-label"></label><input asp-for="ProviderInput.FromDisplayName" class="form-control" /></div>
                             <div class="col-12"><label asp-for="ProviderInput.SecretReference" class="form-label"></label><input asp-for="ProviderInput.SecretReference" class="form-control" placeholder="KeyVault:EduSphere:SmtpPassword" /></div>
+                            <div class="col-12"><label asp-for="ProviderInput.ConfigurationJson" class="form-label"></label><textarea asp-for="ProviderInput.ConfigurationJson" class="form-control" rows="4"></textarea></div>
+                            <div class="col-12 form-check form-switch mt-2"><input asp-for="ProviderInput.IsEnabled" class="form-check-input" /><label asp-for="ProviderInput.IsEnabled" class="form-check-label"></label></div>
                         </div>
                         <button type="submit" class="btn btn-primary mt-3">Add provider</button>
                     </form>
@@ -139,6 +142,7 @@ else
                         <td class="text-end">
                             <span class="action-stack">
                                 <form method="post" asp-page-handler="DispatchMessage" asp-route-id="@message.Id" class="d-inline"><button class="btn btn-sm btn-outline-primary">Dispatch</button></form>
+                                <form method="post" asp-page-handler="RetryMessage" asp-route-id="@message.Id" class="d-inline"><button class="btn btn-sm btn-outline-success">Retry</button></form>
                                 <form method="post" asp-page-handler="DeleteMessage" asp-route-id="@message.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form>
                             </span>
                         </td>
@@ -147,6 +151,49 @@ else
                 @if (Model.Providers.Count == 0 && Model.Templates.Count == 0 && Model.Messages.Count == 0 && Model.Announcements.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No communication records yet.</td></tr> }
                 </tbody>
             </table>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-7">
+            <div class="card data-card h-100">
+                <div class="card-header"><span>Delivery retry dashboard</span><span class="count-pill">@Model.Attempts.Count attempts</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Message</th><th>Attempt</th><th>Status</th><th>Next retry</th><th>Error</th></tr></thead>
+                        <tbody>
+                        @foreach (var attempt in Model.Attempts)
+                        {
+                            <tr>
+                                <td>@Model.MessageSubject(attempt.NotificationMessageId)</td>
+                                <td>@attempt.AttemptNumber / @attempt.Channel</td>
+                                <td>@attempt.Status</td>
+                                <td>@attempt.NextRetryOn?.ToLocalTime().ToString("g")</td>
+                                <td>@Model.ShortText(attempt.ErrorMessage, 60)</td>
+                            </tr>
+                        }
+                        @if (Model.Attempts.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No delivery attempts yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-5">
+            <div class="card data-card h-100">
+                <div class="card-header"><span>Recent communication log</span><span class="count-pill">@Model.Logs.Count logs</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Recipient</th><th>Status</th><th>Provider</th><th>When</th></tr></thead>
+                        <tbody>
+                        @foreach (var log in Model.Logs.Take(12))
+                        {
+                            <tr><td>@log.Recipient</td><td>@log.Status</td><td>@log.ProviderKey</td><td>@log.OccurredOn.ToLocalTime().ToString("g")</td></tr>
+                        }
+                        @if (Model.Logs.Count == 0) { <tr><td colspan="4" class="text-center empty-state">No communication logs yet.</td></tr> }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
         </div>
     </div>
 }

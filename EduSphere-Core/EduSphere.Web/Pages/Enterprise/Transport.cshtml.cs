@@ -20,6 +20,9 @@ public class TransportModel : EnterprisePageModel
     private readonly ICrudService<TransportRouteStop> _stops;
     private readonly ICrudService<TransportRouteAssignment> _routeAssignments;
     private readonly ICrudService<StudentTransportAssignment> _studentAssignments;
+    private readonly ICrudService<VehicleGpsPing> _gpsPings;
+    private readonly ICrudService<TransportMaintenanceRecord> _maintenanceRecords;
+    private readonly ICrudService<TransportDocumentReminder> _documentReminders;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<StudentProfile> _students;
 
@@ -30,6 +33,9 @@ public class TransportModel : EnterprisePageModel
         ICrudService<TransportRouteStop> stops,
         ICrudService<TransportRouteAssignment> routeAssignments,
         ICrudService<StudentTransportAssignment> studentAssignments,
+        ICrudService<VehicleGpsPing> gpsPings,
+        ICrudService<TransportMaintenanceRecord> maintenanceRecords,
+        ICrudService<TransportDocumentReminder> documentReminders,
         ICrudService<Branch> branches,
         ICrudService<StudentProfile> students,
         ITenantContext tenant,
@@ -42,6 +48,9 @@ public class TransportModel : EnterprisePageModel
         _stops = stops;
         _routeAssignments = routeAssignments;
         _studentAssignments = studentAssignments;
+        _gpsPings = gpsPings;
+        _maintenanceRecords = maintenanceRecords;
+        _documentReminders = documentReminders;
         _branches = branches;
         _students = students;
     }
@@ -52,6 +61,9 @@ public class TransportModel : EnterprisePageModel
     public IReadOnlyList<TransportRouteStop> Stops { get; private set; } = new List<TransportRouteStop>();
     public IReadOnlyList<TransportRouteAssignment> RouteAssignments { get; private set; } = new List<TransportRouteAssignment>();
     public IReadOnlyList<StudentTransportAssignment> StudentAssignments { get; private set; } = new List<StudentTransportAssignment>();
+    public IReadOnlyList<VehicleGpsPing> GpsPings { get; private set; } = new List<VehicleGpsPing>();
+    public IReadOnlyList<TransportMaintenanceRecord> MaintenanceRecords { get; private set; } = new List<TransportMaintenanceRecord>();
+    public IReadOnlyList<TransportDocumentReminder> DocumentReminders { get; private set; } = new List<TransportDocumentReminder>();
     public IReadOnlyList<StudentProfile> Students { get; private set; } = new List<StudentProfile>();
 
     [BindProperty] public VehicleInputModel VehicleInput { get; set; } = new();
@@ -59,6 +71,9 @@ public class TransportModel : EnterprisePageModel
     [BindProperty] public RouteInputModel RouteInput { get; set; } = new();
     [BindProperty] public StopInputModel StopInput { get; set; } = new();
     [BindProperty] public StudentAssignmentInputModel StudentAssignmentInput { get; set; } = new();
+    [BindProperty] public GpsPingInputModel GpsPingInput { get; set; } = new();
+    [BindProperty] public MaintenanceInputModel MaintenanceInput { get; set; } = new();
+    [BindProperty] public DocumentReminderInputModel DocumentReminderInput { get; set; } = new();
 
     public class VehicleInputModel
     {
@@ -69,6 +84,8 @@ public class TransportModel : EnterprisePageModel
         [Range(1, 120), Display(Name = "Seats")] public int SeatCapacity { get; set; } = 40;
         public VehicleStatus Status { get; set; } = VehicleStatus.Active;
         [Display(Name = "Insurance valid until")] public DateOnly? InsuranceValidUntil { get; set; }
+        [Display(Name = "Fitness valid until")] public DateOnly? FitnessValidUntil { get; set; }
+        [StringLength(80), Display(Name = "GPS device")] public string? GpsDeviceId { get; set; }
     }
 
     public class DriverInputModel
@@ -118,6 +135,40 @@ public class TransportModel : EnterprisePageModel
         public TransportAssignmentStatus Status { get; set; } = TransportAssignmentStatus.Active;
     }
 
+    public class GpsPingInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Vehicle")] public Guid? VehicleId { get; set; }
+        [Display(Name = "Route")] public Guid? TransportRouteId { get; set; }
+        [Range(-90, 90)] public decimal Latitude { get; set; }
+        [Range(-180, 180)] public decimal Longitude { get; set; }
+        [Range(0, 200), Display(Name = "Speed km/h")] public decimal? SpeedKmph { get; set; }
+        [Range(0, 360), Display(Name = "Heading")] public decimal? HeadingDegrees { get; set; }
+        [StringLength(80), Display(Name = "Provider")] public string? ProviderKey { get; set; } = "manual";
+    }
+
+    public class MaintenanceInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Vehicle")] public Guid? VehicleId { get; set; }
+        public TransportMaintenanceCategory Category { get; set; } = TransportMaintenanceCategory.Service;
+        [Display(Name = "Due on")] public DateOnly DueOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
+        [Display(Name = "Completed on")] public DateOnly? CompletedOn { get; set; }
+        [Display(Name = "Odometer")] public int? OdometerReading { get; set; }
+        public OperationalReminderStatus Status { get; set; } = OperationalReminderStatus.Scheduled;
+        [StringLength(500)] public string? Notes { get; set; }
+    }
+
+    public class DocumentReminderInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Vehicle")] public Guid? VehicleId { get; set; }
+        [Display(Name = "Type")] public TransportReminderType ReminderType { get; set; } = TransportReminderType.Insurance;
+        [Display(Name = "Due on")] public DateOnly DueOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
+        public OperationalReminderStatus Status { get; set; } = OperationalReminderStatus.Scheduled;
+        [StringLength(500)] public string? Notes { get; set; }
+    }
+
     public string RouteName(Guid id) => Routes.FirstOrDefault(r => r.Id == id)?.Name ?? "-";
     public string VehicleName(Guid? id) => Vehicles.FirstOrDefault(v => v.Id == id)?.RegistrationNumber ?? "-";
     public string StopName(Guid? id) => Stops.FirstOrDefault(s => s.Id == id)?.StopName ?? "-";
@@ -152,7 +203,9 @@ public class TransportModel : EnterprisePageModel
             Type = VehicleInput.Type,
             SeatCapacity = VehicleInput.SeatCapacity,
             Status = VehicleInput.Status,
-            InsuranceValidUntil = VehicleInput.InsuranceValidUntil
+            InsuranceValidUntil = VehicleInput.InsuranceValidUntil,
+            FitnessValidUntil = VehicleInput.FitnessValidUntil,
+            GpsDeviceId = VehicleInput.GpsDeviceId
         });
         return RedirectToPage();
     }
@@ -248,6 +301,78 @@ public class TransportModel : EnterprisePageModel
     public async Task<IActionResult> OnPostDeleteStopAsync(Guid id) { await DeleteIfAllowedAsync(_stops, id, x => x.BranchId); return RedirectToPage(); }
     public async Task<IActionResult> OnPostDeleteStudentAssignmentAsync(Guid id) { await DeleteIfAllowedAsync(_studentAssignments, id, x => x.BranchId); return RedirectToPage(); }
 
+    public async Task<IActionResult> OnPostSaveGpsPingAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(GpsPingInput));
+        if (!await ValidateBranchSelectionAsync("GpsPingInput.BranchId", GpsPingInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (GpsPingInput.VehicleId is not Guid vehicleId || await _vehicles.GetAsync(vehicleId) is not { } vehicle || vehicle.BranchId != GpsPingInput.BranchId)
+            ModelState.AddModelError("GpsPingInput.VehicleId", "Selected vehicle was not found for this branch.");
+        if (GpsPingInput.TransportRouteId is Guid routeId && (await _routes.GetAsync(routeId) is not { } route || route.BranchId != GpsPingInput.BranchId))
+            ModelState.AddModelError("GpsPingInput.TransportRouteId", "Selected route was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _gpsPings.CreateAsync(new VehicleGpsPing
+        {
+            BranchId = GpsPingInput.BranchId!.Value,
+            VehicleId = GpsPingInput.VehicleId!.Value,
+            TransportRouteId = GpsPingInput.TransportRouteId,
+            Latitude = GpsPingInput.Latitude,
+            Longitude = GpsPingInput.Longitude,
+            SpeedKmph = GpsPingInput.SpeedKmph,
+            HeadingDegrees = GpsPingInput.HeadingDegrees,
+            ProviderKey = GpsPingInput.ProviderKey
+        });
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveMaintenanceAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(MaintenanceInput));
+        if (!await ValidateBranchSelectionAsync("MaintenanceInput.BranchId", MaintenanceInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (MaintenanceInput.VehicleId is not Guid vehicleId || await _vehicles.GetAsync(vehicleId) is not { } vehicle || vehicle.BranchId != MaintenanceInput.BranchId)
+            ModelState.AddModelError("MaintenanceInput.VehicleId", "Selected vehicle was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _maintenanceRecords.CreateAsync(new TransportMaintenanceRecord
+        {
+            BranchId = MaintenanceInput.BranchId!.Value,
+            VehicleId = MaintenanceInput.VehicleId!.Value,
+            Category = MaintenanceInput.Category,
+            DueOn = MaintenanceInput.DueOn,
+            CompletedOn = MaintenanceInput.CompletedOn,
+            OdometerReading = MaintenanceInput.OdometerReading,
+            Status = MaintenanceInput.Status,
+            Notes = MaintenanceInput.Notes
+        });
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveDocumentReminderAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(DocumentReminderInput));
+        if (!await ValidateBranchSelectionAsync("DocumentReminderInput.BranchId", DocumentReminderInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (DocumentReminderInput.VehicleId is not Guid vehicleId || await _vehicles.GetAsync(vehicleId) is not { } vehicle || vehicle.BranchId != DocumentReminderInput.BranchId)
+            ModelState.AddModelError("DocumentReminderInput.VehicleId", "Selected vehicle was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _documentReminders.CreateAsync(new TransportDocumentReminder
+        {
+            BranchId = DocumentReminderInput.BranchId!.Value,
+            VehicleId = DocumentReminderInput.VehicleId!.Value,
+            ReminderType = DocumentReminderInput.ReminderType,
+            DueOn = DocumentReminderInput.DueOn,
+            Status = DocumentReminderInput.Status,
+            Notes = DocumentReminderInput.Notes
+        });
+        return RedirectToPage();
+    }
+
     private async Task LoadAsync()
     {
         await LoadBranchesAsync(_branches);
@@ -257,6 +382,9 @@ public class TransportModel : EnterprisePageModel
         Stops = (await FilterBranchScopedAsync(_stops, x => x.BranchId)).OrderBy(s => s.StopOrder).ToList();
         RouteAssignments = (await FilterBranchScopedAsync(_routeAssignments, x => x.BranchId)).OrderByDescending(a => a.EffectiveFrom).ToList();
         StudentAssignments = (await FilterBranchScopedAsync(_studentAssignments, x => x.BranchId)).OrderByDescending(a => a.StartDate).ToList();
+        GpsPings = (await FilterBranchScopedAsync(_gpsPings, x => x.BranchId)).OrderByDescending(p => p.RecordedOn).ToList();
+        MaintenanceRecords = (await FilterBranchScopedAsync(_maintenanceRecords, x => x.BranchId)).OrderBy(m => m.DueOn).ToList();
+        DocumentReminders = (await FilterBranchScopedAsync(_documentReminders, x => x.BranchId)).OrderBy(r => r.DueOn).ToList();
         Students = (await FilterBranchScopedAsync(_students, x => x.BranchId)).OrderBy(s => s.FirstName).ThenBy(s => s.LastName).ToList();
 
         if (await DefaultBranchIdAsync() is Guid branchId)
@@ -266,6 +394,9 @@ public class TransportModel : EnterprisePageModel
             RouteInput.BranchId ??= branchId;
             StopInput.BranchId ??= branchId;
             StudentAssignmentInput.BranchId ??= branchId;
+            GpsPingInput.BranchId ??= branchId;
+            MaintenanceInput.BranchId ??= branchId;
+            DocumentReminderInput.BranchId ??= branchId;
         }
     }
 

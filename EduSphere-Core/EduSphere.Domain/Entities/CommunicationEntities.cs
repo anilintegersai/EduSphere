@@ -178,3 +178,31 @@ public class CommunicationLog : TenantEntityBase
 
     public DateTime OccurredOn { get; set; } = DateTime.UtcNow;
 }
+
+public class NotificationDeliveryAttempt : TenantEntityBase
+{
+    public Guid? BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid NotificationMessageId { get; set; }
+    public NotificationMessage? NotificationMessage { get; set; }
+
+    public Guid? NotificationRecipientId { get; set; }
+    public NotificationRecipient? NotificationRecipient { get; set; }
+
+    public int AttemptNumber { get; set; } = 1;
+    public CommunicationChannel Channel { get; set; } = CommunicationChannel.Email;
+
+    [StringLength(80)]
+    public string? ProviderKey { get; set; }
+
+    public NotificationAttemptStatus Status { get; set; } = NotificationAttemptStatus.Pending;
+    public DateTime AttemptedOn { get; set; } = DateTime.UtcNow;
+    public DateTime? NextRetryOn { get; set; }
+
+    [StringLength(1000)]
+    public string? ErrorMessage { get; set; }
+
+    [StringLength(4000)]
+    public string? ProviderResponseJson { get; set; }
+}

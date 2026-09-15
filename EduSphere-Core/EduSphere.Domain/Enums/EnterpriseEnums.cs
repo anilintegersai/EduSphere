@@ -65,6 +65,58 @@ public enum PaymentStatus
     Refunded = 4
 }
 
+public enum PaymentGatewayStatus
+{
+    Initiated = 1,
+    Pending = 2,
+    Completed = 3,
+    Failed = 4,
+    Cancelled = 5,
+    Refunded = 6
+}
+
+public enum FeeReminderStatus
+{
+    Scheduled = 1,
+    Queued = 2,
+    Sent = 3,
+    Failed = 4,
+    Cancelled = 5
+}
+
+public enum FinanceApprovalStatus
+{
+    Requested = 1,
+    UnderReview = 2,
+    Approved = 3,
+    Rejected = 4,
+    Processed = 5,
+    Cancelled = 6
+}
+
+public enum LedgerExportType
+{
+    Receivables = 1,
+    Payments = 2,
+    Refunds = 3,
+    Concessions = 4,
+    TrialBalance = 5
+}
+
+public enum LedgerExportFormat
+{
+    Csv = 1,
+    Excel = 2,
+    Json = 3
+}
+
+public enum LedgerExportStatus
+{
+    Requested = 1,
+    Generated = 2,
+    Failed = 3
+}
+
 public enum VehicleType
 {
     Bus = 1,
@@ -94,6 +146,36 @@ public enum TransportAssignmentStatus
     Paused = 2,
     Ended = 3,
     Cancelled = 4
+}
+
+public enum TransportMaintenanceCategory
+{
+    Service = 1,
+    Repair = 2,
+    Inspection = 3,
+    Fuel = 4,
+    Cleaning = 5,
+    Other = 99
+}
+
+public enum TransportReminderType
+{
+    Insurance = 1,
+    Fitness = 2,
+    Permit = 3,
+    PollutionCertificate = 4,
+    DriverLicense = 5,
+    Service = 6
+}
+
+public enum OperationalReminderStatus
+{
+    Scheduled = 1,
+    DueSoon = 2,
+    Sent = 3,
+    Completed = 4,
+    Overdue = 5,
+    Cancelled = 6
 }
 
 public enum LibraryMemberType
@@ -130,6 +212,24 @@ public enum LibraryFineStatus
     Cancelled = 4
 }
 
+public enum LibraryReservationStatus
+{
+    Requested = 1,
+    Active = 2,
+    Fulfilled = 3,
+    Expired = 4,
+    Cancelled = 5
+}
+
+public enum LibraryScanPurpose
+{
+    Lookup = 1,
+    Issue = 2,
+    Return = 3,
+    Inventory = 4,
+    Reservation = 5
+}
+
 public enum HostelRoomStatus
 {
     Available = 1,
@@ -151,6 +251,33 @@ public enum HostelAllocationStatus
     Active = 1,
     CheckedOut = 2,
     Cancelled = 3
+}
+
+public enum HostelMaintenancePriority
+{
+    Low = 1,
+    Medium = 2,
+    High = 3,
+    Urgent = 4
+}
+
+public enum HostelMaintenanceStatus
+{
+    Open = 1,
+    Assigned = 2,
+    InProgress = 3,
+    Resolved = 4,
+    Closed = 5,
+    Cancelled = 6
+}
+
+public enum HostelTransferStatus
+{
+    Requested = 1,
+    Approved = 2,
+    Rejected = 3,
+    Completed = 4,
+    Cancelled = 5
 }
 
 public enum CommunicationChannel
@@ -186,4 +313,12 @@ public enum CommunicationDirection
 {
     Outbound = 1,
     Inbound = 2
+}
+
+public enum NotificationAttemptStatus
+{
+    Pending = 1,
+    Succeeded = 2,
+    Failed = 3,
+    Skipped = 4
 }

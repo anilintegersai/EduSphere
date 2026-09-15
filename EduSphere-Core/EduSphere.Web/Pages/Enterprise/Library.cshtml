@@ -51,6 +51,7 @@ else
                         <div class="row g-2">
                             <div class="col-md-6"><label asp-for="CopyInput.AccessionNumber" class="form-label"></label><input asp-for="CopyInput.AccessionNumber" class="form-control" /></div>
                             <div class="col-md-6"><label asp-for="CopyInput.ShelfLocation" class="form-label"></label><input asp-for="CopyInput.ShelfLocation" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="CopyInput.Barcode" class="form-label"></label><input asp-for="CopyInput.Barcode" class="form-control" placeholder="Scan or enter code" /></div>
                             <div class="col-md-6"><label asp-for="CopyInput.Status" class="form-label"></label><select asp-for="CopyInput.Status" asp-items="Html.GetEnumSelectList<BookCopyStatus>()" class="form-select"></select></div>
                             <div class="col-md-6"><label asp-for="CopyInput.Price" class="form-label"></label><input asp-for="CopyInput.Price" type="number" step="0.01" class="form-control" /></div>
                         </div>
@@ -124,6 +125,63 @@ else
         </div>
     </div>
 
+    <div class="row g-4 mt-1">
+        <div class="col-xl-3">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Barcode / QR</span><span class="stage-tag">Scan</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="ScanBarcode">
+                        <div class="mb-2"><label asp-for="BarcodeScanInput.BranchId" class="form-label"></label><select asp-for="BarcodeScanInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="BarcodeScanInput.ScanCode" class="form-label"></label><input asp-for="BarcodeScanInput.ScanCode" class="form-control" autofocus /></div>
+                        <div class="mb-2"><label asp-for="BarcodeScanInput.Purpose" class="form-label"></label><select asp-for="BarcodeScanInput.Purpose" asp-items="Html.GetEnumSelectList<LibraryScanPurpose>()" class="form-select"></select></div>
+                        <button type="submit" class="btn btn-primary mt-3">Scan</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Reservation</span><span class="stage-tag">Hold</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveReservation">
+                        <div class="mb-2"><label asp-for="ReservationInput.BranchId" class="form-label"></label><select asp-for="ReservationInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="ReservationInput.LibraryBookId" class="form-label"></label><select asp-for="ReservationInput.LibraryBookId" class="form-select"><option value="">Book</option>@foreach (var b in Model.Books) { <option value="@b.Id">@b.Title</option> }</select></div>
+                        <div class="mb-2"><label asp-for="ReservationInput.LibraryBookCopyId" class="form-label"></label><select asp-for="ReservationInput.LibraryBookCopyId" class="form-select"><option value="">Any copy</option>@foreach (var c in Model.Copies) { <option value="@c.Id">@Model.CopyName(c.Id)</option> }</select></div>
+                        <div class="mb-2"><label asp-for="ReservationInput.LibraryMemberId" class="form-label"></label><select asp-for="ReservationInput.LibraryMemberId" class="form-select"><option value="">Member</option>@foreach (var m in Model.Members) { <option value="@m.Id">@Model.MemberName(m.Id)</option> }</select></div>
+                        <button type="submit" class="btn btn-primary mt-3">Reserve</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Renewal</span><span class="stage-tag">Due date</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RenewIssue">
+                        <div class="mb-2"><label asp-for="RenewalInput.BranchId" class="form-label"></label><select asp-for="RenewalInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="RenewalInput.LibraryBookIssueId" class="form-label"></label><select asp-for="RenewalInput.LibraryBookIssueId" class="form-select"><option value="">Issue</option>@foreach (var i in Model.Issues) { <option value="@i.Id">@Model.IssueName(i.Id)</option> }</select></div>
+                        <div class="mb-2"><label asp-for="RenewalInput.NewDueDate" class="form-label"></label><input asp-for="RenewalInput.NewDueDate" type="date" class="form-control" /></div>
+                        <button type="submit" class="btn btn-primary mt-3">Renew</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-3">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Overdue notice</span><span class="stage-tag">Notify</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveOverdueNotification">
+                        <div class="mb-2"><label asp-for="OverdueNotificationInput.BranchId" class="form-label"></label><select asp-for="OverdueNotificationInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                        <div class="mb-2"><label asp-for="OverdueNotificationInput.LibraryBookIssueId" class="form-label"></label><select asp-for="OverdueNotificationInput.LibraryBookIssueId" class="form-select"><option value="">Issue</option>@foreach (var i in Model.Issues) { <option value="@i.Id">@Model.IssueName(i.Id)</option> }</select></div>
+                        <div class="mb-2"><label asp-for="OverdueNotificationInput.LibraryMemberId" class="form-label"></label><select asp-for="OverdueNotificationInput.LibraryMemberId" class="form-select"><option value="">Member</option>@foreach (var m in Model.Members) { <option value="@m.Id">@Model.MemberName(m.Id)</option> }</select></div>
+                        <div class="mb-2"><label asp-for="OverdueNotificationInput.Recipient" class="form-label"></label><input asp-for="OverdueNotificationInput.Recipient" class="form-control" /></div>
+                        <button type="submit" class="btn btn-primary mt-3">Queue notice</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card data-card mt-4">
         <div class="card-header"><span>Catalogue & copies</span><span class="count-pill">@Model.Books.Count books</span></div>
         <div class="table-responsive">
@@ -139,6 +197,37 @@ else
                     <tr><td>Copy</td><td>@copy.AccessionNumber</td><td>@Model.BranchName(copy.BranchId)</td><td>@Model.BookTitle(copy.LibraryBookId) / @copy.Status</td><td class="text-end"><form method="post" asp-page-handler="DeleteCopy" asp-route-id="@copy.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
                 }
                 @if (Model.Books.Count == 0 && Model.Copies.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No books or copies yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Library operations</span><span class="count-pill">@Model.Reservations.Count reservations</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Area</th><th>Reference</th><th>Status</th><th>Details</th></tr></thead>
+                <tbody>
+                @foreach (var scan in Model.BarcodeScans.Take(8))
+                {
+                    <tr><td>Scan</td><td>@scan.ScanCode</td><td>@scan.Purpose</td><td>@scan.ResultMessage</td></tr>
+                }
+                @foreach (var reservation in Model.Reservations.Take(8))
+                {
+                    <tr><td>Reservation</td><td>@Model.BookTitle(reservation.LibraryBookId)</td><td>@reservation.Status</td><td>@Model.MemberName(reservation.LibraryMemberId) / expires @reservation.ExpiresOn.ToLocalTime().ToString("g")</td></tr>
+                }
+                @foreach (var renewal in Model.Renewals.Take(8))
+                {
+                    <tr><td>Renewal</td><td>@Model.IssueName(renewal.LibraryBookIssueId)</td><td>@renewal.NewDueDate</td><td>Previous due @renewal.PreviousDueDate</td></tr>
+                }
+                @foreach (var notice in Model.OverdueNotifications.Take(8))
+                {
+                    <tr><td>Overdue</td><td>@Model.IssueName(notice.LibraryBookIssueId)</td><td>@notice.Status</td><td>@notice.Channel / @notice.Recipient</td></tr>
+                }
+                @if (Model.BarcodeScans.Count == 0 && Model.Reservations.Count == 0 && Model.Renewals.Count == 0 && Model.OverdueNotifications.Count == 0)
+                {
+                    <tr><td colspan="4" class="text-center empty-state">No library operations yet.</td></tr>
+                }
                 </tbody>
             </table>
         </div>

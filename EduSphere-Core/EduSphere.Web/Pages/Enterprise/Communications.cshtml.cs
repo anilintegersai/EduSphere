@@ -20,6 +20,7 @@ public class CommunicationsModel : EnterprisePageModel
     private readonly ICrudService<NotificationRecipient> _recipients;
     private readonly ICrudService<Announcement> _announcements;
     private readonly ICrudService<CommunicationLog> _logs;
+    private readonly ICrudService<NotificationDeliveryAttempt> _attempts;
     private readonly ICrudService<Branch> _branches;
     private readonly INotificationDispatcher _dispatcher;
 
@@ -30,6 +31,7 @@ public class CommunicationsModel : EnterprisePageModel
         ICrudService<NotificationRecipient> recipients,
         ICrudService<Announcement> announcements,
         ICrudService<CommunicationLog> logs,
+        ICrudService<NotificationDeliveryAttempt> attempts,
         ICrudService<Branch> branches,
         INotificationDispatcher dispatcher,
         ITenantContext tenant,
@@ -42,6 +44,7 @@ public class CommunicationsModel : EnterprisePageModel
         _recipients = recipients;
         _announcements = announcements;
         _logs = logs;
+        _attempts = attempts;
         _branches = branches;
         _dispatcher = dispatcher;
     }
@@ -52,6 +55,7 @@ public class CommunicationsModel : EnterprisePageModel
     public IReadOnlyList<NotificationRecipient> Recipients { get; private set; } = new List<NotificationRecipient>();
     public IReadOnlyList<Announcement> Announcements { get; private set; } = new List<Announcement>();
     public IReadOnlyList<CommunicationLog> Logs { get; private set; } = new List<CommunicationLog>();
+    public IReadOnlyList<NotificationDeliveryAttempt> Attempts { get; private set; } = new List<NotificationDeliveryAttempt>();
 
     [BindProperty] public ProviderInputModel ProviderInput { get; set; } = new();
     [BindProperty] public TemplateInputModel TemplateInput { get; set; } = new();
@@ -67,7 +71,9 @@ public class CommunicationsModel : EnterprisePageModel
         [Required, StringLength(120), Display(Name = "Display name")] public string DisplayName { get; set; } = "SMTP Email";
         [EmailAddress, StringLength(150), Display(Name = "From address")] public string? FromAddress { get; set; }
         [StringLength(150), Display(Name = "From name")] public string? FromDisplayName { get; set; }
+        [StringLength(2000), Display(Name = "Configuration JSON")] public string? ConfigurationJson { get; set; } = "{\"host\":\"smtp.gmail.com\",\"port\":587,\"enableSsl\":true,\"userName\":\"name@gmail.com\",\"password\":\"app-password\",\"isBodyHtml\":true}";
         [StringLength(200), Display(Name = "Secret reference")] public string? SecretReference { get; set; }
+        [Display(Name = "Enabled")] public bool IsEnabled { get; set; } = true;
     }
 
     public class TemplateInputModel
@@ -113,6 +119,7 @@ public class CommunicationsModel : EnterprisePageModel
 
     public string TemplateName(Guid? id) => Templates.FirstOrDefault(t => t.Id == id)?.Name ?? "-";
     public string MessageSubject(Guid id) => Messages.FirstOrDefault(m => m.Id == id)?.Subject ?? "-";
+    public string ShortText(string? value, int length = 80) => Brief(value, length);
 
     public async Task OnGetAsync()
     {
@@ -134,8 +141,9 @@ public class CommunicationsModel : EnterprisePageModel
             DisplayName = ProviderInput.DisplayName,
             FromAddress = ProviderInput.FromAddress,
             FromDisplayName = ProviderInput.FromDisplayName,
+            ConfigurationJson = ProviderInput.ConfigurationJson,
             SecretReference = ProviderInput.SecretReference,
-            IsEnabled = true
+            IsEnabled = ProviderInput.IsEnabled
         });
         return RedirectToPage();
     }
@@ -233,6 +241,14 @@ public class CommunicationsModel : EnterprisePageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostRetryMessageAsync(Guid id)
+    {
+        var message = await _messages.GetAsync(id);
+        if (message is not null && await CanUseBranchAsync(message.BranchId))
+            await _dispatcher.DispatchAsync(id, HttpContext.RequestAborted);
+        return RedirectToPage();
+    }
+
     private async Task LoadAsync()
     {
         await LoadBranchesAsync(_branches);
@@ -242,6 +258,7 @@ public class CommunicationsModel : EnterprisePageModel
         Recipients = (await FilterBranchScopedAsync(_recipients, x => x.BranchId)).OrderBy(r => r.DisplayName).ToList();
         Announcements = (await FilterBranchScopedAsync(_announcements, x => x.BranchId)).OrderByDescending(a => a.PublishOn).ToList();
         Logs = (await FilterBranchScopedAsync(_logs, x => x.BranchId)).OrderByDescending(l => l.OccurredOn).Take(20).ToList();
+        Attempts = (await FilterBranchScopedAsync(_attempts, x => x.BranchId)).OrderByDescending(a => a.AttemptedOn).Take(30).ToList();
 
         if (await DefaultBranchIdAsync() is Guid branchId)
         {

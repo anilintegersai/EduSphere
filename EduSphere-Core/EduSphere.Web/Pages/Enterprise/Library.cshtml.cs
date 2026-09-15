@@ -20,6 +20,10 @@ public class LibraryModel : EnterprisePageModel
     private readonly ICrudService<LibraryBookIssue> _issues;
     private readonly ICrudService<LibraryBookReturn> _returns;
     private readonly ICrudService<LibraryFineRecord> _fines;
+    private readonly ICrudService<LibraryReservation> _reservations;
+    private readonly ICrudService<LibraryRenewal> _renewals;
+    private readonly ICrudService<LibraryOverdueNotification> _overdueNotifications;
+    private readonly ICrudService<LibraryBarcodeScan> _barcodeScans;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<StudentProfile> _students;
     private readonly ICrudService<TeacherProfile> _teachers;
@@ -32,6 +36,10 @@ public class LibraryModel : EnterprisePageModel
         ICrudService<LibraryBookIssue> issues,
         ICrudService<LibraryBookReturn> returns,
         ICrudService<LibraryFineRecord> fines,
+        ICrudService<LibraryReservation> reservations,
+        ICrudService<LibraryRenewal> renewals,
+        ICrudService<LibraryOverdueNotification> overdueNotifications,
+        ICrudService<LibraryBarcodeScan> barcodeScans,
         ICrudService<Branch> branches,
         ICrudService<StudentProfile> students,
         ICrudService<TeacherProfile> teachers,
@@ -46,6 +54,10 @@ public class LibraryModel : EnterprisePageModel
         _issues = issues;
         _returns = returns;
         _fines = fines;
+        _reservations = reservations;
+        _renewals = renewals;
+        _overdueNotifications = overdueNotifications;
+        _barcodeScans = barcodeScans;
         _branches = branches;
         _students = students;
         _teachers = teachers;
@@ -58,6 +70,10 @@ public class LibraryModel : EnterprisePageModel
     public IReadOnlyList<LibraryBookIssue> Issues { get; private set; } = new List<LibraryBookIssue>();
     public IReadOnlyList<LibraryBookReturn> Returns { get; private set; } = new List<LibraryBookReturn>();
     public IReadOnlyList<LibraryFineRecord> Fines { get; private set; } = new List<LibraryFineRecord>();
+    public IReadOnlyList<LibraryReservation> Reservations { get; private set; } = new List<LibraryReservation>();
+    public IReadOnlyList<LibraryRenewal> Renewals { get; private set; } = new List<LibraryRenewal>();
+    public IReadOnlyList<LibraryOverdueNotification> OverdueNotifications { get; private set; } = new List<LibraryOverdueNotification>();
+    public IReadOnlyList<LibraryBarcodeScan> BarcodeScans { get; private set; } = new List<LibraryBarcodeScan>();
     public IReadOnlyList<StudentProfile> Students { get; private set; } = new List<StudentProfile>();
     public IReadOnlyList<TeacherProfile> Teachers { get; private set; } = new List<TeacherProfile>();
     public IReadOnlyList<Subject> Subjects { get; private set; } = new List<Subject>();
@@ -68,6 +84,10 @@ public class LibraryModel : EnterprisePageModel
     [BindProperty] public IssueInputModel IssueInput { get; set; } = new();
     [BindProperty] public ReturnInputModel ReturnInput { get; set; } = new();
     [BindProperty] public FineInputModel FineInput { get; set; } = new();
+    [BindProperty] public BarcodeScanInputModel BarcodeScanInput { get; set; } = new();
+    [BindProperty] public ReservationInputModel ReservationInput { get; set; } = new();
+    [BindProperty] public RenewalInputModel RenewalInput { get; set; } = new();
+    [BindProperty] public OverdueNotificationInputModel OverdueNotificationInput { get; set; } = new();
 
     public class BookInputModel
     {
@@ -130,12 +150,53 @@ public class LibraryModel : EnterprisePageModel
         public LibraryFineStatus Status { get; set; } = LibraryFineStatus.Pending;
     }
 
+    public class BarcodeScanInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, StringLength(120), Display(Name = "Barcode / QR")] public string ScanCode { get; set; } = string.Empty;
+        public LibraryScanPurpose Purpose { get; set; } = LibraryScanPurpose.Lookup;
+    }
+
+    public class ReservationInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Book")] public Guid? LibraryBookId { get; set; }
+        [Display(Name = "Copy")] public Guid? LibraryBookCopyId { get; set; }
+        [Required, Display(Name = "Member")] public Guid? LibraryMemberId { get; set; }
+        [Display(Name = "Expires on")] public DateTime ExpiresOn { get; set; } = DateTime.UtcNow.AddDays(3);
+        public LibraryReservationStatus Status { get; set; } = LibraryReservationStatus.Active;
+        [StringLength(500)] public string? Notes { get; set; }
+    }
+
+    public class RenewalInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Issue")] public Guid? LibraryBookIssueId { get; set; }
+        [Display(Name = "New due date")] public DateOnly NewDueDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14));
+        [StringLength(500)] public string? Notes { get; set; }
+    }
+
+    public class OverdueNotificationInputModel
+    {
+        [Required, Display(Name = "Branch")] public Guid? BranchId { get; set; }
+        [Required, Display(Name = "Issue")] public Guid? LibraryBookIssueId { get; set; }
+        [Required, Display(Name = "Member")] public Guid? LibraryMemberId { get; set; }
+        public CommunicationChannel Channel { get; set; } = CommunicationChannel.Email;
+        [Required, StringLength(250)] public string Recipient { get; set; } = string.Empty;
+    }
+
     public string BookTitle(Guid id) => Books.FirstOrDefault(b => b.Id == id)?.Title ?? "-";
     public string CopyName(Guid id) => Copies.FirstOrDefault(c => c.Id == id)?.AccessionNumber ?? "-";
     public string MemberName(Guid id)
     {
         var member = Members.FirstOrDefault(m => m.Id == id);
         return member is null ? "-" : $"{member.MemberNumber} / {member.MemberType}";
+    }
+
+    public string IssueName(Guid id)
+    {
+        var issue = Issues.FirstOrDefault(i => i.Id == id);
+        return issue is null ? "-" : $"{CopyName(issue.LibraryBookCopyId)} / {MemberName(issue.LibraryMemberId)}";
     }
 
     public string StudentName(Guid? id)
@@ -295,6 +356,112 @@ public class LibraryModel : EnterprisePageModel
     public async Task<IActionResult> OnPostDeleteIssueAsync(Guid id) { await DeleteIfAllowedAsync(_issues, id, x => x.BranchId); return RedirectToPage(); }
     public async Task<IActionResult> OnPostDeleteFineAsync(Guid id) { await DeleteIfAllowedAsync(_fines, id, x => x.BranchId); return RedirectToPage(); }
 
+    public async Task<IActionResult> OnPostScanBarcodeAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(BarcodeScanInput));
+        if (!await ValidateBranchSelectionAsync("BarcodeScanInput.BranchId", BarcodeScanInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        var branchId = BarcodeScanInput.BranchId;
+        var branchCopies = branchId.HasValue
+            ? await _copies.ListAsync(c => c.BranchId == branchId.Value)
+            : new List<LibraryBookCopy>();
+        var copy = branchCopies.FirstOrDefault(c =>
+            string.Equals(c.Barcode, BarcodeScanInput.ScanCode, StringComparison.OrdinalIgnoreCase) ||
+            string.Equals(c.AccessionNumber, BarcodeScanInput.ScanCode, StringComparison.OrdinalIgnoreCase));
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _barcodeScans.CreateAsync(new LibraryBarcodeScan
+        {
+            BranchId = BarcodeScanInput.BranchId!.Value,
+            ScanCode = BarcodeScanInput.ScanCode,
+            Purpose = BarcodeScanInput.Purpose,
+            LibraryBookCopyId = copy?.Id,
+            ResultMessage = copy is null
+                ? "No matching book copy was found."
+                : $"{copy.AccessionNumber} is currently {copy.Status}."
+        });
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveReservationAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(ReservationInput));
+        if (!await ValidateBranchSelectionAsync("ReservationInput.BranchId", ReservationInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (ReservationInput.LibraryBookId is not Guid bookId || await _books.GetAsync(bookId) is not { } book || book.BranchId != ReservationInput.BranchId)
+            ModelState.AddModelError("ReservationInput.LibraryBookId", "Selected book was not found for this branch.");
+        if (ReservationInput.LibraryBookCopyId is Guid copyId && (await _copies.GetAsync(copyId) is not { } copy || copy.BranchId != ReservationInput.BranchId || copy.LibraryBookId != ReservationInput.LibraryBookId))
+            ModelState.AddModelError("ReservationInput.LibraryBookCopyId", "Selected copy was not found for this book.");
+        if (ReservationInput.LibraryMemberId is not Guid memberId || await _members.GetAsync(memberId) is not { } member || member.BranchId != ReservationInput.BranchId)
+            ModelState.AddModelError("ReservationInput.LibraryMemberId", "Selected member was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _reservations.CreateAsync(new LibraryReservation
+        {
+            BranchId = ReservationInput.BranchId!.Value,
+            LibraryBookId = ReservationInput.LibraryBookId!.Value,
+            LibraryBookCopyId = ReservationInput.LibraryBookCopyId,
+            LibraryMemberId = ReservationInput.LibraryMemberId!.Value,
+            ExpiresOn = ReservationInput.ExpiresOn,
+            Status = ReservationInput.Status,
+            Notes = ReservationInput.Notes
+        });
+        if (ReservationInput.LibraryBookCopyId is Guid reservedCopyId)
+            await _copies.UpdateAsync(reservedCopyId, c => c.Status = BookCopyStatus.Reserved);
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRenewIssueAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(RenewalInput));
+        if (!await ValidateBranchSelectionAsync("RenewalInput.BranchId", RenewalInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        LibraryBookIssue? issue = null;
+        if (RenewalInput.LibraryBookIssueId is not Guid issueId || await _issues.GetAsync(issueId) is not { } selectedIssue || selectedIssue.BranchId != RenewalInput.BranchId)
+            ModelState.AddModelError("RenewalInput.LibraryBookIssueId", "Selected issue was not found for this branch.");
+        else
+            issue = selectedIssue;
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _renewals.CreateAsync(new LibraryRenewal
+        {
+            BranchId = RenewalInput.BranchId!.Value,
+            LibraryBookIssueId = RenewalInput.LibraryBookIssueId!.Value,
+            PreviousDueDate = issue!.DueDate,
+            NewDueDate = RenewalInput.NewDueDate,
+            Notes = RenewalInput.Notes
+        });
+        await _issues.UpdateAsync(issue.Id, i => i.DueDate = RenewalInput.NewDueDate);
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveOverdueNotificationAsync()
+    {
+        if (!HasTenant) return RedirectToPage();
+        KeepOnlyModelStateFor(nameof(OverdueNotificationInput));
+        if (!await ValidateBranchSelectionAsync("OverdueNotificationInput.BranchId", OverdueNotificationInput.BranchId, _branches))
+            ModelState.AddModelError(string.Empty, "Fix branch selection.");
+        if (OverdueNotificationInput.LibraryBookIssueId is not Guid issueId || await _issues.GetAsync(issueId) is not { } issue || issue.BranchId != OverdueNotificationInput.BranchId)
+            ModelState.AddModelError("OverdueNotificationInput.LibraryBookIssueId", "Selected issue was not found for this branch.");
+        if (OverdueNotificationInput.LibraryMemberId is not Guid memberId || await _members.GetAsync(memberId) is not { } member || member.BranchId != OverdueNotificationInput.BranchId)
+            ModelState.AddModelError("OverdueNotificationInput.LibraryMemberId", "Selected member was not found for this branch.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        await _overdueNotifications.CreateAsync(new LibraryOverdueNotification
+        {
+            BranchId = OverdueNotificationInput.BranchId!.Value,
+            LibraryBookIssueId = OverdueNotificationInput.LibraryBookIssueId!.Value,
+            LibraryMemberId = OverdueNotificationInput.LibraryMemberId!.Value,
+            Channel = OverdueNotificationInput.Channel,
+            Recipient = OverdueNotificationInput.Recipient,
+            Status = NotificationStatus.Queued
+        });
+        return RedirectToPage();
+    }
+
     private async Task LoadAsync()
     {
         await LoadBranchesAsync(_branches);
@@ -304,6 +471,10 @@ public class LibraryModel : EnterprisePageModel
         Issues = (await FilterBranchScopedAsync(_issues, x => x.BranchId)).OrderByDescending(i => i.IssueDate).ToList();
         Returns = (await FilterBranchScopedAsync(_returns, x => x.BranchId)).OrderByDescending(r => r.ReturnedOn).ToList();
         Fines = (await FilterBranchScopedAsync(_fines, x => x.BranchId)).OrderByDescending(f => f.AssessedOn).ToList();
+        Reservations = (await FilterBranchScopedAsync(_reservations, x => x.BranchId)).OrderByDescending(r => r.ReservedOn).ToList();
+        Renewals = (await FilterBranchScopedAsync(_renewals, x => x.BranchId)).OrderByDescending(r => r.RenewedOn).ToList();
+        OverdueNotifications = (await FilterBranchScopedAsync(_overdueNotifications, x => x.BranchId)).OrderByDescending(n => n.CreatedOn).ToList();
+        BarcodeScans = (await FilterBranchScopedAsync(_barcodeScans, x => x.BranchId)).OrderByDescending(s => s.ScannedOn).ToList();
         Students = (await FilterBranchScopedAsync(_students, x => x.BranchId)).OrderBy(s => s.FirstName).ThenBy(s => s.LastName).ToList();
         Teachers = (await FilterBranchScopedAsync(_teachers, x => x.BranchId)).OrderBy(t => t.FirstName).ThenBy(t => t.LastName).ToList();
         Subjects = (await _subjects.ListAsync()).OrderBy(s => s.Name).ToList();
@@ -316,6 +487,10 @@ public class LibraryModel : EnterprisePageModel
             IssueInput.BranchId ??= branchId;
             ReturnInput.BranchId ??= branchId;
             FineInput.BranchId ??= branchId;
+            BarcodeScanInput.BranchId ??= branchId;
+            ReservationInput.BranchId ??= branchId;
+            RenewalInput.BranchId ??= branchId;
+            OverdueNotificationInput.BranchId ??= branchId;
         }
     }
 

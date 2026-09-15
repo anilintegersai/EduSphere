@@ -155,3 +155,63 @@ public class StudentTransportAssignment : TenantEntityBase
     [StringLength(500)]
     public string? Notes { get; set; }
 }
+
+public class VehicleGpsPing : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid VehicleId { get; set; }
+    public Vehicle? Vehicle { get; set; }
+
+    public Guid? TransportRouteId { get; set; }
+    public TransportRoute? TransportRoute { get; set; }
+
+    public decimal Latitude { get; set; }
+    public decimal Longitude { get; set; }
+    public decimal? SpeedKmph { get; set; }
+    public decimal? HeadingDegrees { get; set; }
+    public DateTime RecordedOn { get; set; } = DateTime.UtcNow;
+
+    [StringLength(80)]
+    public string? ProviderKey { get; set; }
+
+    [StringLength(4000)]
+    public string? RawPayloadJson { get; set; }
+}
+
+public class TransportMaintenanceRecord : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid VehicleId { get; set; }
+    public Vehicle? Vehicle { get; set; }
+
+    public TransportMaintenanceCategory Category { get; set; } = TransportMaintenanceCategory.Service;
+    public DateOnly DueOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
+    public DateOnly? CompletedOn { get; set; }
+    public int? OdometerReading { get; set; }
+    public OperationalReminderStatus Status { get; set; } = OperationalReminderStatus.Scheduled;
+    public DateTime? ReminderSentOn { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class TransportDocumentReminder : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid VehicleId { get; set; }
+    public Vehicle? Vehicle { get; set; }
+
+    public TransportReminderType ReminderType { get; set; } = TransportReminderType.Insurance;
+    public DateOnly DueOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(30));
+    public OperationalReminderStatus Status { get; set; } = OperationalReminderStatus.Scheduled;
+    public DateTime? ReminderSentOn { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}

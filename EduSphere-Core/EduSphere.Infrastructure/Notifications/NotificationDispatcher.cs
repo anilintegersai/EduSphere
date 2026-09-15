@@ -2,6 +2,7 @@ using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using System.Text.Json;
 
 namespace EduSphere.Infrastructure.Notifications;
 
@@ -68,6 +69,31 @@ public sealed class NotificationDispatcher : INotificationDispatcher
             }
 
             var now = DateTime.UtcNow;
+            var attemptNumber = await _dbContext.NotificationDeliveryAttempts
+                .IgnoreQueryFilters()
+                .CountAsync(a => a.TenantId == message.TenantId &&
+                                 a.NotificationMessageId == message.Id &&
+                                 a.NotificationRecipientId == recipient.Id,
+                    cancellationToken) + 1;
+
+            _dbContext.NotificationDeliveryAttempts.Add(new NotificationDeliveryAttempt
+            {
+                TenantId = message.TenantId,
+                BranchId = recipient.BranchId ?? message.BranchId,
+                NotificationMessageId = message.Id,
+                NotificationRecipientId = recipient.Id,
+                AttemptNumber = attemptNumber,
+                Channel = message.Channel,
+                ProviderKey = message.ProviderKey,
+                Status = result.Succeeded ? NotificationAttemptStatus.Succeeded : NotificationAttemptStatus.Failed,
+                AttemptedOn = now,
+                NextRetryOn = result.Succeeded ? null : now.AddMinutes(Math.Min(240, attemptNumber * 15)),
+                ErrorMessage = result.ErrorMessage,
+                ProviderResponseJson = string.IsNullOrWhiteSpace(result.ProviderMessageId)
+                    ? null
+                    : JsonSerializer.Serialize(new { result.ProviderMessageId })
+            });
+
             recipient.Status = result.Succeeded ? NotificationStatus.Sent : NotificationStatus.Failed;
             recipient.SentOn = result.Succeeded ? now : null;
             recipient.ErrorMessage = result.ErrorMessage;

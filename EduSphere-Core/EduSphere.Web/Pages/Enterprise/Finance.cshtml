@@ -147,6 +147,148 @@ else
             </div>
         </div>
     </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Online payment</span><span class="stage-tag">Gateway</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="InitiateOnlinePayment">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="OnlinePaymentInput.BranchId" class="form-label"></label><select asp-for="OnlinePaymentInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="OnlinePaymentInput.FeeInvoiceId" class="form-label"></label><select asp-for="OnlinePaymentInput.FeeInvoiceId" class="form-select"><option value="">Invoice</option>@foreach (var i in Model.Invoices) { <option value="@i.Id">@i.InvoiceNumber</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="OnlinePaymentInput.GatewayProviderKey" class="form-label"></label><input asp-for="OnlinePaymentInput.GatewayProviderKey" class="form-control" /></div>
+                            <div class="col-md-3"><label asp-for="OnlinePaymentInput.Currency" class="form-label"></label><input asp-for="OnlinePaymentInput.Currency" class="form-control" /></div>
+                            <div class="col-md-3"><label asp-for="OnlinePaymentInput.Amount" class="form-label"></label><input asp-for="OnlinePaymentInput.Amount" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Initiate</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Fee reminder</span><span class="stage-tag">Notify</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveReminder">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="ReminderInput.BranchId" class="form-label"></label><select asp-for="ReminderInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="ReminderInput.FeeInvoiceId" class="form-label"></label><select asp-for="ReminderInput.FeeInvoiceId" class="form-select"><option value="">Invoice</option>@foreach (var i in Model.Invoices) { <option value="@i.Id">@i.InvoiceNumber</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="ReminderInput.Channel" class="form-label"></label><select asp-for="ReminderInput.Channel" asp-items="Html.GetEnumSelectList<CommunicationChannel>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="ReminderInput.ReminderOn" class="form-label"></label><input asp-for="ReminderInput.ReminderOn" type="datetime-local" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="ReminderInput.Recipient" class="form-label"></label><input asp-for="ReminderInput.Recipient" class="form-control" placeholder="parent@example.com" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Schedule reminder</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Ledger export</span><span class="stage-tag">Accounting</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RequestLedgerExport">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="LedgerExportInput.BranchId" class="form-label"></label><select asp-for="LedgerExportInput.BranchId" class="form-select"><option value="">All allowed</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="LedgerExportInput.ExportType" class="form-label"></label><select asp-for="LedgerExportInput.ExportType" asp-items="Html.GetEnumSelectList<LedgerExportType>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="LedgerExportInput.FromDate" class="form-label"></label><input asp-for="LedgerExportInput.FromDate" type="date" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="LedgerExportInput.ToDate" class="form-label"></label><input asp-for="LedgerExportInput.ToDate" type="date" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Prepare export</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1">
+        <div class="col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Refund request</span><span class="stage-tag">Approval</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RequestRefund">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="RefundInput.BranchId" class="form-label"></label><select asp-for="RefundInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="RefundInput.FeePaymentId" class="form-label"></label><select asp-for="RefundInput.FeePaymentId" class="form-select"><option value="">Payment</option>@foreach (var p in Model.Payments) { <option value="@p.Id">@p.PaymentNumber</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="RefundInput.Amount" class="form-label"></label><input asp-for="RefundInput.Amount" type="number" step="0.01" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="RefundInput.Reason" class="form-label"></label><input asp-for="RefundInput.Reason" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Request refund</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-6">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Concession request</span><span class="stage-tag">Approval</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RequestConcession">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label asp-for="ConcessionInput.BranchId" class="form-label"></label><select asp-for="ConcessionInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="ConcessionInput.StudentProfileId" class="form-label"></label><select asp-for="ConcessionInput.StudentProfileId" class="form-select"><option value="">Student</option>@foreach (var s in Model.Students) { <option value="@s.Id">@Model.StudentName(s.Id)</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="ConcessionInput.FeeInvoiceId" class="form-label"></label><select asp-for="ConcessionInput.FeeInvoiceId" class="form-select"><option value="">Invoice</option>@foreach (var i in Model.Invoices) { <option value="@i.Id">@i.InvoiceNumber</option> }</select></div>
+                            <div class="col-md-4"><label asp-for="ConcessionInput.DiscountType" class="form-label"></label><select asp-for="ConcessionInput.DiscountType" asp-items="Html.GetEnumSelectList<DiscountType>()" class="form-select"></select></div>
+                            <div class="col-md-4"><label asp-for="ConcessionInput.RequestedValue" class="form-label"></label><input asp-for="ConcessionInput.RequestedValue" type="number" step="0.01" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="ConcessionInput.Reason" class="form-label"></label><input asp-for="ConcessionInput.Reason" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Request concession</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Finance operations</span><span class="count-pill">@Model.Refunds.Count refunds</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Area</th><th>Document</th><th>Status</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var transaction in Model.OnlineTransactions.Take(8))
+                {
+                    <tr>
+                        <td>Gateway</td><td>@transaction.GatewayOrderId</td><td>@transaction.Status</td><td>@Model.InvoiceName(transaction.FeeInvoiceId) / @transaction.Amount.ToString("N2")</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="CompleteOnlinePayment" asp-route-id="@transaction.Id" class="d-inline"><button class="btn btn-sm btn-outline-success">Complete</button></form>
+                        </td>
+                    </tr>
+                }
+                @foreach (var reminder in Model.FeeReminders.Take(8))
+                {
+                    <tr><td>Reminder</td><td>@Model.InvoiceName(reminder.FeeInvoiceId)</td><td>@reminder.Status</td><td>@reminder.Channel / @reminder.Recipient</td><td class="text-end">@reminder.ReminderOn.ToLocalTime().ToString("g")</td></tr>
+                }
+                @foreach (var refund in Model.Refunds.Take(8))
+                {
+                    <tr>
+                        <td>Refund</td><td>@Model.PaymentName(refund.FeePaymentId)</td><td>@refund.Status</td><td>@refund.Amount.ToString("N2") / @refund.Reason</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="UpdateRefundStatus" asp-route-id="@refund.Id" class="d-inline"><input type="hidden" name="status" value="@FinanceApprovalStatus.Approved" /><button class="btn btn-sm btn-outline-primary">Approve</button></form>
+                            <form method="post" asp-page-handler="UpdateRefundStatus" asp-route-id="@refund.Id" class="d-inline"><input type="hidden" name="status" value="@FinanceApprovalStatus.Processed" /><button class="btn btn-sm btn-outline-success">Process</button></form>
+                        </td>
+                    </tr>
+                }
+                @foreach (var concession in Model.Concessions.Take(8))
+                {
+                    <tr>
+                        <td>Concession</td><td>@Model.StudentName(concession.StudentProfileId)</td><td>@concession.Status</td><td>@concession.DiscountType / @concession.RequestedValue.ToString("N2")</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="UpdateConcessionStatus" asp-route-id="@concession.Id" class="d-inline"><input type="hidden" name="status" value="@FinanceApprovalStatus.Approved" /><input type="hidden" name="approvedAmount" value="@concession.RequestedValue" /><button class="btn btn-sm btn-outline-primary">Approve</button></form>
+                            <form method="post" asp-page-handler="UpdateConcessionStatus" asp-route-id="@concession.Id" class="d-inline"><input type="hidden" name="status" value="@FinanceApprovalStatus.Rejected" /><button class="btn btn-sm btn-outline-danger">Reject</button></form>
+                        </td>
+                    </tr>
+                }
+                @foreach (var export in Model.LedgerExports.Take(8))
+                {
+                    <tr><td>Export</td><td>@export.ExportType</td><td>@export.Status</td><td>@export.FromDate.ToString("yyyy-MM-dd") to @export.ToDate.ToString("yyyy-MM-dd")</td><td class="text-end"><a class="btn btn-sm btn-outline-primary" asp-page-handler="DownloadLedgerExport" asp-route-id="@export.Id">Download</a></td></tr>
+                }
+                @if (Model.OnlineTransactions.Count == 0 && Model.FeeReminders.Count == 0 && Model.Refunds.Count == 0 && Model.Concessions.Count == 0 && Model.LedgerExports.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center empty-state">No finance operations yet.</td></tr>
+                }
+                </tbody>
+            </table>
+        </div>
+    </div>
 }
 
 @section Scripts { <partial name="_ValidationScriptsPartial" /> }

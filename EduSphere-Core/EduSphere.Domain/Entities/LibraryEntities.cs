@@ -170,3 +170,88 @@ public class LibraryFineRecord : TenantEntityBase
     [StringLength(500)]
     public string? Notes { get; set; }
 }
+
+public class LibraryReservation : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid LibraryBookId { get; set; }
+    public LibraryBook? LibraryBook { get; set; }
+
+    public Guid? LibraryBookCopyId { get; set; }
+    public LibraryBookCopy? LibraryBookCopy { get; set; }
+
+    public Guid LibraryMemberId { get; set; }
+    public LibraryMember? LibraryMember { get; set; }
+
+    public DateTime ReservedOn { get; set; } = DateTime.UtcNow;
+    public DateTime ExpiresOn { get; set; } = DateTime.UtcNow.AddDays(3);
+    public LibraryReservationStatus Status { get; set; } = LibraryReservationStatus.Requested;
+    public DateTime? FulfilledOn { get; set; }
+    public DateTime? CancelledOn { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class LibraryRenewal : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid LibraryBookIssueId { get; set; }
+    public LibraryBookIssue? LibraryBookIssue { get; set; }
+
+    public DateTime RenewedOn { get; set; } = DateTime.UtcNow;
+    public DateOnly PreviousDueDate { get; set; }
+    public DateOnly NewDueDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(14));
+    public Guid? RenewedByUserId { get; set; }
+    public ApplicationUser? RenewedByUser { get; set; }
+
+    [StringLength(500)]
+    public string? Notes { get; set; }
+}
+
+public class LibraryOverdueNotification : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    public Guid LibraryBookIssueId { get; set; }
+    public LibraryBookIssue? LibraryBookIssue { get; set; }
+
+    public Guid LibraryMemberId { get; set; }
+    public LibraryMember? LibraryMember { get; set; }
+
+    public CommunicationChannel Channel { get; set; } = CommunicationChannel.Email;
+
+    [Required]
+    [StringLength(250)]
+    public string Recipient { get; set; } = null!;
+
+    public DateTime? NotifiedOn { get; set; }
+    public NotificationStatus Status { get; set; } = NotificationStatus.Queued;
+    public int AttemptCount { get; set; }
+
+    [StringLength(1000)]
+    public string? ErrorMessage { get; set; }
+}
+
+public class LibraryBarcodeScan : TenantEntityBase
+{
+    public Guid BranchId { get; set; }
+    public Branch? Branch { get; set; }
+
+    [Required]
+    [StringLength(120)]
+    public string ScanCode { get; set; } = null!;
+
+    public LibraryScanPurpose Purpose { get; set; } = LibraryScanPurpose.Lookup;
+    public Guid? LibraryBookCopyId { get; set; }
+    public LibraryBookCopy? LibraryBookCopy { get; set; }
+    public DateTime ScannedOn { get; set; } = DateTime.UtcNow;
+
+    [StringLength(500)]
+    public string? ResultMessage { get; set; }
+}

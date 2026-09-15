@@ -113,6 +113,63 @@ else
         </div>
     </div>
 
+    <div class="row g-4 mt-1">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Visitor log</span><span class="stage-tag">Gate</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveVisitor">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="VisitorInput.BranchId" class="form-label"></label><select asp-for="VisitorInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="VisitorInput.HostelAllocationId" class="form-label"></label><select asp-for="VisitorInput.HostelAllocationId" class="form-select"><option value="">Allocation</option>@foreach (var a in Model.Allocations) { <option value="@a.Id">@Model.AllocationName(a.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="VisitorInput.VisitorName" class="form-label"></label><input asp-for="VisitorInput.VisitorName" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="VisitorInput.Relationship" class="form-label"></label><input asp-for="VisitorInput.Relationship" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="VisitorInput.PhoneNumber" class="form-label"></label><input asp-for="VisitorInput.PhoneNumber" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="VisitorInput.IdDocumentNumber" class="form-label"></label><input asp-for="VisitorInput.IdDocumentNumber" class="form-control" /></div>
+                            <div class="col-12"><label asp-for="VisitorInput.Purpose" class="form-label"></label><input asp-for="VisitorInput.Purpose" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Check in</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Maintenance request</span><span class="stage-tag">Facilities</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveMaintenanceRequest">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="MaintenanceRequestInput.BranchId" class="form-label"></label><select asp-for="MaintenanceRequestInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="MaintenanceRequestInput.HostelRoomId" class="form-label"></label><select asp-for="MaintenanceRequestInput.HostelRoomId" class="form-select"><option value="">Room</option>@foreach (var r in Model.Rooms) { <option value="@r.Id">@Model.RoomName(r.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="MaintenanceRequestInput.Category" class="form-label"></label><input asp-for="MaintenanceRequestInput.Category" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="MaintenanceRequestInput.Priority" class="form-label"></label><select asp-for="MaintenanceRequestInput.Priority" asp-items="Html.GetEnumSelectList<HostelMaintenancePriority>()" class="form-select"></select></div>
+                            <div class="col-12"><label asp-for="MaintenanceRequestInput.Description" class="form-label"></label><textarea asp-for="MaintenanceRequestInput.Description" rows="2" class="form-control"></textarea></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Open ticket</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Allocation transfer</span><span class="stage-tag">Workflow</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RequestTransfer">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="TransferInput.BranchId" class="form-label"></label><select asp-for="TransferInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="TransferInput.HostelAllocationId" class="form-label"></label><select asp-for="TransferInput.HostelAllocationId" class="form-select"><option value="">Allocation</option>@foreach (var a in Model.Allocations) { <option value="@a.Id">@Model.AllocationName(a.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="TransferInput.ToRoomId" class="form-label"></label><select asp-for="TransferInput.ToRoomId" class="form-select"><option value="">To room</option>@foreach (var r in Model.Rooms) { <option value="@r.Id">@Model.RoomName(r.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="TransferInput.ToBedId" class="form-label"></label><select asp-for="TransferInput.ToBedId" class="form-select"><option value="">To bed</option>@foreach (var b in Model.Beds) { <option value="@b.Id">@Model.BedName(b.Id)</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="TransferInput.EffectiveOn" class="form-label"></label><input asp-for="TransferInput.EffectiveOn" type="date" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="TransferInput.Reason" class="form-label"></label><input asp-for="TransferInput.Reason" class="form-control" /></div>
+                        </div>
+                        <button type="submit" class="btn btn-primary mt-3">Request transfer</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="card data-card mt-4">
         <div class="card-header"><span>Hostel records</span><span class="count-pill">@Model.Rooms.Count rooms</span></div>
         <div class="table-responsive">
@@ -132,6 +189,39 @@ else
                     <tr><td>Allocation</td><td>@Model.BranchName(allocation.BranchId)</td><td>@Model.StudentName(allocation.StudentProfileId)</td><td>@Model.RoomName(allocation.HostelRoomId) / @Model.BedName(allocation.HostelBedId)</td><td class="text-end"><form method="post" asp-page-handler="DeleteAllocation" asp-route-id="@allocation.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td></tr>
                 }
                 @if (Model.Blocks.Count == 0 && Model.Rooms.Count == 0 && Model.Allocations.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No hostel records yet.</td></tr> }
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card data-card mt-4">
+        <div class="card-header"><span>Hostel operations</span><span class="count-pill">@Model.TransferRequests.Count transfers</span></div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead><tr><th>Area</th><th>Reference</th><th>Status</th><th>Details</th><th class="text-end">Actions</th></tr></thead>
+                <tbody>
+                @foreach (var visitor in Model.VisitorLogs.Take(8))
+                {
+                    <tr><td>Visitor</td><td>@visitor.VisitorName</td><td>@visitor.CheckInOn.ToLocalTime().ToString("g")</td><td>@visitor.Relationship / @visitor.PhoneNumber</td><td class="text-end">@visitor.Purpose</td></tr>
+                }
+                @foreach (var ticket in Model.MaintenanceRequests.Take(8))
+                {
+                    <tr><td>Maintenance</td><td>@ticket.Category</td><td>@ticket.Status</td><td>@ticket.Priority / @Model.RoomName(ticket.HostelRoomId ?? Guid.Empty)</td><td class="text-end">@ticket.ReportedOn.ToLocalTime().ToString("g")</td></tr>
+                }
+                @foreach (var transfer in Model.TransferRequests.Take(8))
+                {
+                    <tr>
+                        <td>Transfer</td><td>@Model.AllocationName(transfer.HostelAllocationId)</td><td>@transfer.Status</td><td>@Model.RoomName(transfer.FromRoomId) to @Model.RoomName(transfer.ToRoomId)</td>
+                        <td class="text-end">
+                            <form method="post" asp-page-handler="UpdateTransferStatus" asp-route-id="@transfer.Id" class="d-inline"><input type="hidden" name="status" value="@HostelTransferStatus.Approved" /><button class="btn btn-sm btn-outline-primary">Approve</button></form>
+                            <form method="post" asp-page-handler="UpdateTransferStatus" asp-route-id="@transfer.Id" class="d-inline"><input type="hidden" name="status" value="@HostelTransferStatus.Completed" /><button class="btn btn-sm btn-outline-success">Complete</button></form>
+                        </td>
+                    </tr>
+                }
+                @if (Model.VisitorLogs.Count == 0 && Model.MaintenanceRequests.Count == 0 && Model.TransferRequests.Count == 0)
+                {
+                    <tr><td colspan="5" class="text-center empty-state">No hostel operations yet.</td></tr>
+                }
                 </tbody>
             </table>
         </div>
