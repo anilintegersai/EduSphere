@@ -1,4 +1,5 @@
 using EduSphere.Infrastructure.MultiTenancy;
+using Microsoft.Extensions.Configuration;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Design;
 
@@ -8,12 +9,23 @@ public sealed class TenantDbContextFactory : IDesignTimeDbContextFactory<TenantD
 {
     public TenantDbContext CreateDbContext(string[] args)
     {
-        var providerName = Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_PROVIDER") ?? "SqlServer";
+        var configuration = BuildConfiguration();
+        var providerName =
+            Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_PROVIDER") ??
+            configuration?["Database:Provider"] ??
+            "SqlServer";
         var provider = DatabaseProviderOptions.ParseProvider(providerName);
         var connectionString = Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_CONNECTION")
+            ?? GetConfiguredConnectionString(configuration)
             ?? GetDefaultConnectionString(provider);
-        var mySqlServerVersion = Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_MYSQL_SERVER_VERSION");
-        var mySqlServerType = Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_MYSQL_SERVER_TYPE");
+        var mySqlServerVersion =
+            Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_MYSQL_SERVER_VERSION") ??
+            configuration?["Database:MySql:ServerVersion"] ??
+            configuration?["Database:MySqlServerVersion"];
+        var mySqlServerType =
+            Environment.GetEnvironmentVariable("EDUSPHERE_MIGRATION_MYSQL_SERVER_TYPE") ??
+            configuration?["Database:MySql:ServerType"] ??
+            configuration?["Database:MySqlServerType"];
 
         var databaseOptions = DatabaseProviderOptions.Create(
             connectionString,
@@ -27,6 +39,49 @@ public sealed class TenantDbContextFactory : IDesignTimeDbContextFactory<TenantD
         DependencyInjectionExtensions.ConfigureProvider(options, databaseOptions);
 
         return new TenantDbContext(options.Options, new TenantContext());
+    }
+
+    private static IConfigurationRoot? BuildConfiguration()
+    {
+        var contentRoot = ResolveWebContentRoot();
+        if (contentRoot is null)
+            return null;
+
+        var environment =
+            Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") ??
+            Environment.GetEnvironmentVariable("DOTNET_ENVIRONMENT") ??
+            "Development";
+
+        return new ConfigurationBuilder()
+            .SetBasePath(contentRoot)
+            .AddJsonFile("appsettings.json", optional: true)
+            .AddJsonFile($"appsettings.{environment}.json", optional: true)
+            .Build();
+    }
+
+    private static string? GetConfiguredConnectionString(IConfiguration? configuration)
+    {
+        if (configuration is null)
+            return null;
+
+        var connectionStringName =
+            configuration["Database:ConnectionStringName"] ??
+            DatabaseProviderOptions.DefaultConnectionName;
+        return configuration.GetConnectionString(connectionStringName);
+    }
+
+    private static string? ResolveWebContentRoot()
+    {
+        var currentDirectory = Directory.GetCurrentDirectory();
+        var candidates = new[]
+        {
+            currentDirectory,
+            Path.Combine(currentDirectory, "EduSphere.Web"),
+            Path.GetFullPath(Path.Combine(currentDirectory, "..", "EduSphere.Web"))
+        };
+
+        return candidates.FirstOrDefault(path =>
+            File.Exists(Path.Combine(path, "appsettings.json")));
     }
 
     private static string GetDefaultConnectionString(DatabaseProvider provider)

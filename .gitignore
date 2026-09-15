@@ -30,3 +30,6 @@ artifacts/
 # OS
 .DS_Store
 Thumbs.db
+*.dll
+*.pdb
+/EduSphere-Core/.codex-build
