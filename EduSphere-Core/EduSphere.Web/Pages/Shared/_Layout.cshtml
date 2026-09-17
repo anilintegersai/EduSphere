@@ -3,16 +3,16 @@
 @{
     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isSignedIn = SignInManager.IsSignedIn(User);
-    var canManageTenants = User.IsInRole(Roles.SuperAdmin);
-    var canManageTenantWorkspace = canManageTenants || User.IsInRole(Roles.TenantAdmin);
-    var canManageBranchWorkspace = canManageTenantWorkspace || User.IsInRole(Roles.BranchAdmin);
-    var canMarkAttendance = canManageBranchWorkspace || User.IsInRole(Roles.Principal) || User.IsInRole(Roles.Teacher);
-    var canManageFinance = canManageBranchWorkspace || User.IsInRole(Roles.Accountant);
-    var canManageTransport = canManageBranchWorkspace || User.IsInRole(Roles.TransportManager);
-    var canManageLibrary = canManageBranchWorkspace || User.IsInRole(Roles.Librarian);
-    var canManageHostel = canManageBranchWorkspace || User.IsInRole(Roles.HostelManager);
-    var canManageCommunications = canManageBranchWorkspace || User.IsInRole(Roles.Principal) || User.IsInRole(Roles.StaffAdmin);
-    var canManageUsers = canManageTenantWorkspace || User.IsInRole(Roles.BranchAdmin) || User.IsInRole(Roles.Principal) || User.IsInRole(Roles.DepartmentAdmin) || User.IsInRole(Roles.StaffAdmin);
+    var canManageTenants = RolePermissionMatrix.Allows(ModulePermission.ManageTenants, User);
+    var canManageTenantWorkspace = RolePermissionMatrix.Allows(ModulePermission.ManageTenantWorkspace, User);
+    var canManageBranchWorkspace = RolePermissionMatrix.Allows(ModulePermission.ManageBranchWorkspace, User);
+    var canMarkAttendance = RolePermissionMatrix.Allows(ModulePermission.MarkAttendance, User);
+    var canManageFinance = RolePermissionMatrix.Allows(ModulePermission.ManageFinance, User);
+    var canManageTransport = RolePermissionMatrix.Allows(ModulePermission.ManageTransport, User);
+    var canManageLibrary = RolePermissionMatrix.Allows(ModulePermission.ManageLibrary, User);
+    var canManageHostel = RolePermissionMatrix.Allows(ModulePermission.ManageHostel, User);
+    var canManageCommunications = RolePermissionMatrix.Allows(ModulePermission.ManageCommunications, User);
+    var canManageUsers = RolePermissionMatrix.Allows(ModulePermission.ManageUsers, User);
 }
 <!DOCTYPE html>
 <html lang="en">

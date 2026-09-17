@@ -31,7 +31,14 @@ else
         <div class="alert alert-success">@status</div>
     }
 
-    <div class="row g-4 workspace-grid">
+    <nav class="workflow-jumpbar" aria-label="Examination workspace sections">
+        <span>Examination workspace</span>
+        <a href="#exam-entry">Setup &amp; marks</a>
+        <a href="#exam-bank">Grading &amp; papers</a>
+        <a href="#exam-governance">Publishing &amp; analytics</a>
+        <a href="#exam-registers">Registers</a>
+    </nav>
+    <div id="exam-entry" class="row g-4 workspace-grid workflow-section">
         <div class="col-xxl-4 col-xl-6">
             <div class="card form-card h-100">
                 <div class="card-header"><span>@(Model.IsEditingExam ? "Edit" : "New") exam</span><span class="stage-tag">Setup</span></div>
@@ -132,7 +139,7 @@ else
         </div>
     </div>
 
-    <div class="row g-4 mt-1 workspace-grid">
+    <div id="exam-bank" class="row g-4 mt-1 workspace-grid workflow-section">
         <div class="col-xxl-4 col-xl-6">
             <div class="card form-card h-100">
                 <div class="card-header"><span>@(Model.IsEditingScheme ? "Edit" : "New") grading scheme</span><span class="stage-tag">Rules</span></div>
@@ -270,7 +277,7 @@ else
         </div>
     </div>
 
-    <div class="row g-4 mt-1 workspace-grid">
+    <div id="exam-governance" class="row g-4 mt-1 workspace-grid workflow-section">
         <div class="col-xl-4">
             <div class="card form-card h-100">
                 <div class="card-header"><span>Ranking rules</span><span class="stage-tag">Analytics</span></div>
@@ -324,7 +331,7 @@ else
         </div>
     </div>
 
-    <div class="row g-4 mt-1">
+    <div id="exam-registers" class="row g-4 mt-1 workflow-section">
         <div class="col-xl-7">
             <div class="card data-card">
                 <div class="card-header"><span>Exam Schedules</span><span class="count-pill">@Model.Schedules.Count records</span></div>

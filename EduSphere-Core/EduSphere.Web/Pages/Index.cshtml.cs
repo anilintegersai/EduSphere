@@ -36,6 +36,16 @@ public class IndexModel : PageModel
     private readonly ICrudService<QuestionPaper> _questionPapers;
     private readonly ICrudService<MarkEntry> _markEntries;
     private readonly ICrudService<Result> _results;
+    private readonly ICrudService<FeeInvoice> _feeInvoices;
+    private readonly ICrudService<FeeConcessionRequest> _feeConcessions;
+    private readonly ICrudService<TransportMaintenanceRecord> _transportMaintenance;
+    private readonly ICrudService<LibraryBookIssue> _libraryIssues;
+    private readonly ICrudService<LibraryReservation> _libraryReservations;
+    private readonly ICrudService<HostelAllocation> _hostelAllocations;
+    private readonly ICrudService<HostelMaintenanceRequest> _hostelMaintenance;
+    private readonly ICrudService<NotificationDeliveryAttempt> _deliveryAttempts;
+    private readonly ICrudService<ResultPublicationBatch> _resultPublications;
+    private readonly ICrudService<AdmissionInterview> _admissionInterviews;
 
     public IndexModel(
         ITenantContext tenant,
@@ -61,7 +71,17 @@ public class IndexModel : PageModel
         ICrudService<QuestionBankItem> questionBankItems,
         ICrudService<QuestionPaper> questionPapers,
         ICrudService<MarkEntry> markEntries,
-        ICrudService<Result> results)
+        ICrudService<Result> results,
+        ICrudService<FeeInvoice> feeInvoices,
+        ICrudService<FeeConcessionRequest> feeConcessions,
+        ICrudService<TransportMaintenanceRecord> transportMaintenance,
+        ICrudService<LibraryBookIssue> libraryIssues,
+        ICrudService<LibraryReservation> libraryReservations,
+        ICrudService<HostelAllocation> hostelAllocations,
+        ICrudService<HostelMaintenanceRequest> hostelMaintenance,
+        ICrudService<NotificationDeliveryAttempt> deliveryAttempts,
+        ICrudService<ResultPublicationBatch> resultPublications,
+        ICrudService<AdmissionInterview> admissionInterviews)
     {
         _tenant = tenant;
         _tenants = tenants;
@@ -87,6 +107,16 @@ public class IndexModel : PageModel
         _questionPapers = questionPapers;
         _markEntries = markEntries;
         _results = results;
+        _feeInvoices = feeInvoices;
+        _feeConcessions = feeConcessions;
+        _transportMaintenance = transportMaintenance;
+        _libraryIssues = libraryIssues;
+        _libraryReservations = libraryReservations;
+        _hostelAllocations = hostelAllocations;
+        _hostelMaintenance = hostelMaintenance;
+        _deliveryAttempts = deliveryAttempts;
+        _resultPublications = resultPublications;
+        _admissionInterviews = admissionInterviews;
     }
 
     public bool IsAuthenticated { get; private set; }
@@ -95,6 +125,13 @@ public class IndexModel : PageModel
     public bool IsBranchAdmin { get; private set; }
     public bool IsTeacher { get; private set; }
     public bool IsStudent { get; private set; }
+    public bool IsPrincipal { get; private set; }
+    public bool IsAccountant { get; private set; }
+    public bool IsLibrarian { get; private set; }
+    public bool IsTransportManager { get; private set; }
+    public bool IsHostelManager { get; private set; }
+    public bool IsExamController { get; private set; }
+    public bool IsStaffAdmin { get; private set; }
     public bool CanManageTenantWorkspace => IsSuper || IsTenantAdmin;
     public bool CanManageBranchWorkspace => CanManageTenantWorkspace || IsBranchAdmin;
     public bool HasTenant => _tenant.HasTenant;
@@ -130,6 +167,13 @@ public class IndexModel : PageModel
         IsBranchAdmin = User.IsInRole(Roles.BranchAdmin);
         IsTeacher = User.IsInRole(Roles.Teacher);
         IsStudent = User.IsInRole(Roles.Student);
+        IsPrincipal = User.IsInRole(Roles.Principal);
+        IsAccountant = User.IsInRole(Roles.Accountant);
+        IsLibrarian = User.IsInRole(Roles.Librarian);
+        IsTransportManager = User.IsInRole(Roles.TransportManager);
+        IsHostelManager = User.IsInRole(Roles.HostelManager);
+        IsExamController = User.IsInRole(Roles.ExamController);
+        IsStaffAdmin = User.IsInRole(Roles.StaffAdmin);
         RoleLabel = ResolveRoleLabel();
 
         var currentUser = await _userManager.GetUserAsync(User);
@@ -163,6 +207,10 @@ public class IndexModel : PageModel
             else if (IsStudent && currentUser is not null)
             {
                 await BuildStudentMetricsAsync(metrics, currentUser.Id);
+            }
+            else if (IsPrincipal || IsAccountant || IsLibrarian || IsTransportManager || IsHostelManager || IsExamController || IsStaffAdmin)
+            {
+                await BuildOperationalRoleMetricsAsync(metrics);
             }
             else
             {
@@ -230,6 +278,12 @@ public class IndexModel : PageModel
         ExamCount = (await _exams.ListAsync()).Count;
         QuestionPaperCount = (await _questionPapers.ListAsync()).Count;
         ResultCount = (await _results.ListAsync()).Count;
+        var pendingAdmissions = (await _admissions.ListAsync(a => a.Status == AdmissionApplicationStatus.Submitted || a.Status == AdmissionApplicationStatus.UnderReview || a.Status == AdmissionApplicationStatus.InterviewScheduled)).Count;
+        var outstandingInvoices = await _feeInvoices.ListAsync(i => i.Status == InvoiceStatus.Issued || i.Status == InvoiceStatus.PartiallyPaid || i.Status == InvoiceStatus.Overdue);
+        var overdueIssues = (await _libraryIssues.ListAsync(i => i.Status == LibraryIssueStatus.Overdue || (i.Status == LibraryIssueStatus.Issued && i.DueDate < DateOnly.FromDateTime(DateTime.UtcNow)))).Count;
+        var openHostelTickets = (await _hostelMaintenance.ListAsync(m => m.Status == HostelMaintenanceStatus.Open || m.Status == HostelMaintenanceStatus.Assigned || m.Status == HostelMaintenanceStatus.InProgress)).Count;
+        var failedDeliveries = (await _deliveryAttempts.ListAsync(a => a.Status == NotificationAttemptStatus.Failed)).Count;
+        var pendingResultPublications = (await _resultPublications.ListAsync(p => p.Status == ApprovalStatus.UnderReview || p.Status == ApprovalStatus.Approved)).Count;
 
         metrics.AddRange([
             new DashboardMetric("Branches", FormatCount(BranchCount), "Campuses configured for this tenant", "metric-card-teal", "/Branches/Index"),
@@ -243,8 +297,75 @@ public class IndexModel : PageModel
             new DashboardMetric("Timetable Entries", FormatCount(TimetableEntryCount), "Teacher, subject, room, and slot allocations", "metric-card-rose", "/Timetable/Schedule"),
             new DashboardMetric("Exams", FormatCount(ExamCount), "Exam plans, schedules, question papers, marks, and results", "metric-card-blue", "/Examinations/Exams"),
             new DashboardMetric("Question Papers", FormatCount(QuestionPaperCount), "Manual and generated papers prepared for exams", "metric-card-gold", "/Examinations/Exams"),
-            new DashboardMetric("Published Results", FormatCount(ResultCount), "Computed academic outcomes ready for reporting", "metric-card-green", "/Examinations/Exams")
+            new DashboardMetric("Published Results", FormatCount(ResultCount), "Computed academic outcomes ready for reporting", "metric-card-green", "/Examinations/Exams"),
+            new DashboardMetric("Admission Queue", FormatCount(pendingAdmissions), "Submitted, reviewing, and interview-stage applications", "metric-card-gold", "/Admissions/Applications"),
+            new DashboardMetric("Outstanding Fees", outstandingInvoices.Sum(i => i.TotalAmount - i.PaidAmount).ToString("N0"), $"{outstandingInvoices.Count} invoices require collection", "metric-card-rose", "/Enterprise/Finance"),
+            new DashboardMetric("Library Overdues", FormatCount(overdueIssues), "Issued items at or beyond their due date", "metric-card-blue", "/Enterprise/Library"),
+            new DashboardMetric("Hostel Tickets", FormatCount(openHostelTickets), "Open, assigned, or in-progress maintenance", "metric-card-teal", "/Enterprise/Hostel"),
+            new DashboardMetric("Failed Deliveries", FormatCount(failedDeliveries), "Communication attempts requiring retry", "metric-card-rose", "/Enterprise/Communications"),
+            new DashboardMetric("Result Approvals", FormatCount(pendingResultPublications), "Publication batches awaiting approval or release", "metric-card-green", "/Examinations/Exams")
         ]);
+    }
+
+    private async Task BuildOperationalRoleMetricsAsync(List<DashboardMetric> metrics)
+    {
+        var assignedBranchId = await _branchAccess.GetAssignedBranchIdAsync(User);
+        if (IsPrincipal)
+        {
+            var admissions = await _admissions.ListAsync(a => !assignedBranchId.HasValue || a.BranchId == assignedBranchId.Value);
+            var interviews = await _admissionInterviews.ListAsync(i => !assignedBranchId.HasValue || i.BranchId == assignedBranchId.Value);
+            metrics.AddRange([
+                new DashboardMetric("Admissions To Review", FormatCount(admissions.Count(a => a.Status is AdmissionApplicationStatus.Submitted or AdmissionApplicationStatus.UnderReview)), "Applications awaiting an academic decision", "metric-card-gold", "/Admissions/Applications"),
+                new DashboardMetric("Upcoming Interviews", FormatCount(interviews.Count(i => i.Status == AdmissionInterviewStatus.Scheduled && i.StartsOn >= DateTime.UtcNow)), "Scheduled applicant interviews", "metric-card-blue", "/Admissions/Applications"),
+                new DashboardMetric("Attendance Sessions", FormatCount((await _attendanceSessions.ListAsync(s => !assignedBranchId.HasValue || s.BranchId == assignedBranchId.Value)).Count), "Branch attendance activity", "metric-card-green", "/Attendance/Mark")
+            ]);
+        }
+        if (IsAccountant)
+        {
+            var invoices = await _feeInvoices.ListAsync(i => !assignedBranchId.HasValue || i.BranchId == assignedBranchId.Value);
+            var open = invoices.Where(i => i.Status is InvoiceStatus.Issued or InvoiceStatus.PartiallyPaid or InvoiceStatus.Overdue).ToList();
+            metrics.AddRange([
+                new DashboardMetric("Receivables", open.Sum(i => i.TotalAmount - i.PaidAmount).ToString("N0"), $"{open.Count} open invoices", "metric-card-rose", "/Enterprise/Finance"),
+                new DashboardMetric("Collected", invoices.Sum(i => i.PaidAmount).ToString("N0"), "Recorded fee collections", "metric-card-green", "/Enterprise/Finance"),
+                new DashboardMetric("Concessions Pending", FormatCount((await _feeConcessions.ListAsync(c => (!assignedBranchId.HasValue || c.BranchId == assignedBranchId.Value) && (c.Status == FinanceApprovalStatus.Requested || c.Status == FinanceApprovalStatus.UnderReview))).Count), "Requests awaiting a decision", "metric-card-gold", "/Enterprise/Finance")
+            ]);
+        }
+        if (IsLibrarian)
+        {
+            var issues = await _libraryIssues.ListAsync(i => !assignedBranchId.HasValue || i.BranchId == assignedBranchId.Value);
+            metrics.AddRange([
+                new DashboardMetric("Books On Loan", FormatCount(issues.Count(i => i.Status == LibraryIssueStatus.Issued)), "Currently issued copies", "metric-card-blue", "/Enterprise/Library"),
+                new DashboardMetric("Overdue Items", FormatCount(issues.Count(i => i.Status == LibraryIssueStatus.Overdue || (i.Status == LibraryIssueStatus.Issued && i.DueDate < DateOnly.FromDateTime(DateTime.UtcNow)))), "Returns requiring follow-up", "metric-card-rose", "/Enterprise/Library"),
+                new DashboardMetric("Reservations", FormatCount((await _libraryReservations.ListAsync(r => (!assignedBranchId.HasValue || r.BranchId == assignedBranchId.Value) && (r.Status == LibraryReservationStatus.Requested || r.Status == LibraryReservationStatus.Active))).Count), "Requested and active holds", "metric-card-gold", "/Enterprise/Library")
+            ]);
+        }
+        if (IsTransportManager)
+        {
+            var maintenance = await _transportMaintenance.ListAsync(m => !assignedBranchId.HasValue || m.BranchId == assignedBranchId.Value);
+            metrics.AddRange([
+                new DashboardMetric("Maintenance Due", FormatCount(maintenance.Count(m => m.Status is OperationalReminderStatus.DueSoon or OperationalReminderStatus.Overdue)), "Vehicle work requiring attention", "metric-card-rose", "/Enterprise/Transport"),
+                new DashboardMetric("Open Maintenance", FormatCount(maintenance.Count(m => m.Status is OperationalReminderStatus.Scheduled or OperationalReminderStatus.DueSoon)), "Scheduled operational work", "metric-card-gold", "/Enterprise/Transport")
+            ]);
+        }
+        if (IsHostelManager)
+        {
+            metrics.AddRange([
+                new DashboardMetric("Active Allocations", FormatCount((await _hostelAllocations.ListAsync(a => (!assignedBranchId.HasValue || a.BranchId == assignedBranchId.Value) && a.Status == HostelAllocationStatus.Active)).Count), "Occupied student beds", "metric-card-teal", "/Enterprise/Hostel"),
+                new DashboardMetric("Maintenance Queue", FormatCount((await _hostelMaintenance.ListAsync(m => (!assignedBranchId.HasValue || m.BranchId == assignedBranchId.Value) && (m.Status == HostelMaintenanceStatus.Open || m.Status == HostelMaintenanceStatus.Assigned || m.Status == HostelMaintenanceStatus.InProgress))).Count), "Unresolved hostel work", "metric-card-rose", "/Enterprise/Hostel")
+            ]);
+        }
+        if (IsExamController)
+        {
+            var publications = await _resultPublications.ListAsync(p => !assignedBranchId.HasValue || p.BranchId == assignedBranchId.Value);
+            metrics.AddRange([
+                new DashboardMetric("Publication Reviews", FormatCount(publications.Count(p => p.Status == ApprovalStatus.UnderReview)), "Result batches waiting for approval", "metric-card-gold", "/Examinations/Exams"),
+                new DashboardMetric("Ready To Publish", FormatCount(publications.Count(p => p.Status == ApprovalStatus.Approved)), "Approved batches waiting for release", "metric-card-green", "/Examinations/Exams")
+            ]);
+        }
+        if (IsStaffAdmin)
+        {
+            metrics.Add(new DashboardMetric("Failed Deliveries", FormatCount((await _deliveryAttempts.ListAsync(a => (!assignedBranchId.HasValue || a.BranchId == assignedBranchId.Value) && a.Status == NotificationAttemptStatus.Failed)).Count), "Messages requiring retry or correction", "metric-card-rose", "/Enterprise/Communications"));
+        }
     }
 
     private async Task BuildBranchAdminMetricsAsync(List<DashboardMetric> metrics, Guid tenantId)
@@ -394,6 +515,13 @@ public class IndexModel : PageModel
         if (IsBranchAdmin) return "Branch Admin";
         if (IsTeacher) return "Teacher";
         if (IsStudent) return "Student";
+        if (IsPrincipal) return "Principal";
+        if (IsAccountant) return "Accountant";
+        if (IsLibrarian) return "Librarian";
+        if (IsTransportManager) return "Transport Manager";
+        if (IsHostelManager) return "Hostel Manager";
+        if (IsExamController) return "Exam Controller";
+        if (IsStaffAdmin) return "Staff Admin";
         return "User";
     }
 
@@ -404,6 +532,13 @@ public class IndexModel : PageModel
         if (IsBranchAdmin) return "Branch Operations";
         if (IsTeacher) return "Teacher Workspace";
         if (IsStudent) return "Student Workspace";
+        if (IsPrincipal) return "Principal Overview";
+        if (IsAccountant) return "Finance Operations";
+        if (IsLibrarian) return "Library Operations";
+        if (IsTransportManager) return "Transport Operations";
+        if (IsHostelManager) return "Hostel Operations";
+        if (IsExamController) return "Examination Control";
+        if (IsStaffAdmin) return "Communication Operations";
         return "Workspace";
     }
 
@@ -421,6 +556,20 @@ public class IndexModel : PageModel
             return "Track your teaching profile, assigned subjects, class coverage, and syllabus workload.";
         if (IsStudent)
             return "See your academic profile, class context, subjects, syllabus coverage, and assigned faculty.";
+        if (IsPrincipal)
+            return "Review admissions, interviews, and attendance activity requiring academic oversight.";
+        if (IsAccountant)
+            return "Track collections, outstanding invoices, and concession decisions from the finance queue.";
+        if (IsLibrarian)
+            return "Monitor issued books, overdue returns, and active reservation requests.";
+        if (IsTransportManager)
+            return "Monitor scheduled vehicle maintenance and transport work requiring attention.";
+        if (IsHostelManager)
+            return "Track active allocations and unresolved hostel maintenance requests.";
+        if (IsExamController)
+            return "Review result-publication batches and release approved academic outcomes.";
+        if (IsStaffAdmin)
+            return "Monitor communication delivery failures and retry operational messages.";
         return "Welcome to your EduSphere workspace.";
     }
 

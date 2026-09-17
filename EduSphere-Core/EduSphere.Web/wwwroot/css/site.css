@@ -1029,3 +1029,91 @@ textarea.form-control {
     justify-content: flex-start;
   }
 }
+
+/* Dense operational workspaces */
+.workflow-jumpbar {
+  position: sticky;
+  top: 5.4rem;
+  z-index: 20;
+  display: flex;
+  gap: .35rem;
+  align-items: center;
+  margin: 0 0 1rem;
+  padding: .5rem;
+  overflow-x: auto;
+  border: 1px solid #dce5ec;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, .96);
+  box-shadow: 0 8px 20px rgba(28, 42, 55, .08);
+  backdrop-filter: blur(12px);
+}
+
+.workflow-jumpbar span {
+  flex: 0 0 auto;
+  padding: .45rem .7rem;
+  color: #1b5360;
+  font-size: .75rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.workflow-jumpbar a {
+  flex: 0 0 auto;
+  padding: .45rem .7rem;
+  border-radius: 6px;
+  color: #485d6b;
+  font-size: .84rem;
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.workflow-jumpbar a:hover,
+.workflow-jumpbar a:focus-visible {
+  color: #123f49;
+  background: #e9f3f3;
+}
+
+.workflow-section {
+  scroll-margin-top: 9rem;
+}
+
+.workspace-grid > [class*="col-"] > .card,
+.data-card,
+.form-card {
+  border-color: #dce5ec;
+  box-shadow: 0 6px 20px rgba(28, 42, 55, .055);
+}
+
+.data-card .table-responsive {
+  max-height: 34rem;
+}
+
+.data-card thead th {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  background: #f5f8fa;
+  box-shadow: inset 0 -1px #dce5ec;
+}
+
+.data-card tbody tr:focus-within,
+.data-card tbody tr:hover {
+  background: #f7fbfb;
+}
+
+.form-card .card-header,
+.data-card .card-header {
+  min-height: 3.25rem;
+  background: #fbfcfd;
+}
+
+@media (max-width: 767.98px) {
+  .workflow-jumpbar {
+    top: 4.7rem;
+    margin-inline: -.25rem;
+  }
+
+  .data-card .table-responsive {
+    max-height: none;
+  }
+}

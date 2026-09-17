@@ -34,7 +34,13 @@
 }
 else
 {
-    <div class="row g-4 workspace-grid">
+    <nav class="workflow-jumpbar" aria-label="Admission workspace sections">
+        <span>Admissions workspace</span>
+        <a href="#admission-intake">New application</a>
+        <a href="#admission-pipeline">Pipeline</a>
+        <a href="#admission-forms">Form configuration</a>
+    </nav>
+    <div id="admission-intake" class="row g-4 workspace-grid workflow-section">
         <div class="col-xxl-4 col-xl-5">
             <div class="card form-card">
                 <div class="card-header"><span>@(Model.IsEditing ? "Edit" : "New") application</span><span class="stage-tag">Intake</span></div>
@@ -230,7 +236,7 @@ else
         </div>
 
         <div class="col-xxl-8 col-xl-7">
-            <div class="card data-card">
+            <div id="admission-pipeline" class="card data-card workflow-section">
                 <div class="card-header"><span>Application pipeline</span><span class="count-pill">@Model.Items.Count records</span></div>
                 <div class="table-responsive">
                     <table class="table table-hover align-middle">
@@ -537,7 +543,7 @@ else
         </div>
     </div>
 
-    <div class="row g-4 workspace-grid mt-1">
+    <div id="admission-forms" class="row g-4 workspace-grid mt-1 workflow-section">
         <div class="col-xl-4">
             <div class="card form-card h-100">
                 <div class="card-header"><span>@(Model.TemplateInput.Id == Guid.Empty ? "New" : "Edit") admission form</span><span class="stage-tag">Configuration</span></div>

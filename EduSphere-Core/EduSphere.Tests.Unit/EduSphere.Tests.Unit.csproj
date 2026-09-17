@@ -11,6 +11,7 @@
   <ItemGroup>
     <ProjectReference Include="..\EduSphere.Domain\EduSphere.Domain.csproj" />
     <ProjectReference Include="..\EduSphere.Infrastructure\EduSphere.Infrastructure.csproj" />
+    <ProjectReference Include="..\EduSphere.Web\EduSphere.Web.csproj" />
   </ItemGroup>
 
   <ItemGroup>

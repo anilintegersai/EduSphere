@@ -146,51 +146,22 @@ builder.Services.AddAuthentication()
 
 builder.Services.AddAuthorization(options =>
 {
-    options.AddPolicy(AuthorizationPolicies.SuperAdmin, p => p.RequireRole(Roles.SuperAdmin));
-    options.AddPolicy(AuthorizationPolicies.TenantAdmin, p => p.RequireRole(Roles.SuperAdmin, Roles.TenantAdmin));
-    options.AddPolicy(AuthorizationPolicies.BranchAdmin, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin));
-    options.AddPolicy(AuthorizationPolicies.AttendanceMarker, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.Principal,
-        Roles.Teacher));
-    options.AddPolicy(AuthorizationPolicies.FinanceManager, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.Accountant));
-    options.AddPolicy(AuthorizationPolicies.TransportManager, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.TransportManager));
-    options.AddPolicy(AuthorizationPolicies.LibraryManager, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.Librarian));
-    options.AddPolicy(AuthorizationPolicies.HostelManager, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.HostelManager));
-    options.AddPolicy(AuthorizationPolicies.CommunicationManager, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.Principal,
-        Roles.StaffAdmin));
-    options.AddPolicy(AuthorizationPolicies.UserManager, p => p.RequireRole(
-        Roles.SuperAdmin,
-        Roles.TenantAdmin,
-        Roles.BranchAdmin,
-        Roles.Principal,
-        Roles.DepartmentAdmin,
-        Roles.StaffAdmin));
+    foreach (var policy in new[]
+    {
+        AuthorizationPolicies.SuperAdmin,
+        AuthorizationPolicies.TenantAdmin,
+        AuthorizationPolicies.BranchAdmin,
+        AuthorizationPolicies.AttendanceMarker,
+        AuthorizationPolicies.FinanceManager,
+        AuthorizationPolicies.TransportManager,
+        AuthorizationPolicies.LibraryManager,
+        AuthorizationPolicies.HostelManager,
+        AuthorizationPolicies.CommunicationManager,
+        AuthorizationPolicies.UserManager
+    })
+    {
+        options.AddPolicy(policy, builder => builder.RequireRole(RolePermissionMatrix.RolesForPolicy(policy)));
+    }
 });
 
 // ---- OpenAPI / Swagger ----
@@ -219,6 +190,7 @@ var app = builder.Build();
 await app.Services.ApplyDatabaseMigrationStrategyAsync();
 await app.Services.ApplyConfiguredAccountEmailProviderAsync();
 await app.Services.ApplyAdmissionDefaultsAsync();
+await app.Services.ApplyAdmissionWorkflowDemoDataAsync();
 
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())
