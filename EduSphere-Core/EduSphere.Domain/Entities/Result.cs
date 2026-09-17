@@ -30,6 +30,9 @@ public class Result : TenantEntityBase
     public decimal TotalMarks { get; set; }
     public decimal MarksObtained { get; set; }
     public decimal Percentage { get; set; }
+    public bool IsPassed { get; set; }
+    public int? Rank { get; set; }
+    public decimal? Percentile { get; set; }
 
     [StringLength(20)]
     public string? Grade { get; set; }

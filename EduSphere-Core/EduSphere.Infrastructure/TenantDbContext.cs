@@ -85,8 +85,11 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<QuestionPaperSection> QuestionPaperSections { get; set; }
     public DbSet<QuestionPaperQuestion> QuestionPaperQuestions { get; set; }
     public DbSet<QuestionPaperVersion> QuestionPaperVersions { get; set; }
+    public DbSet<QuestionPaperModeration> QuestionPaperModerations { get; set; }
     public DbSet<MarkEntry> MarkEntries { get; set; }
     public DbSet<Result> Results { get; set; }
+    public DbSet<ResultPublicationBatch> ResultPublicationBatches { get; set; }
+    public DbSet<ResultRankingRule> ResultRankingRules { get; set; }
 
     // Enterprise services (Modules 14-18)
     public DbSet<FeeStructure> FeeStructures { get; set; }
@@ -981,6 +984,13 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(v => v.CreatedByUser).WithMany()
             .HasForeignKey(v => v.CreatedByUserId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<QuestionPaperModeration>()
+            .HasOne(m => m.QuestionPaper).WithMany(p => p.Moderations)
+            .HasForeignKey(m => m.QuestionPaperId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaperModeration>()
+            .HasOne(m => m.ReviewedByUser).WithMany()
+            .HasForeignKey(m => m.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+
         modelBuilder.Entity<MarkEntry>()
             .HasOne(m => m.ExamSchedule).WithMany(s => s.MarkEntries)
             .HasForeignKey(m => m.ExamScheduleId).OnDelete(DeleteBehavior.Restrict);
@@ -1033,6 +1043,41 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<Result>()
             .Property(r => r.GradePoint)
             .HasPrecision(4, 2);
+        modelBuilder.Entity<Result>()
+            .Property(r => r.Percentile)
+            .HasPrecision(5, 2);
+
+        modelBuilder.Entity<ResultPublicationBatch>()
+            .HasOne(p => p.Branch).WithMany()
+            .HasForeignKey(p => p.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultPublicationBatch>()
+            .HasOne(p => p.Exam).WithMany()
+            .HasForeignKey(p => p.ExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultPublicationBatch>()
+            .HasOne(p => p.Section).WithMany()
+            .HasForeignKey(p => p.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultPublicationBatch>()
+            .HasOne(p => p.RequestedByUser).WithMany()
+            .HasForeignKey(p => p.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultPublicationBatch>()
+            .HasOne(p => p.ApprovedByUser).WithMany()
+            .HasForeignKey(p => p.ApprovedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultPublicationBatch>()
+            .HasOne(p => p.PublishedByUser).WithMany()
+            .HasForeignKey(p => p.PublishedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<ResultRankingRule>()
+            .HasOne(r => r.Branch).WithMany()
+            .HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultRankingRule>()
+            .HasOne(r => r.Exam).WithMany()
+            .HasForeignKey(r => r.ExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultRankingRule>()
+            .HasOne(r => r.Section).WithMany()
+            .HasForeignKey(r => r.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultRankingRule>()
+            .Property(r => r.MinimumPercentageToRank)
+            .HasPrecision(5, 2);
 
         modelBuilder.Entity<Exam>().HasIndex(e => new { e.TenantId, e.BranchId, e.AcademicYearId, e.Name }).IsUnique();
         modelBuilder.Entity<Exam>().HasIndex(e => e.Status);
@@ -1051,9 +1096,12 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<QuestionPaperQuestion>().HasIndex(q => new { q.QuestionPaperSectionId, q.SortOrder });
         modelBuilder.Entity<QuestionPaperQuestion>().HasIndex(q => q.QuestionBankItemId);
         modelBuilder.Entity<QuestionPaperVersion>().HasIndex(v => new { v.QuestionPaperId, v.VersionNumber }).IsUnique();
+        modelBuilder.Entity<QuestionPaperModeration>().HasIndex(m => new { m.TenantId, m.QuestionPaperId, m.ReviewedOn });
         modelBuilder.Entity<MarkEntry>().HasIndex(m => new { m.TenantId, m.ExamScheduleId, m.StudentProfileId }).IsUnique();
         modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.ExamId, r.StudentProfileId }).IsUnique();
         modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.BranchId, r.Status });
+        modelBuilder.Entity<ResultPublicationBatch>().HasIndex(p => new { p.TenantId, p.BranchId, p.ExamId, p.SectionId, p.Status });
+        modelBuilder.Entity<ResultRankingRule>().HasIndex(r => new { r.TenantId, r.ExamId, r.SectionId }).IsUnique();
     }
 
     private static void ConfigureEnterpriseServices(ModelBuilder modelBuilder)

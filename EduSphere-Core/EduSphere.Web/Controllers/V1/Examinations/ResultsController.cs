@@ -30,6 +30,7 @@ public class ResultsController : ApiControllerBase
     private readonly ICrudService<Batch> _batches;
     private readonly ICrudService<GradingScheme> _schemes;
     private readonly ICrudService<GradingSchemeBand> _bands;
+    private readonly ICrudService<ResultPublicationBatch> _publicationBatches;
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IBranchAccessService _branchAccess;
 
@@ -43,6 +44,7 @@ public class ResultsController : ApiControllerBase
         ICrudService<Batch> batches,
         ICrudService<GradingScheme> schemes,
         ICrudService<GradingSchemeBand> bands,
+        ICrudService<ResultPublicationBatch> publicationBatches,
         UserManager<ApplicationUser> userManager,
         IBranchAccessService branchAccess)
     {
@@ -55,6 +57,7 @@ public class ResultsController : ApiControllerBase
         _batches = batches;
         _schemes = schemes;
         _bands = bands;
+        _publicationBatches = publicationBatches;
         _userManager = userManager;
         _branchAccess = branchAccess;
     }
@@ -107,6 +110,13 @@ public class ResultsController : ApiControllerBase
         var existing = await _results.GetAsync(id);
         if (existing is null || !await _branchAccess.CanAccessBranchAsync(User, existing.BranchId))
             return NotFound(ApiResponse<object>.Fail($"Result {id} was not found."));
+
+        var approvedBatch = (await _publicationBatches.ListAsync(batch =>
+            batch.ExamId == existing.ExamId &&
+            batch.Status == ApprovalStatus.Approved &&
+            (!batch.SectionId.HasValue || batch.SectionId == existing.SectionId))).FirstOrDefault();
+        if (approvedBatch is null)
+            return Conflict(ApiResponse<object>.Fail("Result publication requires an approved publication batch."));
 
         var currentUserId = CurrentUserId();
         await _results.UpdateAsync(id, result =>
@@ -179,9 +189,9 @@ public class ResultsController : ApiControllerBase
                 ? mark.MarksObtained
                 : 0);
         var percentage = totalMarks <= 0 ? 0 : Math.Round(obtained * 100 / totalMarks, 2);
+        var isPassed = schedules.All(s => marksBySchedule.TryGetValue(s.Id, out var mark) && !mark.IsAbsent && mark.MarksObtained >= s.PassingMarks);
         var grade = await ResolveGradeAsync(request.GradingSchemeId, exam.BranchId, batch?.CourseId, percentage);
-        var currentUserId = CurrentUserId();
-        var status = request.Publish ? ResultStatus.Published : ResultStatus.Computed;
+        var status = ResultStatus.Computed;
 
         var existing = (await _results.ListAsync(r => r.ExamId == exam.Id && r.StudentProfileId == student.Id))
             .FirstOrDefault();
@@ -199,12 +209,11 @@ public class ResultsController : ApiControllerBase
                 TotalMarks = totalMarks,
                 MarksObtained = obtained,
                 Percentage = percentage,
+                IsPassed = isPassed,
                 Grade = grade.Grade,
                 GradePoint = grade.GradePoint,
                 Status = status,
                 ComputedOn = DateTime.UtcNow,
-                PublishedByUserId = request.Publish ? currentUserId : null,
-                PublishedOn = request.Publish ? DateTime.UtcNow : null,
                 Remarks = request.Remarks
             });
         }
@@ -220,12 +229,15 @@ public class ResultsController : ApiControllerBase
                 result.TotalMarks = totalMarks;
                 result.MarksObtained = obtained;
                 result.Percentage = percentage;
+                result.IsPassed = isPassed;
                 result.Grade = grade.Grade;
                 result.GradePoint = grade.GradePoint;
                 result.Status = status;
                 result.ComputedOn = DateTime.UtcNow;
-                result.PublishedByUserId = request.Publish ? currentUserId : result.PublishedByUserId;
-                result.PublishedOn = request.Publish ? DateTime.UtcNow : result.PublishedOn;
+                result.PublishedByUserId = null;
+                result.PublishedOn = null;
+                result.Rank = null;
+                result.Percentile = null;
                 result.Remarks = request.Remarks;
             });
             existing = await _results.GetAsync(existing.Id);
@@ -304,6 +316,9 @@ public class ResultsController : ApiControllerBase
         TotalMarks = e.TotalMarks,
         MarksObtained = e.MarksObtained,
         Percentage = e.Percentage,
+        IsPassed = e.IsPassed,
+        Rank = e.Rank,
+        Percentile = e.Percentile,
         Grade = e.Grade,
         GradePoint = e.GradePoint,
         Status = e.Status,

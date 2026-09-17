@@ -1,4 +1,6 @@
 using System.ComponentModel.DataAnnotations;
+using System.Globalization;
+using System.Text;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
@@ -7,8 +9,10 @@ using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using Microsoft.VisualBasic.FileIO;
 
 namespace EduSphere.Web.Pages.Examinations;
 
@@ -23,8 +27,11 @@ public class ExamsModel : PageModel
     private readonly ICrudService<QuestionPaper> _papers;
     private readonly ICrudService<QuestionPaperSection> _paperSections;
     private readonly ICrudService<QuestionPaperQuestion> _paperQuestions;
+    private readonly ICrudService<QuestionPaperModeration> _paperModerations;
     private readonly ICrudService<MarkEntry> _marks;
     private readonly ICrudService<Result> _results;
+    private readonly ICrudService<ResultPublicationBatch> _publicationBatches;
+    private readonly ICrudService<ResultRankingRule> _rankingRules;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<AcademicYear> _years;
     private readonly ICrudService<Section> _sections;
@@ -48,8 +55,11 @@ public class ExamsModel : PageModel
         ICrudService<QuestionPaper> papers,
         ICrudService<QuestionPaperSection> paperSections,
         ICrudService<QuestionPaperQuestion> paperQuestions,
+        ICrudService<QuestionPaperModeration> paperModerations,
         ICrudService<MarkEntry> marks,
         ICrudService<Result> results,
+        ICrudService<ResultPublicationBatch> publicationBatches,
+        ICrudService<ResultRankingRule> rankingRules,
         ICrudService<Branch> branches,
         ICrudService<AcademicYear> years,
         ICrudService<Section> sections,
@@ -72,8 +82,11 @@ public class ExamsModel : PageModel
         _papers = papers;
         _paperSections = paperSections;
         _paperQuestions = paperQuestions;
+        _paperModerations = paperModerations;
         _marks = marks;
         _results = results;
+        _publicationBatches = publicationBatches;
+        _rankingRules = rankingRules;
         _branches = branches;
         _years = years;
         _sections = sections;
@@ -110,8 +123,12 @@ public class ExamsModel : PageModel
     public IReadOnlyList<QuestionPaper> Papers { get; private set; } = new List<QuestionPaper>();
     public IReadOnlyList<QuestionPaperSection> PaperSections { get; private set; } = new List<QuestionPaperSection>();
     public IReadOnlyList<QuestionPaperQuestion> PaperQuestions { get; private set; } = new List<QuestionPaperQuestion>();
+    public IReadOnlyList<QuestionPaperModeration> PaperModerations { get; private set; } = new List<QuestionPaperModeration>();
     public IReadOnlyList<MarkEntry> Marks { get; private set; } = new List<MarkEntry>();
     public IReadOnlyList<Result> Results { get; private set; } = new List<Result>();
+    public IReadOnlyList<ResultPublicationBatch> PublicationBatches { get; private set; } = new List<ResultPublicationBatch>();
+    public IReadOnlyList<ResultRankingRule> RankingRules { get; private set; } = new List<ResultRankingRule>();
+    public IReadOnlyList<ResultAnalyticsRow> ResultAnalytics { get; private set; } = new List<ResultAnalyticsRow>();
 
     [BindProperty] public ExamInputModel ExamInput { get; set; } = new();
     [BindProperty] public ScheduleInputModel ScheduleInput { get; set; } = new();
@@ -123,6 +140,9 @@ public class ExamsModel : PageModel
     [BindProperty] public PaperQuestionInputModel PaperQuestionInput { get; set; } = new();
     [BindProperty] public MarkInputModel MarkInput { get; set; } = new();
     [BindProperty] public ComputeInputModel ComputeInput { get; set; } = new();
+    [BindProperty] public RankingRuleInputModel RankingRuleInput { get; set; } = new();
+    [BindProperty] public PublicationInputModel PublicationInput { get; set; } = new();
+    [BindProperty] public QuestionImportInputModel QuestionImportInput { get; set; } = new();
 
     public bool IsEditingExam => ExamInput.Id != Guid.Empty;
     public bool IsEditingSchedule => ScheduleInput.Id != Guid.Empty;
@@ -266,9 +286,44 @@ public class ExamsModel : PageModel
         [Display(Name = "Exam"), Required] public Guid? ExamId { get; set; }
         [Display(Name = "Student"), Required] public Guid? StudentProfileId { get; set; }
         [Display(Name = "Scheme")] public Guid? GradingSchemeId { get; set; }
-        [Display(Name = "Publish now")] public bool Publish { get; set; }
         [StringLength(500)] public string? Remarks { get; set; }
     }
+
+    public class RankingRuleInputModel
+    {
+        [Display(Name = "Exam"), Required] public Guid? ExamId { get; set; }
+        [Display(Name = "Section")] public Guid? SectionId { get; set; }
+        public RankingMethod Method { get; set; } = RankingMethod.Competition;
+        [Display(Name = "Rank by percentage")] public bool RankByPercentage { get; set; } = true;
+        [Display(Name = "Exclude failed students")] public bool ExcludeFailedStudents { get; set; }
+        [Display(Name = "Exclude withheld results")] public bool ExcludeWithheldResults { get; set; } = true;
+        [Range(0, 100), Display(Name = "Minimum % to rank")] public decimal MinimumPercentageToRank { get; set; }
+        [Display(Name = "Show rank on report card")] public bool ShowRankOnReportCard { get; set; } = true;
+        [StringLength(500)] public string? Notes { get; set; }
+    }
+
+    public class PublicationInputModel
+    {
+        [Display(Name = "Exam"), Required] public Guid? ExamId { get; set; }
+        [Display(Name = "Section")] public Guid? SectionId { get; set; }
+        [StringLength(1000)] public string? Notes { get; set; }
+    }
+
+    public class QuestionImportInputModel
+    {
+        [Display(Name = "Branch"), Required] public Guid? BranchId { get; set; }
+        [Display(Name = "CSV file"), Required] public IFormFile? File { get; set; }
+    }
+
+    public sealed record ResultAnalyticsRow(
+        Guid ExamId,
+        string ExamName,
+        int ResultCount,
+        int PassedCount,
+        decimal PassPercentage,
+        decimal AveragePercentage,
+        decimal HighestPercentage,
+        decimal LowestPercentage);
 
     public string BranchName(Guid id) => Branches.FirstOrDefault(b => b.Id == id)?.Name ?? "-";
     public string YearName(Guid id) => Years.FirstOrDefault(y => y.Id == id)?.Name ?? "-";
@@ -531,6 +586,235 @@ public class ExamsModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostSubmitPaperForReviewAsync(Guid id, string? notes)
+    {
+        var paper = await _papers.GetAsync(id);
+        if (paper is null || !await CanUseBranchAsync(paper.BranchId)) return RedirectToPage();
+        if (paper.Status is ApprovalStatus.Approved or ApprovalStatus.Published)
+        {
+            TempData["StatusMessage"] = "Approved or published papers cannot be resubmitted.";
+            return RedirectToPage();
+        }
+
+        await _papers.UpdateAsync(id, p => p.Status = ApprovalStatus.UnderReview);
+        await _paperModerations.CreateAsync(new QuestionPaperModeration
+        {
+            QuestionPaperId = id,
+            Decision = ApprovalStatus.UnderReview,
+            ReviewedByUserId = CurrentUserId(),
+            ReviewedOn = DateTime.UtcNow,
+            Notes = notes
+        });
+        TempData["StatusMessage"] = "Question paper submitted for moderation.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostModeratePaperAsync(Guid id, ApprovalStatus decision, string? notes)
+    {
+        if (decision is not (ApprovalStatus.Approved or ApprovalStatus.Rejected)) return RedirectToPage();
+        var paper = await _papers.GetAsync(id);
+        if (paper is null || !await CanUseBranchAsync(paper.BranchId) || paper.Status != ApprovalStatus.UnderReview)
+            return RedirectToPage();
+
+        var reviewerId = CurrentUserId();
+        await _papers.UpdateAsync(id, p =>
+        {
+            p.Status = decision;
+            p.ApprovedByUserId = decision == ApprovalStatus.Approved ? reviewerId : null;
+            p.ApprovedOn = decision == ApprovalStatus.Approved ? DateTime.UtcNow : null;
+        });
+        await _paperModerations.CreateAsync(new QuestionPaperModeration
+        {
+            QuestionPaperId = id,
+            Decision = decision,
+            ReviewedByUserId = reviewerId,
+            ReviewedOn = DateTime.UtcNow,
+            Notes = notes
+        });
+        TempData["StatusMessage"] = $"Question paper {decision.ToString().ToLowerInvariant()}.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostSaveRankingRuleAsync()
+    {
+        KeepOnlyModelStateFor(nameof(RankingRuleInput));
+        var examId = RankingRuleInput.ExamId ?? Guid.Empty;
+        var exam = examId == Guid.Empty ? null : await _exams.GetAsync(examId);
+        if (exam is null || !await CanUseBranchAsync(exam.BranchId))
+            ModelState.AddModelError("RankingRuleInput.ExamId", "Select an exam in your branch.");
+        else if (RankingRuleInput.SectionId is Guid sectionId && !(await _schedules.ListAsync(s => s.ExamId == examId && s.SectionId == sectionId)).Any())
+            ModelState.AddModelError("RankingRuleInput.SectionId", "The selected section is not scheduled for this exam.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        var existing = (await _rankingRules.ListAsync(r => r.ExamId == examId && r.SectionId == RankingRuleInput.SectionId)).FirstOrDefault();
+        if (existing is null)
+        {
+            await _rankingRules.CreateAsync(new ResultRankingRule
+            {
+                BranchId = exam!.BranchId,
+                ExamId = examId,
+                SectionId = RankingRuleInput.SectionId,
+                Method = RankingRuleInput.Method,
+                RankByPercentage = RankingRuleInput.RankByPercentage,
+                ExcludeFailedStudents = RankingRuleInput.ExcludeFailedStudents,
+                ExcludeWithheldResults = RankingRuleInput.ExcludeWithheldResults,
+                MinimumPercentageToRank = RankingRuleInput.MinimumPercentageToRank,
+                ShowRankOnReportCard = RankingRuleInput.ShowRankOnReportCard,
+                Notes = RankingRuleInput.Notes
+            });
+        }
+        else
+        {
+            await _rankingRules.UpdateAsync(existing.Id, ApplyRankingRule);
+        }
+        TempData["StatusMessage"] = "Ranking rule saved.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostRequestResultPublicationAsync()
+    {
+        KeepOnlyModelStateFor(nameof(PublicationInput));
+        var examId = PublicationInput.ExamId ?? Guid.Empty;
+        var exam = examId == Guid.Empty ? null : await _exams.GetAsync(examId);
+        if (exam is null || !await CanUseBranchAsync(exam.BranchId))
+            ModelState.AddModelError("PublicationInput.ExamId", "Select an exam in your branch.");
+        else
+        {
+            var candidates = await _results.ListAsync(r => r.ExamId == examId && (!PublicationInput.SectionId.HasValue || r.SectionId == PublicationInput.SectionId));
+            if (!candidates.Any(r => r.Status == ResultStatus.Computed))
+                ModelState.AddModelError(string.Empty, "Compute at least one result before requesting publication.");
+        }
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        var count = (await _results.ListAsync(r => r.ExamId == examId && (!PublicationInput.SectionId.HasValue || r.SectionId == PublicationInput.SectionId))).Count;
+        await _publicationBatches.CreateAsync(new ResultPublicationBatch
+        {
+            BranchId = exam!.BranchId,
+            ExamId = examId,
+            SectionId = PublicationInput.SectionId,
+            Status = ApprovalStatus.UnderReview,
+            RequestedByUserId = CurrentUserId(),
+            RequestedOn = DateTime.UtcNow,
+            ResultCount = count,
+            Notes = PublicationInput.Notes
+        });
+        TempData["StatusMessage"] = $"Publication requested for {count} result(s).";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostReviewResultPublicationAsync(Guid id, ApprovalStatus decision, string? notes)
+    {
+        if (decision is not (ApprovalStatus.Approved or ApprovalStatus.Rejected)) return RedirectToPage();
+        var batch = await _publicationBatches.GetAsync(id);
+        if (batch is null || !await CanUseBranchAsync(batch.BranchId) || batch.Status != ApprovalStatus.UnderReview)
+            return RedirectToPage();
+        await _publicationBatches.UpdateAsync(id, b =>
+        {
+            b.Status = decision;
+            b.ApprovedByUserId = CurrentUserId();
+            b.ApprovedOn = DateTime.UtcNow;
+            b.Notes = notes ?? b.Notes;
+        });
+        TempData["StatusMessage"] = $"Publication request {decision.ToString().ToLowerInvariant()}.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnPostPublishResultsAsync(Guid id)
+    {
+        var batch = await _publicationBatches.GetAsync(id);
+        if (batch is null || !await CanUseBranchAsync(batch.BranchId) || batch.Status != ApprovalStatus.Approved)
+            return RedirectToPage();
+
+        var results = (await _results.ListAsync(r => r.ExamId == batch.ExamId && (!batch.SectionId.HasValue || r.SectionId == batch.SectionId))).ToList();
+        var rule = (await _rankingRules.ListAsync(r => r.ExamId == batch.ExamId && r.SectionId == batch.SectionId)).FirstOrDefault()
+            ?? (await _rankingRules.ListAsync(r => r.ExamId == batch.ExamId && r.SectionId == null)).FirstOrDefault();
+        await ApplyRankingsAsync(results, rule);
+        var publisherId = CurrentUserId();
+        foreach (var result in results.Where(r => r.Status != ResultStatus.Withheld))
+        {
+            await _results.UpdateAsync(result.Id, r =>
+            {
+                r.Status = ResultStatus.Published;
+                r.PublishedByUserId = publisherId;
+                r.PublishedOn = DateTime.UtcNow;
+            });
+        }
+        await _publicationBatches.UpdateAsync(id, b =>
+        {
+            b.Status = ApprovalStatus.Published;
+            b.PublishedByUserId = publisherId;
+            b.PublishedOn = DateTime.UtcNow;
+            b.ResultCount = results.Count;
+        });
+        var allExamResults = await _results.ListAsync(r => r.ExamId == batch.ExamId);
+        if (allExamResults.Count > 0 && allExamResults.All(r => r.Status is ResultStatus.Published or ResultStatus.Withheld))
+            await _exams.UpdateAsync(batch.ExamId, e => e.Status = ExamStatus.ResultsPublished);
+        TempData["StatusMessage"] = $"Published {results.Count(r => r.Status != ResultStatus.Withheld)} result(s).";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnGetExportQuestionsAsync(Guid? branchId)
+    {
+        if (!branchId.HasValue || !await CanUseBranchAsync(branchId.Value)) return RedirectToPage();
+        await LoadAsync();
+        var rows = BankItems.Where(q => q.BranchId == branchId.Value).ToList();
+        var csv = new StringBuilder("SubjectId,SyllabusUnitId,QuestionType,Difficulty,BloomLevel,Marks,QuestionText,ExpectedAnswer,Tags,ApprovalStatus\r\n");
+        foreach (var q in rows)
+            csv.AppendLine(string.Join(',', Csv(q.SubjectId), Csv(q.SyllabusUnitId), Csv(q.QuestionType), Csv(q.Difficulty), Csv(q.BloomLevel), Csv(q.Marks), Csv(q.QuestionText), Csv(q.ExpectedAnswer), Csv(q.Tags), Csv(q.ApprovalStatus)));
+        return File(Encoding.UTF8.GetPreamble().Concat(Encoding.UTF8.GetBytes(csv.ToString())).ToArray(), "text/csv", $"question-bank-{DateTime.UtcNow:yyyyMMdd}.csv");
+    }
+
+    public IActionResult OnGetQuestionImportTemplate()
+    {
+        const string template = "SubjectId,SyllabusUnitId,QuestionType,Difficulty,BloomLevel,Marks,QuestionText,ExpectedAnswer,Tags,ApprovalStatus\r\n00000000-0000-0000-0000-000000000000,,ShortAnswer,Medium,Understand,2,Sample question,Sample answer,sample,Draft\r\n";
+        return File(Encoding.UTF8.GetBytes(template), "text/csv", "question-import-template.csv");
+    }
+
+    public async Task<IActionResult> OnPostImportQuestionsAsync()
+    {
+        KeepOnlyModelStateFor(nameof(QuestionImportInput));
+        var branchId = QuestionImportInput.BranchId ?? Guid.Empty;
+        if (branchId == Guid.Empty || !await CanUseBranchAsync(branchId))
+            ModelState.AddModelError("QuestionImportInput.BranchId", "Select a branch you can manage.");
+        if (QuestionImportInput.File is null || QuestionImportInput.File.Length == 0)
+            ModelState.AddModelError("QuestionImportInput.File", "Choose a non-empty CSV file.");
+        if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
+
+        var imported = 0;
+        var errors = new List<string>();
+        using var stream = QuestionImportInput.File!.OpenReadStream();
+        using var parser = new TextFieldParser(stream, Encoding.UTF8) { TextFieldType = FieldType.Delimited, HasFieldsEnclosedInQuotes = true, TrimWhiteSpace = true };
+        parser.SetDelimiters(",");
+        var headers = parser.ReadFields() ?? Array.Empty<string>();
+        var expected = new[] { "SubjectId", "SyllabusUnitId", "QuestionType", "Difficulty", "BloomLevel", "Marks", "QuestionText", "ExpectedAnswer", "Tags", "ApprovalStatus" };
+        if (!headers.SequenceEqual(expected, StringComparer.OrdinalIgnoreCase))
+        {
+            ModelState.AddModelError(string.Empty, "CSV headers do not match the downloadable template.");
+            await LoadAsync();
+            return Page();
+        }
+
+        var rowNumber = 1;
+        while (!parser.EndOfData)
+        {
+            rowNumber++;
+            string[] fields;
+            try { fields = parser.ReadFields() ?? Array.Empty<string>(); }
+            catch (MalformedLineException ex) { errors.Add($"Row {rowNumber}: {ex.Message}"); continue; }
+            if (fields.Length != expected.Length) { errors.Add($"Row {rowNumber}: expected {expected.Length} columns."); continue; }
+            if (!TryQuestion(fields, branchId, out var question, out var error)) { errors.Add($"Row {rowNumber}: {error}"); continue; }
+            if (await _subjects.GetAsync(question!.SubjectId) is null) { errors.Add($"Row {rowNumber}: subject was not found."); continue; }
+            if (question.SyllabusUnitId is Guid unitId && await _units.GetAsync(unitId) is not { } unit) { errors.Add($"Row {rowNumber}: syllabus unit was not found."); continue; }
+            if (question.SyllabusUnitId is Guid checkedUnitId && await _units.GetAsync(checkedUnitId) is { } checkedUnit && checkedUnit.SubjectId != question.SubjectId) { errors.Add($"Row {rowNumber}: syllabus unit does not belong to the subject."); continue; }
+            await _bankItems.CreateAsync(question);
+            imported++;
+        }
+        TempData["StatusMessage"] = errors.Count == 0
+            ? $"Imported {imported} question(s)."
+            : $"Imported {imported} question(s); {errors.Count} row(s) rejected: {string.Join(" ", errors.Take(3))}";
+        return RedirectToPage();
+    }
+
     public async Task<IActionResult> OnPostDeleteExamAsync(Guid id) => await DeleteIfAllowedAsync(id, _exams, e => CanUseBranchAsync(e.BranchId));
     public async Task<IActionResult> OnPostDeleteScheduleAsync(Guid id) => await DeleteIfAllowedAsync(id, _schedules, CanUseScheduleAsync);
     public async Task<IActionResult> OnPostDeleteSchemeAsync(Guid id) => await DeleteIfAllowedAsync(id, _schemes, CanUseSchemeAsync);
@@ -584,12 +868,34 @@ public class ExamsModel : PageModel
         var paperSectionIds = PaperSections.Select(s => s.Id).ToHashSet();
         PaperQuestions = (await _paperQuestions.ListAsync(q => paperSectionIds.Contains(q.QuestionPaperSectionId)))
             .OrderBy(q => PaperSectionTitle(q.QuestionPaperSectionId)).ThenBy(q => q.SortOrder).ToList();
+        PaperModerations = (await _paperModerations.ListAsync(m => paperIds.Contains(m.QuestionPaperId)))
+            .OrderByDescending(m => m.ReviewedOn).ToList();
         var scheduleIds = Schedules.Select(s => s.Id).ToHashSet();
         Marks = (await _marks.ListAsync(m => scheduleIds.Contains(m.ExamScheduleId)))
             .OrderBy(m => ScheduleName(m.ExamScheduleId)).ThenBy(m => StudentName(m.StudentProfileId)).ToList();
         Results = (await _results.ListAsync(r =>
                 !IsBranchAdminOnly || (assignedBranchId.HasValue && r.BranchId == assignedBranchId.Value)))
             .OrderByDescending(r => r.ComputedOn).ToList();
+        PublicationBatches = (await _publicationBatches.ListAsync(p =>
+                !IsBranchAdminOnly || (assignedBranchId.HasValue && p.BranchId == assignedBranchId.Value)))
+            .OrderByDescending(p => p.RequestedOn).ToList();
+        RankingRules = (await _rankingRules.ListAsync(r =>
+                !IsBranchAdminOnly || (assignedBranchId.HasValue && r.BranchId == assignedBranchId.Value)))
+            .OrderBy(r => ExamName(r.ExamId)).ToList();
+        ResultAnalytics = Results.GroupBy(r => r.ExamId).Select(group =>
+        {
+            var values = group.ToList();
+            var passed = values.Count(r => r.IsPassed);
+            return new ResultAnalyticsRow(
+                group.Key,
+                ExamName(group.Key),
+                values.Count,
+                passed,
+                values.Count == 0 ? 0 : Math.Round(passed * 100m / values.Count, 2),
+                values.Count == 0 ? 0 : Math.Round(values.Average(r => r.Percentage), 2),
+                values.Count == 0 ? 0 : values.Max(r => r.Percentage),
+                values.Count == 0 ? 0 : values.Min(r => r.Percentage));
+        }).OrderByDescending(r => r.AveragePercentage).ToList();
 
         if (IsBranchAdminOnly && assignedBranchId.HasValue)
         {
@@ -597,6 +903,7 @@ public class ExamsModel : PageModel
             SchemeInput.BranchId ??= assignedBranchId.Value;
             QuestionInput.BranchId ??= assignedBranchId.Value;
             PaperInput.BranchId ??= assignedBranchId.Value;
+            QuestionImportInput.BranchId ??= assignedBranchId.Value;
         }
     }
 
@@ -776,8 +1083,8 @@ public class ExamsModel : PageModel
         var marksBySchedule = markEntries.GroupBy(m => m.ExamScheduleId).ToDictionary(g => g.Key, g => g.OrderByDescending(m => m.EnteredOn).First());
         var obtained = schedules.Sum(s => marksBySchedule.TryGetValue(s.Id, out var mark) && !mark.IsAbsent ? mark.MarksObtained : 0);
         var percentage = total <= 0 ? 0 : Math.Round(obtained * 100 / total, 2);
+        var isPassed = schedules.All(s => marksBySchedule.TryGetValue(s.Id, out var mark) && !mark.IsAbsent && mark.MarksObtained >= s.PassingMarks);
         var grade = await ResolveGradeAsync(input.GradingSchemeId, exam.BranchId, batch?.CourseId, percentage);
-        var currentUserId = CurrentUserId();
         var existing = (await _results.ListAsync(r => r.ExamId == examId && r.StudentProfileId == studentId)).FirstOrDefault();
 
         if (existing is null)
@@ -794,12 +1101,11 @@ public class ExamsModel : PageModel
                 TotalMarks = total,
                 MarksObtained = obtained,
                 Percentage = percentage,
+                IsPassed = isPassed,
                 Grade = grade.Grade,
                 GradePoint = grade.GradePoint,
-                Status = input.Publish ? ResultStatus.Published : ResultStatus.Computed,
+                Status = ResultStatus.Computed,
                 ComputedOn = DateTime.UtcNow,
-                PublishedByUserId = input.Publish ? currentUserId : null,
-                PublishedOn = input.Publish ? DateTime.UtcNow : null,
                 Remarks = input.Remarks
             });
         }
@@ -814,12 +1120,15 @@ public class ExamsModel : PageModel
             result.TotalMarks = total;
             result.MarksObtained = obtained;
             result.Percentage = percentage;
+            result.IsPassed = isPassed;
             result.Grade = grade.Grade;
             result.GradePoint = grade.GradePoint;
-            result.Status = input.Publish ? ResultStatus.Published : ResultStatus.Computed;
+            result.Status = ResultStatus.Computed;
             result.ComputedOn = DateTime.UtcNow;
-            result.PublishedByUserId = input.Publish ? currentUserId : result.PublishedByUserId;
-            result.PublishedOn = input.Publish ? DateTime.UtcNow : result.PublishedOn;
+            result.PublishedByUserId = null;
+            result.PublishedOn = null;
+            result.Rank = null;
+            result.Percentile = null;
             result.Remarks = input.Remarks;
         });
         return await _results.GetAsync(existing.Id);
@@ -865,6 +1174,100 @@ public class ExamsModel : PageModel
             >= 35 => ("D", 5),
             _ => ("F", 0)
         };
+    }
+
+    private void ApplyRankingRule(ResultRankingRule rule)
+    {
+        rule.Method = RankingRuleInput.Method;
+        rule.RankByPercentage = RankingRuleInput.RankByPercentage;
+        rule.ExcludeFailedStudents = RankingRuleInput.ExcludeFailedStudents;
+        rule.ExcludeWithheldResults = RankingRuleInput.ExcludeWithheldResults;
+        rule.MinimumPercentageToRank = RankingRuleInput.MinimumPercentageToRank;
+        rule.ShowRankOnReportCard = RankingRuleInput.ShowRankOnReportCard;
+        rule.Notes = RankingRuleInput.Notes;
+    }
+
+    private async Task ApplyRankingsAsync(IReadOnlyList<Result> results, ResultRankingRule? rule)
+    {
+        var eligible = results
+            .Where(r => !(rule?.ExcludeWithheldResults ?? true) || r.Status != ResultStatus.Withheld)
+            .Where(r => !(rule?.ExcludeFailedStudents ?? false) || r.IsPassed)
+            .Where(r => r.Percentage >= (rule?.MinimumPercentageToRank ?? 0))
+            .OrderByDescending(r => rule?.RankByPercentage == false ? r.MarksObtained : r.Percentage)
+            .ThenByDescending(r => r.MarksObtained)
+            .ThenBy(r => StudentName(r.StudentProfileId), StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var previousScore = decimal.MinValue;
+        var competitionRank = 0;
+        var denseRank = 0;
+        for (var index = 0; index < eligible.Count; index++)
+        {
+            var result = eligible[index];
+            var score = rule?.RankByPercentage == false ? result.MarksObtained : result.Percentage;
+            if (score != previousScore)
+            {
+                competitionRank = index + 1;
+                denseRank++;
+                previousScore = score;
+            }
+            var rank = (rule?.Method ?? RankingMethod.Competition) switch
+            {
+                RankingMethod.Dense => denseRank,
+                RankingMethod.Ordinal => index + 1,
+                _ => competitionRank
+            };
+            var percentile = eligible.Count == 1 ? 100m : Math.Round((eligible.Count - index - 1) * 100m / (eligible.Count - 1), 2);
+            await _results.UpdateAsync(result.Id, r => { r.Rank = rank; r.Percentile = percentile; });
+            result.Rank = rank;
+            result.Percentile = percentile;
+        }
+
+        foreach (var result in results.Except(eligible))
+            await _results.UpdateAsync(result.Id, r => { r.Rank = null; r.Percentile = null; });
+    }
+
+    private static string Csv(object? value)
+    {
+        var text = Convert.ToString(value, CultureInfo.InvariantCulture) ?? string.Empty;
+        return $"\"{text.Replace("\"", "\"\"")}\"";
+    }
+
+    private static bool TryQuestion(string[] fields, Guid branchId, out QuestionBankItem? question, out string error)
+    {
+        question = null;
+        error = string.Empty;
+        if (!Guid.TryParse(fields[0], out var subjectId)) { error = "invalid SubjectId."; return false; }
+        Guid? unitId = null;
+        if (!string.IsNullOrWhiteSpace(fields[1]))
+        {
+            if (!Guid.TryParse(fields[1], out var parsedUnitId)) { error = "invalid SyllabusUnitId."; return false; }
+            unitId = parsedUnitId;
+        }
+        if (!Enum.TryParse<QuestionType>(fields[2], true, out var type)) { error = "invalid QuestionType."; return false; }
+        if (!Enum.TryParse<QuestionDifficulty>(fields[3], true, out var difficulty)) { error = "invalid Difficulty."; return false; }
+        if (!Enum.TryParse<BloomLevel>(fields[4], true, out var bloom)) { error = "invalid BloomLevel."; return false; }
+        if (!decimal.TryParse(fields[5], NumberStyles.Number, CultureInfo.InvariantCulture, out var marks) || marks <= 0) { error = "Marks must be positive."; return false; }
+        if (string.IsNullOrWhiteSpace(fields[6]) || fields[6].Length > 4000) { error = "QuestionText is required and limited to 4000 characters."; return false; }
+        if (!Enum.TryParse<ApprovalStatus>(fields[9], true, out var approval)) { error = "invalid ApprovalStatus."; return false; }
+        if (fields[7].Length > 4000) { error = "ExpectedAnswer is limited to 4000 characters."; return false; }
+        if (fields[8].Length > 500) { error = "Tags are limited to 500 characters."; return false; }
+        question = new QuestionBankItem
+        {
+            BranchId = branchId,
+            SubjectId = subjectId,
+            SyllabusUnitId = unitId,
+            QuestionType = type,
+            Difficulty = difficulty,
+            BloomLevel = bloom,
+            Source = GenerationSource.Manual,
+            Marks = marks,
+            QuestionText = fields[6],
+            ExpectedAnswer = string.IsNullOrWhiteSpace(fields[7]) ? null : fields[7],
+            Tags = string.IsNullOrWhiteSpace(fields[8]) ? null : fields[8],
+            ApprovalStatus = approval
+        };
+        return true;
     }
 
     private Task<bool> CanUseBranchAsync(Guid branchId) => _branchAccess.CanAccessBranchAsync(User, branchId);
@@ -969,7 +1372,8 @@ public class ExamsModel : PageModel
         entity.DurationMinutes = PaperInput.DurationMinutes;
         entity.Instructions = PaperInput.Instructions;
         entity.Source = PaperInput.Source;
-        entity.Status = PaperInput.Status;
+        if (entity.Id == Guid.Empty)
+            entity.Status = ApprovalStatus.Draft;
         return entity;
     }
 

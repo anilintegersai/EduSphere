@@ -124,7 +124,6 @@ else
                             <div class="col-md-6"><label asp-for="ComputeInput.StudentProfileId" class="form-label"></label><select asp-for="ComputeInput.StudentProfileId" class="form-select"><option value="">Select student</option>@foreach (var s in Model.Students) { <option value="@s.Id">@s.FirstName @s.LastName</option> }</select></div>
                             <div class="col-md-12"><label asp-for="ComputeInput.GradingSchemeId" class="form-label"></label><select asp-for="ComputeInput.GradingSchemeId" class="form-select"><option value="">Use default scheme</option>@foreach (var s in Model.Schemes) { <option value="@s.Id">@s.Name</option> }</select></div>
                         </div>
-                        <div class="form-check mt-2"><input asp-for="ComputeInput.Publish" class="form-check-input" /><label asp-for="ComputeInput.Publish" class="form-check-label"></label></div>
                         <div class="mt-2"><label asp-for="ComputeInput.Remarks" class="form-label"></label><textarea asp-for="ComputeInput.Remarks" class="form-control" rows="2"></textarea></div>
                         <div class="form-actions mt-3"><button type="submit" class="btn btn-outline-primary">Compute result</button></div>
                     </form>
@@ -200,6 +199,18 @@ else
                             @if (Model.IsEditingQuestion) { <a asp-page="/Examinations/Exams" class="btn btn-outline-secondary">Cancel</a> }
                         </div>
                     </form>
+                    <hr />
+                    <form method="post" enctype="multipart/form-data" asp-page-handler="ImportQuestions">
+                        <div class="row g-2">
+                            <div class="col-md-5"><label asp-for="QuestionImportInput.BranchId" class="form-label"></label><select asp-for="QuestionImportInput.BranchId" class="form-select"><option value="">Select branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
+                            <div class="col-md-7"><label asp-for="QuestionImportInput.File" class="form-label"></label><input asp-for="QuestionImportInput.File" type="file" accept=".csv,text/csv" class="form-control" /></div>
+                        </div>
+                        <div class="form-actions mt-3">
+                            <button type="submit" class="btn btn-outline-primary">Import CSV</button>
+                            <a asp-page-handler="QuestionImportTemplate" class="btn btn-outline-secondary">Sample CSV</a>
+                            @foreach (var branch in Model.Branches) { <a asp-page-handler="ExportQuestions" asp-route-branchId="@branch.Id" class="btn btn-outline-secondary">Export @branch.Code</a> }
+                        </div>
+                    </form>
                 </div>
             </div>
         </div>
@@ -219,7 +230,7 @@ else
                             <div class="col-md-6"><label asp-for="PaperInput.ExamScheduleId" class="form-label"></label><select asp-for="PaperInput.ExamScheduleId" class="form-select"><option value="">No schedule</option>@foreach (var s in Model.Schedules) { <option value="@s.Id">@Model.ScheduleName(s.Id)</option> }</select></div>
                             <div class="col-md-4"><label asp-for="PaperInput.TotalMarks" class="form-label"></label><input asp-for="PaperInput.TotalMarks" type="number" step="0.01" class="form-control" /></div>
                             <div class="col-md-4"><label asp-for="PaperInput.DurationMinutes" class="form-label"></label><input asp-for="PaperInput.DurationMinutes" type="number" class="form-control" /></div>
-                            <div class="col-md-4"><label asp-for="PaperInput.Status" class="form-label"></label><select asp-for="PaperInput.Status" asp-items="Html.GetEnumSelectList<ApprovalStatus>()" class="form-select"></select></div>
+                            <div class="col-md-4"><label class="form-label">Moderation</label><input value="@Model.PaperInput.Status" class="form-control" readonly /></div>
                         </div>
                         <div class="mt-2"><label asp-for="PaperInput.Instructions" class="form-label"></label><textarea asp-for="PaperInput.Instructions" class="form-control" rows="2"></textarea></div>
                         <div class="form-actions mt-3">
@@ -254,6 +265,60 @@ else
                         </div>
                         <div class="form-actions mt-3"><button type="submit" class="btn btn-outline-primary">@(Model.IsEditingPaperQuestion ? "Save question" : "Add question")</button></div>
                     </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-4 mt-1 workspace-grid">
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Ranking rules</span><span class="stage-tag">Analytics</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="SaveRankingRule">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="RankingRuleInput.ExamId" class="form-label"></label><select asp-for="RankingRuleInput.ExamId" class="form-select"><option value="">Select exam</option>@foreach (var e in Model.Exams) { <option value="@e.Id">@e.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="RankingRuleInput.SectionId" class="form-label"></label><select asp-for="RankingRuleInput.SectionId" class="form-select"><option value="">All sections</option>@foreach (var s in Model.Sections) { <option value="@s.Id">@s.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="RankingRuleInput.Method" class="form-label"></label><select asp-for="RankingRuleInput.Method" asp-items="Html.GetEnumSelectList<RankingMethod>()" class="form-select"></select></div>
+                            <div class="col-md-6"><label asp-for="RankingRuleInput.MinimumPercentageToRank" class="form-label"></label><input asp-for="RankingRuleInput.MinimumPercentageToRank" type="number" step="0.01" class="form-control" /></div>
+                        </div>
+                        <div class="form-check mt-2"><input asp-for="RankingRuleInput.RankByPercentage" class="form-check-input" /><label asp-for="RankingRuleInput.RankByPercentage" class="form-check-label"></label></div>
+                        <div class="form-check"><input asp-for="RankingRuleInput.ExcludeFailedStudents" class="form-check-input" /><label asp-for="RankingRuleInput.ExcludeFailedStudents" class="form-check-label"></label></div>
+                        <div class="form-check"><input asp-for="RankingRuleInput.ShowRankOnReportCard" class="form-check-input" /><label asp-for="RankingRuleInput.ShowRankOnReportCard" class="form-check-label"></label></div>
+                        <button type="submit" class="btn btn-primary mt-3">Save rule</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card form-card h-100">
+                <div class="card-header"><span>Result publication</span><span class="stage-tag">Approval</span></div>
+                <div class="card-body">
+                    <form method="post" asp-page-handler="RequestResultPublication">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label asp-for="PublicationInput.ExamId" class="form-label"></label><select asp-for="PublicationInput.ExamId" class="form-select"><option value="">Select exam</option>@foreach (var e in Model.Exams) { <option value="@e.Id">@e.Name</option> }</select></div>
+                            <div class="col-md-6"><label asp-for="PublicationInput.SectionId" class="form-label"></label><select asp-for="PublicationInput.SectionId" class="form-select"><option value="">All sections</option>@foreach (var s in Model.Sections) { <option value="@s.Id">@s.Name</option> }</select></div>
+                        </div>
+                        <div class="mt-2"><label asp-for="PublicationInput.Notes" class="form-label"></label><textarea asp-for="PublicationInput.Notes" class="form-control" rows="2"></textarea></div>
+                        <button type="submit" class="btn btn-primary mt-3">Request publication</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-4">
+            <div class="card data-card h-100">
+                <div class="card-header"><span>Result analytics</span><span class="count-pill">@Model.ResultAnalytics.Count exams</span></div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead><tr><th>Exam</th><th>Pass</th><th>Average</th><th>Range</th></tr></thead>
+                        <tbody>
+                        @foreach (var row in Model.ResultAnalytics)
+                        {
+                            <tr><td>@row.ExamName<br /><small class="text-muted">@row.ResultCount results</small></td><td>@row.PassPercentage.ToString("0.##")%</td><td>@row.AveragePercentage.ToString("0.##")%</td><td>@row.LowestPercentage.ToString("0.##")-@row.HighestPercentage.ToString("0.##")%</td></tr>
+                        }
+                        @if (Model.ResultAnalytics.Count == 0) { <tr><td colspan="4" class="text-center empty-state">Compute results to see analytics.</td></tr> }
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
@@ -301,10 +366,27 @@ else
                         @foreach (var r in Model.Results)
                         {
                             <tr>
-                                <td>Result</td><td>@Model.StudentName(r.StudentProfileId)</td><td>@r.Status</td><td>@r.Percentage.ToString("0.##")% / @r.Grade</td><td></td>
+                                <td>Result</td><td>@Model.StudentName(r.StudentProfileId)</td><td>@r.Status</td><td>@r.Percentage.ToString("0.##")% / @r.Grade / @(r.IsPassed ? "Pass" : "Fail") @if (r.Rank.HasValue) { <span>/ Rank @r.Rank</span> }</td><td class="text-end"><a asp-page="/Examinations/ReportCard" asp-route-id="@r.Id" target="_blank" class="btn btn-sm btn-outline-primary">Print</a></td>
                             </tr>
                         }
-                        @if (Model.Exams.Count == 0 && Model.Results.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No exams or results yet.</td></tr> }
+                        @foreach (var batch in Model.PublicationBatches.Take(8))
+                        {
+                            <tr>
+                                <td>Publication</td><td>@Model.ExamName(batch.ExamId) / @(batch.SectionId.HasValue ? Model.SectionName(batch.SectionId.Value) : "All sections")</td><td>@batch.Status</td><td>@batch.ResultCount result(s)</td>
+                                <td class="text-end">
+                                    @if (batch.Status == ApprovalStatus.UnderReview)
+                                    {
+                                        <form method="post" asp-page-handler="ReviewResultPublication" asp-route-id="@batch.Id" class="d-inline"><input type="hidden" name="decision" value="Approved" /><button class="btn btn-sm btn-outline-success">Approve</button></form>
+                                        <form method="post" asp-page-handler="ReviewResultPublication" asp-route-id="@batch.Id" class="d-inline"><input type="hidden" name="decision" value="Rejected" /><button class="btn btn-sm btn-outline-danger">Reject</button></form>
+                                    }
+                                    @if (batch.Status == ApprovalStatus.Approved)
+                                    {
+                                        <form method="post" asp-page-handler="PublishResults" asp-route-id="@batch.Id" class="d-inline"><button class="btn btn-sm btn-primary">Publish</button></form>
+                                    }
+                                </td>
+                            </tr>
+                        }
+                        @if (Model.Exams.Count == 0 && Model.Results.Count == 0 && Model.PublicationBatches.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No exams or results yet.</td></tr> }
                         </tbody>
                     </table>
                 </div>
@@ -324,7 +406,7 @@ else
                         {
                             <tr>
                                 <td>Paper</td><td>@p.Title</td><td>@Model.SubjectName(p.SubjectId)</td><td>@p.TotalMarks.ToString("0.##")</td>
-                                <td class="text-end"><span class="action-stack"><a asp-page="/Examinations/Exams" asp-route-paperEditId="@p.Id" class="btn btn-sm btn-outline-secondary">Edit</a><form method="post" asp-page-handler="DeletePaper" asp-route-id="@p.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></span></td>
+                                <td class="text-end"><span class="action-stack"><span class="badge text-bg-light">@p.Status</span><a asp-page="/Examinations/Exams" asp-route-paperEditId="@p.Id" class="btn btn-sm btn-outline-secondary">Edit</a>@if (p.Status is ApprovalStatus.Draft or ApprovalStatus.Rejected) { <form method="post" asp-page-handler="SubmitPaperForReview" asp-route-id="@p.Id" class="d-inline"><button class="btn btn-sm btn-outline-primary">Submit</button></form> } @if (p.Status == ApprovalStatus.UnderReview) { <form method="post" asp-page-handler="ModeratePaper" asp-route-id="@p.Id" class="d-inline"><input type="hidden" name="decision" value="Approved" /><button class="btn btn-sm btn-outline-success">Approve</button></form><form method="post" asp-page-handler="ModeratePaper" asp-route-id="@p.Id" class="d-inline"><input type="hidden" name="decision" value="Rejected" /><button class="btn btn-sm btn-outline-danger">Reject</button></form> }<form method="post" asp-page-handler="DeletePaper" asp-route-id="@p.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></span></td>
                             </tr>
                         }
                         @foreach (var s in Model.PaperSections)

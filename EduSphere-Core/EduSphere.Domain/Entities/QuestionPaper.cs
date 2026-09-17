@@ -36,4 +36,5 @@ public class QuestionPaper : TenantEntityBase
 
     public ICollection<QuestionPaperSection> Sections { get; set; } = new List<QuestionPaperSection>();
     public ICollection<QuestionPaperVersion> Versions { get; set; } = new List<QuestionPaperVersion>();
+    public ICollection<QuestionPaperModeration> Moderations { get; set; } = new List<QuestionPaperModeration>();
 }

@@ -1,0 +1,61 @@
+@page
+@model EduSphere.Web.Pages.Examinations.ReportCardModel
+@{
+    Layout = null;
+}
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>@Model.Student.FirstName @Model.Student.LastName - @Model.Exam.Name</title>
+    <style>
+        :root { color-scheme: light; font-family: Inter, "Segoe UI", Arial, sans-serif; color: #182230; }
+        body { margin: 0; background: #eef2f6; }
+        .toolbar { max-width: 900px; margin: 20px auto 0; text-align: right; }
+        .toolbar button { border: 0; background: #135d66; color: #fff; padding: 10px 18px; border-radius: 6px; font-weight: 700; cursor: pointer; }
+        .sheet { box-sizing: border-box; width: min(900px, calc(100% - 32px)); min-height: 1120px; margin: 16px auto 32px; padding: 52px; background: white; border-top: 8px solid #135d66; box-shadow: 0 10px 32px rgba(24,34,48,.12); }
+        header { display: flex; justify-content: space-between; gap: 24px; padding-bottom: 24px; border-bottom: 2px solid #d8e0e8; }
+        h1 { margin: 0 0 6px; font-size: 28px; } h2 { margin: 0; font-size: 18px; color: #526272; font-weight: 600; }
+        .meta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin: 28px 0; }
+        .meta div { border-left: 3px solid #df9f2d; padding-left: 10px; } .meta small { display: block; color: #687887; text-transform: uppercase; font-size: 10px; font-weight: 800; } .meta strong { display: block; margin-top: 4px; }
+        table { width: 100%; border-collapse: collapse; } th { background: #135d66; color: white; text-align: left; } th, td { padding: 11px 12px; border: 1px solid #d8e0e8; } td.num, th.num { text-align: right; }
+        .summary { display: grid; grid-template-columns: repeat(5, 1fr); margin-top: 28px; border: 1px solid #d8e0e8; } .summary div { padding: 16px; border-right: 1px solid #d8e0e8; } .summary div:last-child { border: 0; } .summary small { display: block; color: #687887; } .summary strong { display: block; font-size: 20px; margin-top: 5px; }
+        .pass { color: #16704a; } .fail { color: #b42318; } footer { display: flex; justify-content: space-between; margin-top: 90px; color: #526272; } footer span { width: 180px; padding-top: 8px; border-top: 1px solid #687887; text-align: center; }
+        @@media print { body { background: white; } .toolbar { display: none; } .sheet { width: 100%; min-height: auto; margin: 0; padding: 28px; box-shadow: none; } @@page { size: A4; margin: 10mm; } }
+        @@media (max-width: 700px) { .sheet { padding: 24px; } .meta { grid-template-columns: 1fr 1fr; } .summary { grid-template-columns: 1fr 1fr; } }
+    </style>
+</head>
+<body>
+    <div class="toolbar"><button type="button" onclick="window.print()">Print / Save PDF</button></div>
+    <main class="sheet">
+        <header><div><h1>@Model.Branch.Name</h1><h2>Official Report Card &amp; Mark Sheet</h2></div><div><strong>@Model.Exam.Name</strong><br /><span>@Model.AcademicYear?.Name</span></div></header>
+        <section class="meta">
+            <div><small>Student</small><strong>@Model.Student.FirstName @Model.Student.MiddleName @Model.Student.LastName</strong></div>
+            <div><small>Admission number</small><strong>@Model.Student.AdmissionNumber</strong></div>
+            <div><small>Roll number</small><strong>@(Model.Student.RollNumber ?? "-")</strong></div>
+            <div><small>Section</small><strong>@(Model.Section?.Name ?? "-")</strong></div>
+            <div><small>Exam period</small><strong>@Model.Exam.StartDate.ToString("dd MMM yyyy") - @Model.Exam.EndDate.ToString("dd MMM yyyy")</strong></div>
+            <div><small>Published</small><strong>@Model.Result.PublishedOn?.ToString("dd MMM yyyy")</strong></div>
+        </section>
+        <table>
+            <thead><tr><th>Subject</th><th class="num">Maximum</th><th class="num">Passing</th><th class="num">Obtained</th><th>Grade</th><th>Outcome</th></tr></thead>
+            <tbody>
+            @foreach (var row in Model.MarkRows)
+            {
+                <tr><td>@row.Subject</td><td class="num">@row.MaximumMarks.ToString("0.##")</td><td class="num">@row.PassingMarks.ToString("0.##")</td><td class="num">@(row.IsAbsent ? "AB" : row.MarksObtained.ToString("0.##"))</td><td>@(row.Grade ?? "-")</td><td class="@(row.IsPassed ? "pass" : "fail")">@(row.IsPassed ? "Pass" : "Fail")</td></tr>
+            }
+            </tbody>
+        </table>
+        <section class="summary">
+            <div><small>Total</small><strong>@Model.Result.MarksObtained.ToString("0.##") / @Model.Result.TotalMarks.ToString("0.##")</strong></div>
+            <div><small>Percentage</small><strong>@Model.Result.Percentage.ToString("0.##")%</strong></div>
+            <div><small>Grade</small><strong>@(Model.Result.Grade ?? "-")</strong></div>
+            <div><small>Result</small><strong class="@(Model.Result.IsPassed ? "pass" : "fail")">@(Model.Result.IsPassed ? "PASS" : "FAIL")</strong></div>
+            <div><small>Rank</small><strong>@(Model.ShowRank && Model.Result.Rank.HasValue ? Model.Result.Rank.Value.ToString() : "-")</strong></div>
+        </section>
+        @if (!string.IsNullOrWhiteSpace(Model.Result.Remarks)) { <p><strong>Remarks:</strong> @Model.Result.Remarks</p> }
+        <footer><span>Class Teacher</span><span>Examination Controller</span><span>Principal</span></footer>
+    </main>
+</body>
+</html>

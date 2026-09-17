@@ -320,6 +320,9 @@ public class ResultDto : ExaminationTenantScopedDto
     public decimal TotalMarks { get; set; }
     public decimal MarksObtained { get; set; }
     public decimal Percentage { get; set; }
+    public bool IsPassed { get; set; }
+    public int? Rank { get; set; }
+    public decimal? Percentile { get; set; }
     public string? Grade { get; set; }
     public decimal? GradePoint { get; set; }
     public ResultStatus Status { get; set; }
@@ -334,6 +337,7 @@ public class ComputeResultRequest
     public Guid ExamId { get; set; }
     public Guid StudentProfileId { get; set; }
     public Guid? GradingSchemeId { get; set; }
+    [Obsolete("Results must be published through an approved publication batch.")]
     public bool Publish { get; set; }
     public string? Remarks { get; set; }
 }
