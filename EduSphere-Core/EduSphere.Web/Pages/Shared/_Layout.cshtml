@@ -13,6 +13,7 @@
     var canManageHostel = RolePermissionMatrix.Allows(ModulePermission.ManageHostel, User);
     var canManageCommunications = RolePermissionMatrix.Allows(ModulePermission.ManageCommunications, User);
     var canManageUsers = RolePermissionMatrix.Allows(ModulePermission.ManageUsers, User);
+    var canManageAIQuestionPapers = RolePermissionMatrix.Allows(ModulePermission.ManageAIQuestionPapers, User);
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -101,6 +102,12 @@
                             {
                                 <li class="nav-item">
                                     <a class="nav-link @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Admissions/Applications">Admissions</a>
+                                </li>
+                            }
+                            @if (canManageAIQuestionPapers)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/AI", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/AI/QuestionPapers">AI Papers</a>
                                 </li>
                             }
                             @if (canMarkAttendance)

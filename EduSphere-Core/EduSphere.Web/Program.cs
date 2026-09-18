@@ -71,6 +71,8 @@ builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IStudentTeacherLifecycleService, StudentTeacherLifecycleService>();
 builder.Services.AddScoped<IAdmissionWorkflowService, AdmissionWorkflowService>();
 builder.Services.AddScoped<IAttendanceTimetableWorkflowService, AttendanceTimetableWorkflowService>();
+builder.Services.AddScoped<IAISecretProtector, DataProtectionAISecretProtector>();
+builder.Services.AddScoped<IAIQuestionPaperService, AIQuestionPaperService>();
 builder.Services.AddSingleton<IAdmissionDocumentStorageService, FileSystemAdmissionDocumentStorageService>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
@@ -157,7 +159,8 @@ builder.Services.AddAuthorization(options =>
         AuthorizationPolicies.LibraryManager,
         AuthorizationPolicies.HostelManager,
         AuthorizationPolicies.CommunicationManager,
-        AuthorizationPolicies.UserManager
+        AuthorizationPolicies.UserManager,
+        AuthorizationPolicies.AIQuestionPaperManager
     })
     {
         options.AddPolicy(policy, builder => builder.RequireRole(RolePermissionMatrix.RolesForPolicy(policy)));
@@ -191,6 +194,7 @@ await app.Services.ApplyDatabaseMigrationStrategyAsync();
 await app.Services.ApplyConfiguredAccountEmailProviderAsync();
 await app.Services.ApplyAdmissionDefaultsAsync();
 await app.Services.ApplyAdmissionWorkflowDemoDataAsync();
+await app.Services.ApplyAIQuestionPaperDefaultsAsync();
 
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())

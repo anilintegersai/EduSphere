@@ -1,0 +1,100 @@
+@page
+@model EduSphere.Web.Pages.AI.QuestionPapersModel
+@using EduSphere.Domain.Enums
+@{
+    ViewData["Title"] = "AI Question Papers";
+}
+
+<section class="page-title-row">
+    <div>
+        <span class="eyebrow">Assessment intelligence</span>
+        <h1>AI Question Paper Studio</h1>
+        <p>Generate governed assessment drafts from syllabus outcomes, then review, compare, approve and reuse them.</p>
+    </div>
+    <span class="count-pill">@Model.Requests.Count recent runs</span>
+</section>
+
+@if (!Model.HasTenant)
+{
+    <div class="alert alert-warning">Select a tenant before opening the AI workspace.</div>
+    return;
+}
+@if (TempData["StatusMessage"] is string status) { <div class="alert alert-success">@status</div> }
+@if (TempData["ErrorMessage"] is string error) { <div class="alert alert-danger">@error</div> }
+
+<nav class="workflow-jumpbar" aria-label="AI paper workflow">
+    <span>AI paper workflow</span>
+    <a href="#generate">Generate</a><a href="#review">Review &amp; versions</a><a href="#usage">Usage</a>
+    @if (Model.CanConfigure) { <a href="#configuration">Configuration</a> }
+</nav>
+
+<section id="generate" class="workflow-section">
+    <div class="card form-card">
+        <div class="card-header"><span>Generation brief</span><span class="stage-tag">Draft</span></div>
+        <div class="card-body">
+            <form method="post" asp-page-handler="Generate" id="generation-form">
+                <div asp-validation-summary="All" class="text-danger small"></div>
+                <div class="row g-3">
+                    <div class="col-lg-3"><label class="form-label">Branch</label><select asp-for="Generate.BranchId" class="form-select"><option value="">Select</option>@foreach (var item in Model.Branches) { <option value="@item.Id">@item.Name</option> }</select></div>
+                    <div class="col-lg-3"><label class="form-label">Subject</label><select asp-for="Generate.SubjectId" class="form-select" onchange="location.href='?subjectId='+this.value"><option value="">Select to load units</option>@foreach (var item in Model.Subjects) { <option value="@item.Id">@item.Name</option> }</select></div>
+                    <div class="col-lg-3"><label class="form-label">Provider</label><select asp-for="Generate.ProviderSettingId" class="form-select"><option value="">Tenant default</option>@foreach (var item in Model.Providers.Where(p => p.IsEnabled)) { <option value="@item.Id">@item.Name</option> }</select></div>
+                    <div class="col-lg-3"><label class="form-label">Prompt template</label><select asp-for="Generate.PromptTemplateId" class="form-select"><option value="">Select</option>@foreach (var item in Model.Templates.Where(t => t.IsActive)) { <option value="@item.Id">@item.Name v@item.Version</option> }</select></div>
+                    <div class="col-lg-6"><label class="form-label">Paper title</label><input asp-for="Generate.Title" class="form-control" /></div>
+                    <div class="col-lg-2"><label class="form-label">Marks</label><input asp-for="Generate.TotalMarks" class="form-control" /></div>
+                    <div class="col-lg-2"><label class="form-label">Minutes</label><input asp-for="Generate.DurationMinutes" class="form-control" /></div>
+                    <div class="col-lg-2"><label class="form-label">Language</label><input asp-for="Generate.Language" class="form-control" /></div>
+                    <div class="col-lg-6"><label class="form-label">Syllabus units</label><select id="unit-selector" class="form-select" multiple size="5">@foreach (var unit in Model.Units) { <option value="@unit.Id">@unit.Order. @unit.Title</option> }</select><input asp-for="Generate.SyllabusUnitIds" type="hidden" id="unit-values" /></div>
+                    <div class="col-lg-6"><label class="form-label">Instructions</label><textarea asp-for="Generate.Instructions" class="form-control" rows="5" placeholder="Institution-specific assessment instructions"></textarea></div>
+                    <div class="col-lg-4"><label class="form-label">Bloom distribution (%)</label><input asp-for="Generate.BloomDistribution" class="form-control" /><div class="form-text">Name:value pairs</div></div>
+                    <div class="col-lg-4"><label class="form-label">Difficulty mix (%)</label><input asp-for="Generate.DifficultyDistribution" class="form-control" /></div>
+                    <div class="col-lg-4"><label class="form-label">Question type counts</label><input asp-for="Generate.QuestionTypeCounts" class="form-control" /></div>
+                </div>
+                <div class="d-flex align-items-center gap-3 mt-3"><button class="btn btn-primary" type="submit">Generate draft</button><label class="form-check"><input asp-for="Generate.AllowManualFallback" class="form-check-input" /> <span class="form-check-label">Create manual draft if provider is unavailable</span></label></div>
+            </form>
+        </div>
+    </div>
+</section>
+
+<section id="review" class="workflow-section mt-4">
+    <div class="card data-card">
+        <div class="card-header"><span>Generation and review register</span><span class="stage-tag">Governance</span></div>
+        <div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Requested</th><th>Paper</th><th>Provider</th><th>Status</th><th>Version</th><th>Usage</th><th>Actions</th></tr></thead><tbody>
+        @foreach (var run in Model.Requests)
+        {
+            var version = Model.Versions.FirstOrDefault(v => v.Id == run.GeneratedVersionId);
+            var usage = run.UsageRecords.FirstOrDefault();
+            <tr><td>@run.RequestedOn.ToLocalTime().ToString("dd MMM HH:mm")</td><td><strong>@(run.QuestionPaper?.Title ?? "Manual fallback")</strong><div class="text-muted small">@run.Subject?.Name</div></td><td>@(run.ProviderSetting?.Name ?? "None")</td><td><span class="badge text-bg-light">@run.Status</span>@if (!string.IsNullOrWhiteSpace(run.FailureMessage)) { <div class="text-danger small" title="@run.FailureMessage">Provider failed</div> }</td><td>@(version is null ? "-" : $"v{version.VersionNumber} · {version.Status}")</td><td>@(usage is null ? "-" : $"{usage.InputTokens + usage.OutputTokens:N0} tokens · {usage.EstimatedCost:C4}")</td><td>
+                @if (version is not null && run.QuestionPaperId.HasValue)
+                {
+                    <div class="d-flex flex-wrap gap-1">
+                        <form method="post" asp-page-handler="SetStatus"><input type="hidden" name="paperId" value="@run.QuestionPaperId" /><input type="hidden" name="versionId" value="@version.Id" /><input type="hidden" name="status" value="UnderReview" /><button class="btn btn-sm btn-outline-primary">Review</button></form>
+                        <form method="post" asp-page-handler="SetStatus"><input type="hidden" name="paperId" value="@run.QuestionPaperId" /><input type="hidden" name="versionId" value="@version.Id" /><input type="hidden" name="status" value="Approved" /><button class="btn btn-sm btn-success">Approve</button></form>
+                        <form method="post" asp-page-handler="Rollback"><input type="hidden" name="paperId" value="@run.QuestionPaperId" /><input type="hidden" name="versionId" value="@version.Id" /><button class="btn btn-sm btn-outline-secondary">Restore</button></form>
+                        <form method="post" asp-page-handler="Enrich"><input type="hidden" name="paperId" value="@run.QuestionPaperId" /><input type="hidden" name="versionId" value="@version.Id" /><button class="btn btn-sm btn-outline-success">Add to bank</button></form>
+                        <form method="post" asp-page-handler="Regenerate"><input type="hidden" name="requestId" value="@run.Id" /><button class="btn btn-sm btn-outline-primary">Regenerate</button></form>
+                    </div>
+                    <details class="mt-2"><summary class="small">Edit structured content</summary><form method="post" asp-page-handler="EditVersion" class="mt-2"><input type="hidden" name="VersionEdit.VersionId" value="@version.Id" /><label class="form-label small">Student paper JSON</label><textarea name="VersionEdit.StudentContentJson" class="form-control font-monospace" rows="6">@version.StudentContentJson</textarea><label class="form-label small mt-2">Marking scheme JSON</label><textarea name="VersionEdit.SolutionContentJson" class="form-control font-monospace" rows="6">@version.SolutionContentJson</textarea><input name="VersionEdit.Notes" class="form-control mt-2" placeholder="Revision note" /><button class="btn btn-sm btn-primary mt-2">Save draft</button></form></details>
+                }
+            </td></tr>
+        }
+        </tbody></table></div>
+    </div>
+    <div class="card form-card mt-3"><div class="card-header">Version comparison</div><div class="card-body"><form method="get" class="row g-2"><div class="col-md-5"><select name="leftVersionId" class="form-select"><option value="">Left version</option>@foreach (var v in Model.Versions) { <option value="@v.Id">@v.QuestionPaperId · v@v.VersionNumber</option> }</select></div><div class="col-md-5"><select name="rightVersionId" class="form-select"><option value="">Right version</option>@foreach (var v in Model.Versions) { <option value="@v.Id">@v.QuestionPaperId · v@v.VersionNumber</option> }</select></div><div class="col-md-2"><button class="btn btn-outline-primary w-100">Compare</button></div></form>@if (Model.CompareLeft is not null || Model.CompareRight is not null) { <div class="row g-3 mt-1"><div class="col-md-6"><pre class="ai-json-preview">@Model.CompareLeft</pre></div><div class="col-md-6"><pre class="ai-json-preview">@Model.CompareRight</pre></div></div> }</div></div>
+</section>
+
+<section id="usage" class="workflow-section mt-4"><div class="row g-3"><div class="col-md-4"><div class="metric-card"><span>Successful runs</span><strong>@Model.Requests.Count(r => r.Status == AIGenerationStatus.Succeeded)</strong></div></div><div class="col-md-4"><div class="metric-card"><span>Manual fallbacks</span><strong>@Model.Requests.Count(r => r.Status == AIGenerationStatus.ManualFallback)</strong></div></div><div class="col-md-4"><div class="metric-card"><span>Estimated cost</span><strong>@Model.Requests.SelectMany(r => r.UsageRecords).Sum(u => u.EstimatedCost).ToString("C4")</strong></div></div></div></section>
+
+@if (Model.CanConfigure)
+{
+<section id="configuration" class="workflow-section mt-4"><div class="row g-4"><div class="col-xl-6"><div class="card form-card h-100"><div class="card-header">Tenant AI provider</div><div class="card-body"><form method="post" asp-page-handler="SaveProvider"><div asp-validation-summary="All" class="text-danger small"></div><div class="row g-2"><div class="col-md-6"><label class="form-label">Name</label><input asp-for="Provider.Name" class="form-control" /></div><div class="col-md-6"><label class="form-label">Provider</label><select asp-for="Provider.ProviderType" asp-items="Html.GetEnumSelectList<AIProviderType>()" class="form-select"></select></div><div class="col-12"><label class="form-label">Endpoint</label><input asp-for="Provider.Endpoint" class="form-control" /></div><div class="col-md-6"><label class="form-label">Model / deployment</label><input asp-for="Provider.ModelOrDeployment" class="form-control" /></div><div class="col-md-6"><label class="form-label">API key</label><input asp-for="Provider.ApiKey" class="form-control" autocomplete="new-password" /><div class="form-text">Encrypted before persistence and never redisplayed.</div></div><div class="col-md-4"><label class="form-label">Region</label><input asp-for="Provider.Region" class="form-control" /></div><div class="col-md-4"><label class="form-label">Residency</label><select asp-for="Provider.DataResidencyPolicy" asp-items="Html.GetEnumSelectList<AIDataResidencyPolicy>()" class="form-select"></select></div><div class="col-md-4"><label class="form-label">Required region</label><input asp-for="Provider.RequiredRegion" class="form-control" /></div><div class="col-md-4"><label class="form-label">Input $ / 1M</label><input asp-for="Provider.InputCostPerMillionTokens" class="form-control" /></div><div class="col-md-4"><label class="form-label">Output $ / 1M</label><input asp-for="Provider.OutputCostPerMillionTokens" class="form-control" /></div><div class="col-md-4"><label class="form-label">Timeout seconds</label><input asp-for="Provider.TimeoutSeconds" class="form-control" /></div></div><div class="d-flex gap-3 mt-3"><label class="form-check"><input asp-for="Provider.IsEnabled" class="form-check-input" /> Enabled</label><label class="form-check"><input asp-for="Provider.IsDefault" class="form-check-input" /> Tenant default</label></div><button class="btn btn-primary mt-3">Save encrypted provider</button></form></div></div></div>
+<div class="col-xl-6"><div class="card form-card h-100"><div class="card-header">New prompt-template version</div><div class="card-body"><form method="post" asp-page-handler="SaveTemplate"><div class="row g-2"><div class="col-md-5"><label class="form-label">Code</label><input asp-for="Template.Code" class="form-control" /></div><div class="col-md-7"><label class="form-label">Name</label><input asp-for="Template.Name" class="form-control" /></div><div class="col-12"><label class="form-label">System prompt</label><textarea asp-for="Template.SystemPrompt" class="form-control" rows="5"></textarea></div><div class="col-12"><label class="form-label">User prompt</label><textarea asp-for="Template.UserPromptTemplate" class="form-control" rows="4"></textarea><div class="form-text">Use {{GenerationInputJson}} for the sanitized generation dimensions.</div></div><div class="col-12"><label class="form-label">Output schema</label><textarea asp-for="Template.OutputSchemaJson" class="form-control font-monospace" rows="5"></textarea></div></div><button class="btn btn-primary mt-3">Create template version</button></form></div></div></div></div></section>
+}
+
+@section Scripts {
+<script>
+document.getElementById('generation-form')?.addEventListener('submit', function () {
+  const selected = Array.from(document.getElementById('unit-selector').selectedOptions).map(o => o.value);
+  document.getElementById('unit-values').value = selected.join(',');
+});
+</script>
+}

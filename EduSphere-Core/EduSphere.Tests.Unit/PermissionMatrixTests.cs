@@ -19,7 +19,8 @@ public class PermissionMatrixTests
             [ModulePermission.ManageLibrary] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Librarian],
             [ModulePermission.ManageHostel] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.HostelManager],
             [ModulePermission.ManageCommunications] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.StaffAdmin],
-            [ModulePermission.ManageUsers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.StaffAdmin]
+            [ModulePermission.ManageUsers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.StaffAdmin],
+            [ModulePermission.ManageAIQuestionPapers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.Teacher, Roles.ExamController]
         };
 
         foreach (var permission in Enum.GetValues<ModulePermission>())
@@ -45,5 +46,6 @@ public class PermissionMatrixTests
         Assert.Equal(RolePermissionMatrix.RolesFor(ModulePermission.ManageHostel), RolePermissionMatrix.RolesForPolicy(AuthorizationPolicies.HostelManager));
         Assert.Equal(RolePermissionMatrix.RolesFor(ModulePermission.ManageCommunications), RolePermissionMatrix.RolesForPolicy(AuthorizationPolicies.CommunicationManager));
         Assert.Equal(RolePermissionMatrix.RolesFor(ModulePermission.ManageUsers), RolePermissionMatrix.RolesForPolicy(AuthorizationPolicies.UserManager));
+        Assert.Equal(RolePermissionMatrix.RolesFor(ModulePermission.ManageAIQuestionPapers), RolePermissionMatrix.RolesForPolicy(AuthorizationPolicies.AIQuestionPaperManager));
     }
 }

@@ -3,6 +3,7 @@ using EduSphere.Application.Services;
 using EduSphere.Domain.Interfaces;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Infrastructure.MultiTenancy;
+using EduSphere.Infrastructure.AI;
 using EduSphere.Infrastructure.Notifications;
 using EduSphere.Infrastructure.Repositories;
 using EduSphere.Infrastructure.Security;
@@ -81,6 +82,9 @@ public static class DependencyInjectionExtensions
         services.AddScoped<INotificationChannelSender, SmsNotificationChannelSender>();
         services.AddScoped<INotificationChannelSender, PushNotificationChannelSender>();
         services.AddScoped<INotificationChannelSender, InAppNotificationChannelSender>();
+
+        services.AddScoped<IAIQuestionPaperProvider, OpenAIQuestionPaperProvider>();
+        services.AddScoped<IAIQuestionPaperProvider, AzureOpenAIQuestionPaperProvider>();
 
         // Centralized migration strategy: None, Validate, or Migrate.
         services.AddSingleton<IDatabaseMigrationService, DatabaseMigrationService>();

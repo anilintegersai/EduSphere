@@ -90,6 +90,12 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Result> Results { get; set; }
     public DbSet<ResultPublicationBatch> ResultPublicationBatches { get; set; }
     public DbSet<ResultRankingRule> ResultRankingRules { get; set; }
+    public DbSet<AIProviderSetting> AIProviderSettings { get; set; }
+    public DbSet<AIPromptTemplate> AIPromptTemplates { get; set; }
+    public DbSet<AIGenerationRequest> AIGenerationRequests { get; set; }
+    public DbSet<AIGenerationResponse> AIGenerationResponses { get; set; }
+    public DbSet<AIGenerationLog> AIGenerationLogs { get; set; }
+    public DbSet<AIUsageRecord> AIUsageRecords { get; set; }
 
     // Enterprise services (Modules 14-18)
     public DbSet<FeeStructure> FeeStructures { get; set; }
@@ -990,6 +996,55 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<QuestionPaperModeration>()
             .HasOne(m => m.ReviewedByUser).WithMany()
             .HasForeignKey(m => m.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<AIProviderSetting>().Property(e => e.InputCostPerMillionTokens).HasPrecision(12, 6);
+        modelBuilder.Entity<AIProviderSetting>().Property(e => e.OutputCostPerMillionTokens).HasPrecision(12, 6);
+        modelBuilder.Entity<AIProviderSetting>().HasIndex(e => new { e.TenantId, e.Name }).IsUnique();
+        modelBuilder.Entity<AIProviderSetting>().HasIndex(e => new { e.TenantId, e.IsEnabled, e.IsDefault });
+
+        modelBuilder.Entity<AIPromptTemplate>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIPromptTemplate>().HasIndex(e => new { e.TenantId, e.BranchId, e.Code, e.Version }).IsUnique();
+
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.Branch).WithMany()
+            .HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.Subject).WithMany()
+            .HasForeignKey(e => e.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.QuestionPaper).WithMany()
+            .HasForeignKey(e => e.QuestionPaperId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.GeneratedVersion).WithMany()
+            .HasForeignKey(e => e.GeneratedVersionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.ProviderSetting).WithMany()
+            .HasForeignKey(e => e.ProviderSettingId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.PromptTemplate).WithMany()
+            .HasForeignKey(e => e.PromptTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>()
+            .HasOne(e => e.RegeneratedFromRequest).WithMany()
+            .HasForeignKey(e => e.RegeneratedFromRequestId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationRequest>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status, e.RequestedOn });
+
+        modelBuilder.Entity<AIGenerationResponse>()
+            .HasOne(e => e.AIGenerationRequest).WithOne(e => e.Response)
+            .HasForeignKey<AIGenerationResponse>(e => e.AIGenerationRequestId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationResponse>().HasIndex(e => e.AIGenerationRequestId).IsUnique();
+
+        modelBuilder.Entity<AIGenerationLog>()
+            .HasOne(e => e.AIGenerationRequest).WithMany(e => e.Logs)
+            .HasForeignKey(e => e.AIGenerationRequestId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIGenerationLog>().HasIndex(e => new { e.AIGenerationRequestId, e.OccurredOn });
+
+        modelBuilder.Entity<AIUsageRecord>()
+            .HasOne(e => e.AIGenerationRequest).WithMany(e => e.UsageRecords)
+            .HasForeignKey(e => e.AIGenerationRequestId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AIUsageRecord>().Property(e => e.EstimatedCost).HasPrecision(18, 6);
+        modelBuilder.Entity<AIUsageRecord>().HasIndex(e => new { e.TenantId, e.RecordedOn });
 
         modelBuilder.Entity<MarkEntry>()
             .HasOne(m => m.ExamSchedule).WithMany(s => s.MarkEntries)

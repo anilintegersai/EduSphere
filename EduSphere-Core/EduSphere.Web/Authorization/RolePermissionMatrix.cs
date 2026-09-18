@@ -14,7 +14,8 @@ public enum ModulePermission
     ManageLibrary,
     ManageHostel,
     ManageCommunications,
-    ManageUsers
+    ManageUsers,
+    ManageAIQuestionPapers
 }
 
 public static class RolePermissionMatrix
@@ -31,7 +32,8 @@ public static class RolePermissionMatrix
             [ModulePermission.ManageLibrary] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Librarian],
             [ModulePermission.ManageHostel] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.HostelManager],
             [ModulePermission.ManageCommunications] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.StaffAdmin],
-            [ModulePermission.ManageUsers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.StaffAdmin]
+            [ModulePermission.ManageUsers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.StaffAdmin],
+            [ModulePermission.ManageAIQuestionPapers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.Teacher, Roles.ExamController]
         };
 
     private static readonly IReadOnlyDictionary<string, ModulePermission> PolicyPermissions =
@@ -46,7 +48,8 @@ public static class RolePermissionMatrix
             [AuthorizationPolicies.LibraryManager] = ModulePermission.ManageLibrary,
             [AuthorizationPolicies.HostelManager] = ModulePermission.ManageHostel,
             [AuthorizationPolicies.CommunicationManager] = ModulePermission.ManageCommunications,
-            [AuthorizationPolicies.UserManager] = ModulePermission.ManageUsers
+            [AuthorizationPolicies.UserManager] = ModulePermission.ManageUsers,
+            [AuthorizationPolicies.AIQuestionPaperManager] = ModulePermission.ManageAIQuestionPapers
         };
 
     public static IReadOnlyCollection<string> RolesFor(ModulePermission permission) => Permissions[permission];
