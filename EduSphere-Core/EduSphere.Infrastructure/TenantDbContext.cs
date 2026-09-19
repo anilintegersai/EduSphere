@@ -3,9 +3,12 @@ using EduSphere.Domain.Common;
 using EduSphere.Domain.Entities;
 using EduSphere.Domain.MultiTenancy;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.ChangeTracking;
 using RoleNames = EduSphere.Domain.Constants.Roles;
+using System.Text.Json;
+using EduSphere.Domain.Enums;
 
 namespace EduSphere.Infrastructure;
 
@@ -146,6 +149,22 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Announcement> Announcements { get; set; }
     public DbSet<CommunicationLog> CommunicationLogs { get; set; }
     public DbSet<NotificationDeliveryAttempt> NotificationDeliveryAttempts { get; set; }
+    public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
+    public DbSet<TenantSubscription> TenantSubscriptions { get; set; }
+    public DbSet<TenantBranding> TenantBrandings { get; set; }
+    public DbSet<TenantDomain> TenantDomains { get; set; }
+    public DbSet<TenantIntegrationSetting> TenantIntegrationSettings { get; set; }
+    public DbSet<TenantFeatureFlag> TenantFeatureFlags { get; set; }
+    public DbSet<BranchContact> BranchContacts { get; set; }
+    public DbSet<BranchAcademicConfig> BranchAcademicConfigs { get; set; }
+    public DbSet<AppSetting> AppSettings { get; set; }
+    public DbSet<TenantSetting> TenantSettings { get; set; }
+    public DbSet<LookupItem> LookupItems { get; set; }
+    public DbSet<AuditLog> AuditLogs { get; set; }
+    public DbSet<BackgroundJobLog> BackgroundJobLogs { get; set; }
+    public DbSet<PermissionDefinition> PermissionDefinitions { get; set; }
+    public DbSet<RolePermissionGrant> RolePermissionGrants { get; set; }
+    public DbSet<UserPermissionGrant> UserPermissionGrants { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -179,6 +198,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         ConfigureOperations(modelBuilder);
         ConfigureExaminations(modelBuilder);
         ConfigureEnterpriseServices(modelBuilder);
+        ConfigureAdministration(modelBuilder);
 
         // Global tenant and soft-delete query filters for tenant-owned domain entities.
         // Identity's UserManager/SignInManager must resolve users (including a host-level
@@ -1864,7 +1884,94 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
                     break;
             }
         }
+
+        AppendAuditLogs(now, userId);
     }
+
+    private static void ConfigureAdministration(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<SubscriptionPlan>().Property(e => e.MonthlyPrice).HasPrecision(18, 2);
+        modelBuilder.Entity<SubscriptionPlan>().Property(e => e.AnnualPrice).HasPrecision(18, 2);
+        modelBuilder.Entity<SubscriptionPlan>().HasIndex(e => e.Code).IsUnique();
+        modelBuilder.Entity<TenantSubscription>().HasOne(e => e.SubscriptionPlan).WithMany().HasForeignKey(e => e.SubscriptionPlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TenantSubscription>().Property(e => e.AgreedMonthlyPrice).HasPrecision(18, 2);
+        modelBuilder.Entity<TenantSubscription>().HasIndex(e => new { e.TenantId, e.Status });
+        modelBuilder.Entity<TenantBranding>().HasIndex(e => e.TenantId).IsUnique();
+        modelBuilder.Entity<TenantDomain>().HasIndex(e => e.DomainName).IsUnique();
+        modelBuilder.Entity<TenantDomain>().HasIndex(e => new { e.TenantId, e.IsPrimary });
+        modelBuilder.Entity<TenantIntegrationSetting>().HasIndex(e => new { e.TenantId, e.IntegrationKey }).IsUnique();
+        modelBuilder.Entity<TenantFeatureFlag>().HasIndex(e => new { e.TenantId, e.FeatureKey }).IsUnique();
+        modelBuilder.Entity<BranchContact>().HasOne(e => e.Branch).WithMany().HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BranchContact>().HasIndex(e => new { e.TenantId, e.BranchId, e.ContactType, e.ContactName });
+        modelBuilder.Entity<BranchAcademicConfig>().HasOne(e => e.Branch).WithMany().HasForeignKey(e => e.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BranchAcademicConfig>().HasIndex(e => e.BranchId).IsUnique();
+        modelBuilder.Entity<AppSetting>().HasIndex(e => e.Key).IsUnique();
+        modelBuilder.Entity<TenantSetting>().HasIndex(e => new { e.TenantId, e.Key }).IsUnique();
+        modelBuilder.Entity<LookupItem>().HasIndex(e => new { e.TenantId, e.LookupType, e.Code }).IsUnique();
+        modelBuilder.Entity<AuditLog>().HasIndex(e => new { e.TenantId, e.OccurredOn });
+        modelBuilder.Entity<AuditLog>().HasIndex(e => new { e.EntityType, e.EntityId });
+        modelBuilder.Entity<BackgroundJobLog>().HasIndex(e => new { e.TenantId, e.Status, e.ScheduledOn });
+        modelBuilder.Entity<BackgroundJobLog>().HasIndex(e => new { e.TenantId, e.JobKey });
+        modelBuilder.Entity<PermissionDefinition>().HasIndex(e => e.Key).IsUnique();
+        modelBuilder.Entity<RolePermissionGrant>().HasOne(e => e.Role).WithMany().HasForeignKey(e => e.RoleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<RolePermissionGrant>().HasOne(e => e.PermissionDefinition).WithMany().HasForeignKey(e => e.PermissionDefinitionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<RolePermissionGrant>().HasIndex(e => new { e.TenantId, e.RoleId, e.PermissionDefinitionId }).IsUnique();
+        modelBuilder.Entity<UserPermissionGrant>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserPermissionGrant>().HasOne(e => e.PermissionDefinition).WithMany().HasForeignKey(e => e.PermissionDefinitionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserPermissionGrant>().HasIndex(e => new { e.TenantId, e.UserId, e.PermissionDefinitionId }).IsUnique();
+    }
+
+    private void AppendAuditLogs(DateTime now, string userId)
+    {
+        var candidates = ChangeTracker.Entries()
+            .Where(e => e.Entity is not AuditLog && e.Entity is not IdentityUser<Guid> &&
+                        e.State is EntityState.Added or EntityState.Modified)
+            .ToList();
+        foreach (var entry in candidates)
+        {
+            var entityId = entry.Entity is IGuidEntity guid ? guid.Id.ToString() : "unknown";
+            var tenantId = entry.Entity is ITenantEntity tenantOwned ? tenantOwned.TenantId :
+                entry.Entity is Tenant tenant ? tenant.Id : _tenantContext.TenantId;
+            var branchProperty = entry.Properties.FirstOrDefault(p => p.Metadata.Name == "BranchId");
+            Guid? branchId = branchProperty?.CurrentValue is Guid branch && branch != Guid.Empty ? branch : null;
+            var isDelete = entry.Entity is ISoftDeletable deleted && deleted.IsDeleted &&
+                           entry.Property(nameof(ISoftDeletable.IsDeleted)).IsModified;
+            var action = entry.State == EntityState.Added ? AuditAction.Created : isDelete ? AuditAction.Deleted : AuditAction.Updated;
+            var oldValues = entry.State == EntityState.Added ? null : SerializeAuditValues(entry, entry.Properties.Where(p => p.IsModified), false);
+            var newValues = SerializeAuditValues(entry, entry.State == EntityState.Added ? entry.Properties : entry.Properties.Where(p => p.IsModified), true);
+            AuditLogs.Add(new AuditLog
+            {
+                TenantId = tenantId == Guid.Empty ? null : tenantId,
+                BranchId = branchId,
+                EntityType = entry.Metadata.ClrType.Name,
+                EntityId = entityId,
+                Action = action,
+                ActorId = userId,
+                OccurredOn = now,
+                OldValuesJson = oldValues,
+                NewValuesJson = newValues,
+                CreatedBy = userId,
+                CreatedOn = now,
+                ConcurrencyToken = Guid.NewGuid()
+            });
+        }
+    }
+
+    private static string? SerializeAuditValues(EntityEntry entry, IEnumerable<PropertyEntry> properties, bool current)
+    {
+        var values = properties.ToDictionary(
+            p => p.Metadata.Name,
+            p => IsSensitiveAuditField(entry.Entity, p.Metadata.Name) ? "[REDACTED]" : current ? p.CurrentValue : p.OriginalValue);
+        return values.Count == 0 ? null : JsonSerializer.Serialize(values);
+    }
+
+    private static bool IsSensitiveAuditField(object entity, string name) =>
+        (name == "Value" && (entity is AppSetting { IsSensitive: true } || entity is TenantSetting { IsSensitive: true })) ||
+        name.Contains("Password", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("Secret", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("Token", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("Protected", StringComparison.OrdinalIgnoreCase) ||
+        name.Contains("SecurityStamp", StringComparison.OrdinalIgnoreCase);
 
     private sealed class SystemCurrentUserContext : ICurrentUserContext
     {

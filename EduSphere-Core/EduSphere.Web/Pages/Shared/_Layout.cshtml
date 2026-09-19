@@ -1,19 +1,32 @@
 @using Microsoft.AspNetCore.Identity
 @inject SignInManager<ApplicationUser> SignInManager
+@inject Microsoft.AspNetCore.Authorization.IAuthorizationService AuthorizationService
+@inject EduSphere.Domain.MultiTenancy.ITenantContext TenantContext
+@inject EduSphere.Infrastructure.TenantDbContext TenantDb
+@inject EduSphere.Application.Interfaces.ITenantFeatureService TenantFeatures
+@using Microsoft.EntityFrameworkCore
 @{
     var currentPage = ViewContext.RouteData.Values["page"]?.ToString() ?? string.Empty;
     var isSignedIn = SignInManager.IsSignedIn(User);
-    var canManageTenants = RolePermissionMatrix.Allows(ModulePermission.ManageTenants, User);
-    var canManageTenantWorkspace = RolePermissionMatrix.Allows(ModulePermission.ManageTenantWorkspace, User);
-    var canManageBranchWorkspace = RolePermissionMatrix.Allows(ModulePermission.ManageBranchWorkspace, User);
-    var canMarkAttendance = RolePermissionMatrix.Allows(ModulePermission.MarkAttendance, User);
-    var canManageFinance = RolePermissionMatrix.Allows(ModulePermission.ManageFinance, User);
-    var canManageTransport = RolePermissionMatrix.Allows(ModulePermission.ManageTransport, User);
-    var canManageLibrary = RolePermissionMatrix.Allows(ModulePermission.ManageLibrary, User);
-    var canManageHostel = RolePermissionMatrix.Allows(ModulePermission.ManageHostel, User);
-    var canManageCommunications = RolePermissionMatrix.Allows(ModulePermission.ManageCommunications, User);
-    var canManageUsers = RolePermissionMatrix.Allows(ModulePermission.ManageUsers, User);
-    var canManageAIQuestionPapers = RolePermissionMatrix.Allows(ModulePermission.ManageAIQuestionPapers, User);
+    var canManageTenants = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.SuperAdmin)).Succeeded;
+    var canManageTenantWorkspace = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.TenantAdmin)).Succeeded;
+    var canManageBranchWorkspace = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.BranchAdmin)).Succeeded;
+    var canMarkAttendance = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.AttendanceMarker)).Succeeded;
+    var canManageFinance = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.FinanceManager)).Succeeded;
+    var canManageTransport = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.TransportManager)).Succeeded;
+    var canManageLibrary = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.LibraryManager)).Succeeded;
+    var canManageHostel = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.HostelManager)).Succeeded;
+    var canManageCommunications = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.CommunicationManager)).Succeeded;
+    var canManageUsers = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.UserManager)).Succeeded;
+    var canManageAIQuestionPapers = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AuthorizationPolicies.AIQuestionPaperManager)).Succeeded;
+    var canViewAdministration = isSignedIn && (await AuthorizationService.AuthorizeAsync(User, null, AdministrationPolicies.View)).Succeeded;
+    var tenantBranding = TenantContext.HasTenant ? await TenantDb.TenantBrandings.AsNoTracking().SingleOrDefaultAsync() : null;
+    var aiEnabled = await TenantFeatures.IsEnabledAsync("module.ai-question-papers");
+    var financeEnabled = await TenantFeatures.IsEnabledAsync("module.finance");
+    var transportEnabled = await TenantFeatures.IsEnabledAsync("module.transport");
+    var libraryEnabled = await TenantFeatures.IsEnabledAsync("module.library");
+    var hostelEnabled = await TenantFeatures.IsEnabledAsync("module.hostel");
+    var communicationsEnabled = await TenantFeatures.IsEnabledAsync("module.communications");
 }
 <!DOCTYPE html>
 <html lang="en">
@@ -24,13 +37,24 @@
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
     <link rel="stylesheet" href="~/EduSphere.Web.styles.css" asp-append-version="true" />
+    @if (!string.IsNullOrWhiteSpace(tenantBranding?.FaviconUrl))
+    {
+        <link rel="icon" href="@tenantBranding.FaviconUrl" />
+    }
 </head>
-<body class="app-body">
+<body class="app-body" style="@(tenantBranding is null ? null : $"--tenant-primary:{tenantBranding.PrimaryColor};--tenant-secondary:{tenantBranding.SecondaryColor};--tenant-accent:{tenantBranding.AccentColor};--tenant-font:{tenantBranding.FontFamily ?? "inherit"}")">
     <header class="app-header">
         <nav class="navbar navbar-expand-xl app-navbar">
             <div class="container-fluid px-3 px-lg-4 px-xxl-5">
                 <a class="navbar-brand app-brand" asp-area="" asp-page="/Index" aria-label="EduSphere home">
-                    <span class="brand-mark">E</span>
+                    @if (!string.IsNullOrWhiteSpace(tenantBranding?.LogoUrl))
+                    {
+                        <span class="brand-mark brand-logo"><img src="@tenantBranding.LogoUrl" alt="" /></span>
+                    }
+                    else
+                    {
+                        <span class="brand-mark">E</span>
+                    }
                     <span class="brand-copy">
                         <span class="brand-title">EduSphere</span>
                         <span class="brand-subtitle">Academic Cloud</span>
@@ -104,10 +128,16 @@
                                     <a class="nav-link @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Admissions/Applications">Admissions</a>
                                 </li>
                             }
-                            @if (canManageAIQuestionPapers)
+                            @if (canManageAIQuestionPapers && aiEnabled)
                             {
                                 <li class="nav-item">
                                     <a class="nav-link @(currentPage.StartsWith("/AI", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/AI/QuestionPapers">AI Papers</a>
+                                </li>
+                            }
+                            @if (canViewAdministration)
+                            {
+                                <li class="nav-item">
+                                    <a class="nav-link @(currentPage.StartsWith("/Administration", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Administration/Index">Administration</a>
                                 </li>
                             }
                             @if (canMarkAttendance)
@@ -125,28 +155,28 @@
                                     <a class="nav-link @(currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Examinations/Exams">Exams</a>
                                 </li>
                             }
-                            @if (canManageFinance || canManageTransport || canManageLibrary || canManageHostel || canManageCommunications)
+                            @if ((canManageFinance && financeEnabled) || (canManageTransport && transportEnabled) || (canManageLibrary && libraryEnabled) || (canManageHostel && hostelEnabled) || (canManageCommunications && communicationsEnabled))
                             {
                                 <li class="nav-item dropdown">
                                     <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Enterprise", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Enterprise</a>
                                     <ul class="dropdown-menu app-dropdown">
-                                        @if (canManageFinance)
+                                        @if (canManageFinance && financeEnabled)
                                         {
                                             <li><a class="dropdown-item" asp-page="/Enterprise/Finance">Fees & Finance</a></li>
                                         }
-                                        @if (canManageTransport)
+                                        @if (canManageTransport && transportEnabled)
                                         {
                                             <li><a class="dropdown-item" asp-page="/Enterprise/Transport">Transport</a></li>
                                         }
-                                        @if (canManageLibrary)
+                                        @if (canManageLibrary && libraryEnabled)
                                         {
                                             <li><a class="dropdown-item" asp-page="/Enterprise/Library">Library</a></li>
                                         }
-                                        @if (canManageHostel)
+                                        @if (canManageHostel && hostelEnabled)
                                         {
                                             <li><a class="dropdown-item" asp-page="/Enterprise/Hostel">Hostel</a></li>
                                         }
-                                        @if (canManageCommunications)
+                                        @if (canManageCommunications && communicationsEnabled)
                                         {
                                             <li><a class="dropdown-item" asp-page="/Enterprise/Communications">Communications</a></li>
                                         }

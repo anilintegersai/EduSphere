@@ -21,6 +21,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
+using Microsoft.AspNetCore.Authorization;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -73,6 +74,10 @@ builder.Services.AddScoped<IAdmissionWorkflowService, AdmissionWorkflowService>(
 builder.Services.AddScoped<IAttendanceTimetableWorkflowService, AttendanceTimetableWorkflowService>();
 builder.Services.AddScoped<IAISecretProtector, DataProtectionAISecretProtector>();
 builder.Services.AddScoped<IAIQuestionPaperService, AIQuestionPaperService>();
+builder.Services.AddScoped<IEffectivePermissionService, EffectivePermissionService>();
+builder.Services.AddScoped<ITenantFeatureService, TenantFeatureService>();
+builder.Services.AddScoped<IBackgroundJobMonitor, BackgroundJobMonitor>();
+builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddSingleton<IAdmissionDocumentStorageService, FileSystemAdmissionDocumentStorageService>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
@@ -148,23 +153,27 @@ builder.Services.AddAuthentication()
 
 builder.Services.AddAuthorization(options =>
 {
-    foreach (var policy in new[]
+    foreach (var policy in new Dictionary<string, string>
     {
-        AuthorizationPolicies.SuperAdmin,
-        AuthorizationPolicies.TenantAdmin,
-        AuthorizationPolicies.BranchAdmin,
-        AuthorizationPolicies.AttendanceMarker,
-        AuthorizationPolicies.FinanceManager,
-        AuthorizationPolicies.TransportManager,
-        AuthorizationPolicies.LibraryManager,
-        AuthorizationPolicies.HostelManager,
-        AuthorizationPolicies.CommunicationManager,
-        AuthorizationPolicies.UserManager,
-        AuthorizationPolicies.AIQuestionPaperManager
+        [AuthorizationPolicies.SuperAdmin] = PermissionKeys.TenantsManage,
+        [AuthorizationPolicies.TenantAdmin] = PermissionKeys.TenantWorkspaceManage,
+        [AuthorizationPolicies.BranchAdmin] = PermissionKeys.BranchWorkspaceManage,
+        [AuthorizationPolicies.AttendanceMarker] = PermissionKeys.AttendanceMark,
+        [AuthorizationPolicies.FinanceManager] = PermissionKeys.FinanceManage,
+        [AuthorizationPolicies.TransportManager] = PermissionKeys.TransportManage,
+        [AuthorizationPolicies.LibraryManager] = PermissionKeys.LibraryManage,
+        [AuthorizationPolicies.HostelManager] = PermissionKeys.HostelManage,
+        [AuthorizationPolicies.CommunicationManager] = PermissionKeys.CommunicationsManage,
+        [AuthorizationPolicies.UserManager] = PermissionKeys.UsersManage,
+        [AuthorizationPolicies.AIQuestionPaperManager] = PermissionKeys.AIQuestionPapersManage
     })
     {
-        options.AddPolicy(policy, builder => builder.RequireRole(RolePermissionMatrix.RolesForPolicy(policy)));
+        options.AddPolicy(policy.Key, policyBuilder => policyBuilder.AddRequirements(new PermissionRequirement(policy.Value)));
     }
+    options.AddPolicy(AdministrationPolicies.View, p => p.AddRequirements(new PermissionRequirement(PermissionKeys.AdministrationView)));
+    options.AddPolicy(AdministrationPolicies.ManageTenant, p => p.AddRequirements(new PermissionRequirement(PermissionKeys.AdministrationManageTenant)));
+    options.AddPolicy(AdministrationPolicies.ManageGlobal, p => p.AddRequirements(new PermissionRequirement(PermissionKeys.AdministrationManageGlobal)));
+    options.AddPolicy(AdministrationPolicies.ManagePermissions, p => p.AddRequirements(new PermissionRequirement(PermissionKeys.AdministrationManagePermissions)));
 });
 
 // ---- OpenAPI / Swagger ----
@@ -195,6 +204,7 @@ await app.Services.ApplyConfiguredAccountEmailProviderAsync();
 await app.Services.ApplyAdmissionDefaultsAsync();
 await app.Services.ApplyAdmissionWorkflowDemoDataAsync();
 await app.Services.ApplyAIQuestionPaperDefaultsAsync();
+await app.Services.ApplyAdministrationDefaultsAsync();
 
 // ---- Pipeline ----
 if (app.Environment.IsDevelopment())
@@ -217,6 +227,7 @@ app.UseAuthentication();
 
 // Resolve the tenant once per request (after auth, before authorization).
 app.UseMiddleware<TenantResolutionMiddleware>();
+app.UseMiddleware<TenantFeatureGateMiddleware>();
 
 app.UseAuthorization();
 

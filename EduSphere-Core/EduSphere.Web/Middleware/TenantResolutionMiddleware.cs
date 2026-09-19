@@ -4,6 +4,8 @@ using EduSphere.Domain.Entities;
 using EduSphere.Domain.Interfaces;
 using EduSphere.Domain.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
+using EduSphere.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 
 namespace EduSphere.Web.Middleware;
 
@@ -40,12 +42,13 @@ public class TenantResolutionMiddleware
         HttpContext context,
         ITenantContext tenantContext,
         ITenantRepository tenantRepository,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        TenantDbContext dbContext)
     {
         var host = context.Request.Host.Host;
         Tenant? tenant = IsAuthenticatedNonSuperAdmin(context)
             ? await ResolveAssignedTenantAsync(context, tenantRepository, userManager)
-            : await ResolveAmbientTenantAsync(context, tenantRepository, host);
+            : await ResolveAmbientTenantAsync(context, tenantRepository, dbContext, host);
 
         if (tenant is { IsActive: true })
         {
@@ -70,6 +73,7 @@ public class TenantResolutionMiddleware
     private async Task<Tenant?> ResolveAmbientTenantAsync(
         HttpContext context,
         ITenantRepository tenantRepository,
+        TenantDbContext dbContext,
         string host)
     {
         var identifier = FromHeader(context)
@@ -78,11 +82,18 @@ public class TenantResolutionMiddleware
                          ?? FromCookie(context); // browser sessions (tenant switcher)
 
         if (!string.IsNullOrWhiteSpace(identifier))
-            return await tenantRepository.GetByIdentifierAsync(identifier);
+        {
+            var identifiedTenant = await tenantRepository.GetByIdentifierAsync(identifier);
+            if (identifiedTenant is not null) return identifiedTenant;
+        }
 
-        return IsCustomDomainCandidate(host)
-            ? await tenantRepository.GetByCustomDomainAsync(host)
-            : null;
+        if (!IsCustomDomainCandidate(host)) return null;
+        var legacy = await tenantRepository.GetByCustomDomainAsync(host);
+        if (legacy is not null) return legacy;
+        var tenantId = await dbContext.TenantDomains.IgnoreQueryFilters().AsNoTracking()
+            .Where(d => d.DomainName == host && d.IsVerified)
+            .Select(d => (Guid?)d.TenantId).SingleOrDefaultAsync();
+        return tenantId.HasValue ? await tenantRepository.GetByIdAsync(tenantId.Value) : null;
     }
 
     private static async Task<Tenant?> ResolveAssignedTenantAsync(
@@ -136,9 +147,6 @@ public class TenantResolutionMiddleware
         if (host.Equals("localhost", StringComparison.OrdinalIgnoreCase)) return false;
         if (IPAddress.TryParse(host, out _)) return false;
         if (!host.Contains('.')) return false;
-        // A host under our own base domain is handled by subdomain resolution, not custom-domain.
-        if (!string.IsNullOrEmpty(_baseDomain) &&
-            host.EndsWith(_baseDomain, StringComparison.OrdinalIgnoreCase)) return false;
         return true;
     }
 }
