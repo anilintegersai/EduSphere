@@ -38,6 +38,16 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Section> Sections { get; set; }
     public DbSet<Subject> Subjects { get; set; }
     public DbSet<SyllabusUnit> SyllabusUnits { get; set; }
+    public DbSet<AcademicTerm> AcademicTerms { get; set; }
+    public DbSet<AcademicCalendarEvent> AcademicCalendarEvents { get; set; }
+    public DbSet<SyllabusTopic> SyllabusTopics { get; set; }
+    public DbSet<SubjectReferenceBook> SubjectReferenceBooks { get; set; }
+    public DbSet<LearningOutcome> LearningOutcomes { get; set; }
+    public DbSet<TeacherLessonPlan> TeacherLessonPlans { get; set; }
+    public DbSet<TeacherAvailabilityRule> TeacherAvailabilityRules { get; set; }
+    public DbSet<TimetableTemplate> TimetableTemplates { get; set; }
+    public DbSet<TimetableTemplateItem> TimetableTemplateItems { get; set; }
+    public DbSet<TimetableGenerationRun> TimetableGenerationRuns { get; set; }
 
     // Students / Teachers (Module 4)
     public DbSet<StudentProfile> StudentProfiles { get; set; }
@@ -321,6 +331,31 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(u => u.Subject).WithMany()
             .HasForeignKey(u => u.SubjectId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<AcademicTerm>().HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AcademicCalendarEvent>().HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AcademicCalendarEvent>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AcademicCalendarEvent>().HasOne(x => x.AcademicTerm).WithMany().HasForeignKey(x => x.AcademicTermId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SyllabusTopic>().HasOne(x => x.SyllabusUnit).WithMany().HasForeignKey(x => x.SyllabusUnitId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SubjectReferenceBook>().HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LearningOutcome>().HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LearningOutcome>().HasOne(x => x.SyllabusUnit).WithMany().HasForeignKey(x => x.SyllabusUnitId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLessonPlan>().HasOne(x => x.TeacherProfile).WithMany().HasForeignKey(x => x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLessonPlan>().HasOne(x => x.Section).WithMany().HasForeignKey(x => x.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLessonPlan>().HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLessonPlan>().HasOne(x => x.AcademicTerm).WithMany().HasForeignKey(x => x.AcademicTermId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherLessonPlan>().HasOne(x => x.SyllabusTopic).WithMany().HasForeignKey(x => x.SyllabusTopicId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherAvailabilityRule>().HasOne(x => x.TeacherProfile).WithMany().HasForeignKey(x => x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherAvailabilityRule>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableTemplate>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableTemplateItem>().HasOne(x => x.TimetableTemplate).WithMany(x => x.Items).HasForeignKey(x => x.TimetableTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableTemplateItem>().HasOne(x => x.Subject).WithMany().HasForeignKey(x => x.SubjectId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableTemplateItem>().HasOne(x => x.PreferredRoom).WithMany().HasForeignKey(x => x.PreferredRoomId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableGenerationRun>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableGenerationRun>().HasOne(x => x.AcademicYear).WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableGenerationRun>().HasOne(x => x.Section).WithMany().HasForeignKey(x => x.SectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableGenerationRun>().HasOne(x => x.TimetableTemplate).WithMany().HasForeignKey(x => x.TimetableTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TimetableGenerationRun>().HasOne(x => x.GeneratedTimetable).WithMany().HasForeignKey(x => x.GeneratedTimetableId).OnDelete(DeleteBehavior.Restrict);
+
         // Business-identity uniqueness (per tenant) and tenant/FK indexes.
         modelBuilder.Entity<AcademicYear>().HasIndex(a => new { a.TenantId, a.Name }).IsUnique();
         modelBuilder.Entity<Department>().HasIndex(d => new { d.TenantId, d.Code }).IsUnique();
@@ -331,6 +366,16 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<Batch>().HasIndex(b => b.AcademicYearId);
         modelBuilder.Entity<Section>().HasIndex(s => s.BatchId);
         modelBuilder.Entity<SyllabusUnit>().HasIndex(u => u.SubjectId);
+        modelBuilder.Entity<AcademicTerm>().HasIndex(x => new { x.TenantId, x.AcademicYearId, x.Sequence }).IsUnique();
+        modelBuilder.Entity<AcademicCalendarEvent>().HasIndex(x => new { x.TenantId, x.AcademicYearId, x.StartsOn });
+        modelBuilder.Entity<SyllabusTopic>().HasIndex(x => new { x.SyllabusUnitId, x.Order }).IsUnique();
+        modelBuilder.Entity<SubjectReferenceBook>().HasIndex(x => new { x.TenantId, x.SubjectId, x.Title });
+        modelBuilder.Entity<LearningOutcome>().HasIndex(x => new { x.TenantId, x.SubjectId, x.Code }).IsUnique();
+        modelBuilder.Entity<TeacherLessonPlan>().HasIndex(x => new { x.TenantId, x.TeacherProfileId, x.PlannedDate });
+        modelBuilder.Entity<TeacherAvailabilityRule>().HasIndex(x => new { x.TenantId, x.TeacherProfileId, x.DayOfWeek, x.StartsAt, x.EndsAt });
+        modelBuilder.Entity<TimetableTemplate>().HasIndex(x => new { x.TenantId, x.BranchId, x.Name }).IsUnique();
+        modelBuilder.Entity<TimetableTemplateItem>().HasIndex(x => new { x.TimetableTemplateId, x.SubjectId }).IsUnique();
+        modelBuilder.Entity<TimetableGenerationRun>().HasIndex(x => new { x.TenantId, x.BranchId, x.StartedOn });
     }
 
     private static void ConfigurePeopleProfiles(ModelBuilder modelBuilder)

@@ -72,6 +72,7 @@ builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IStudentTeacherLifecycleService, StudentTeacherLifecycleService>();
 builder.Services.AddScoped<IAdmissionWorkflowService, AdmissionWorkflowService>();
 builder.Services.AddScoped<IAttendanceTimetableWorkflowService, AttendanceTimetableWorkflowService>();
+builder.Services.AddScoped<IAcademicPlanningService, AcademicPlanningService>();
 builder.Services.AddScoped<IAISecretProtector, DataProtectionAISecretProtector>();
 builder.Services.AddScoped<IAIQuestionPaperService, AIQuestionPaperService>();
 builder.Services.AddScoped<IEffectivePermissionService, EffectivePermissionService>();
