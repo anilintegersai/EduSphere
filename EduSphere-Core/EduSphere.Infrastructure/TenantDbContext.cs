@@ -65,6 +65,18 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<UserBranchAssignment> UserBranchAssignments { get; set; }
     public DbSet<UserRoleAssignment> UserRoleAssignments { get; set; }
     public DbSet<UserInvitation> UserInvitations { get; set; }
+    public DbSet<TeacherQualificationRecord> TeacherQualificationRecords { get; set; }
+    public DbSet<TeacherExperienceRecord> TeacherExperienceRecords { get; set; }
+    public DbSet<StaffAttendanceRecord> StaffAttendanceRecords { get; set; }
+    public DbSet<StaffLeaveRequest> StaffLeaveRequests { get; set; }
+    public DbSet<StaffPayrollProfile> StaffPayrollProfiles { get; set; }
+    public DbSet<PayrollRun> PayrollRuns { get; set; }
+    public DbSet<PayrollEntry> PayrollEntries { get; set; }
+    public DbSet<SecurityEvent> SecurityEvents { get; set; }
+    public DbSet<AccountEmailJob> AccountEmailJobs { get; set; }
+    public DbSet<EmailBounceEvent> EmailBounceEvents { get; set; }
+    public DbSet<UserImportBatch> UserImportBatches { get; set; }
+    public DbSet<UserImportRow> UserImportRows { get; set; }
 
     // Admissions / Attendance / Timetable (Module 5-9)
     public DbSet<AdmissionFormTemplate> AdmissionFormTemplates { get; set; }
@@ -601,6 +613,24 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasOne(i => i.InvitedByUser).WithMany()
             .HasForeignKey(i => i.InvitedByUserId).OnDelete(DeleteBehavior.Restrict);
 
+        modelBuilder.Entity<TeacherQualificationRecord>().HasOne(x => x.TeacherProfile).WithMany().HasForeignKey(x => x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherExperienceRecord>().HasOne(x => x.TeacherProfile).WithMany().HasForeignKey(x => x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffAttendanceRecord>().HasOne(x => x.StaffProfile).WithMany().HasForeignKey(x => x.StaffProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffAttendanceRecord>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffLeaveRequest>().HasOne(x => x.StaffProfile).WithMany().HasForeignKey(x => x.StaffProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffLeaveRequest>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffLeaveRequest>().HasOne(x => x.ReviewedByUser).WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StaffPayrollProfile>().HasOne(x => x.StaffProfile).WithMany().HasForeignKey(x => x.StaffProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PayrollRun>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PayrollEntry>().HasOne(x => x.PayrollRun).WithMany(x => x.Entries).HasForeignKey(x => x.PayrollRunId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PayrollEntry>().HasOne(x => x.StaffProfile).WithMany().HasForeignKey(x => x.StaffProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<SecurityEvent>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AccountEmailJob>().HasOne(x => x.NotificationMessage).WithMany().HasForeignKey(x => x.NotificationMessageId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserImportBatch>().HasMany(x => x.Rows).WithOne(x => x.UserImportBatch).HasForeignKey(x => x.UserImportBatchId).OnDelete(DeleteBehavior.Restrict);
+
+        foreach (var property in new[] { nameof(StaffPayrollProfile.BasicSalary), nameof(StaffPayrollProfile.Allowances), nameof(StaffPayrollProfile.Deductions) }) modelBuilder.Entity<StaffPayrollProfile>().Property(property).HasPrecision(18, 2);
+        foreach (var property in new[] { nameof(PayrollEntry.BasicSalary), nameof(PayrollEntry.Allowances), nameof(PayrollEntry.Deductions), nameof(PayrollEntry.NetPay) }) modelBuilder.Entity<PayrollEntry>().Property(property).HasPrecision(18, 2);
+
         modelBuilder.Entity<StudentProfile>().HasIndex(s => new { s.TenantId, s.AdmissionNumber }).IsUnique();
         modelBuilder.Entity<StudentProfile>().HasIndex(s => s.BranchId);
         modelBuilder.Entity<StudentProfile>().HasIndex(s => s.SectionId);
@@ -659,6 +689,19 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
         modelBuilder.Entity<UserInvitation>().HasIndex(i => new { i.TenantId, i.Email, i.Status });
         modelBuilder.Entity<UserInvitation>().HasIndex(i => new { i.TenantId, i.UserId, i.Status });
+        modelBuilder.Entity<StudentGuardian>().HasIndex(g => new { g.TenantId, g.ParentUserId, g.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<TeacherQualificationRecord>().HasIndex(x => new { x.TenantId, x.TeacherProfileId, x.Qualification });
+        modelBuilder.Entity<TeacherExperienceRecord>().HasIndex(x => new { x.TenantId, x.TeacherProfileId, x.FromDate });
+        modelBuilder.Entity<StaffAttendanceRecord>().HasIndex(x => new { x.TenantId, x.StaffProfileId, x.AttendanceDate }).IsUnique();
+        modelBuilder.Entity<StaffLeaveRequest>().HasIndex(x => new { x.TenantId, x.BranchId, x.Status, x.FromDate });
+        modelBuilder.Entity<StaffPayrollProfile>().HasIndex(x => new { x.TenantId, x.StaffProfileId }).IsUnique();
+        modelBuilder.Entity<PayrollRun>().HasIndex(x => new { x.TenantId, x.BranchId, x.Year, x.Month }).IsUnique();
+        modelBuilder.Entity<PayrollEntry>().HasIndex(x => new { x.PayrollRunId, x.StaffProfileId }).IsUnique();
+        modelBuilder.Entity<SecurityEvent>().HasIndex(x => new { x.TenantId, x.OccurredOn, x.EventType });
+        modelBuilder.Entity<AccountEmailJob>().HasIndex(x => new { x.Status, x.AvailableOn });
+        modelBuilder.Entity<EmailBounceEvent>().HasIndex(x => new { x.TenantId, x.Recipient, x.OccurredOn });
+        modelBuilder.Entity<UserImportBatch>().HasIndex(x => new { x.TenantId, x.Status, x.CreatedOn });
+        modelBuilder.Entity<UserImportRow>().HasIndex(x => new { x.UserImportBatchId, x.RowNumber }).IsUnique();
     }
 
     private static void ConfigureOperations(ModelBuilder modelBuilder)

@@ -42,7 +42,7 @@ public class ParentProfile : TenantEntityBase
 public class StaffProfile : TenantEntityBase
 {
     public Guid UserId { get; set; }
-    public ApplicationUser? User { get; set; }
+    public ApplicationUser User { get; set; } = null!;
 
     public Guid? BranchId { get; set; }
     public Branch? Branch { get; set; }

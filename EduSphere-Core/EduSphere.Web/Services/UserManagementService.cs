@@ -2,6 +2,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using EduSphere.Application.DTOs.UserManagement;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Constants;
@@ -325,6 +326,12 @@ public sealed class UserManagementService : IUserManagementService
         CancellationToken cancellationToken = default)
     {
         var result = new BulkUserImportResult();
+        var actorInfo = await ResolveActorAsync(actor);
+        if (actorInfo is null)
+            return UserManagementOperationResult<BulkUserImportResult>.Failure("Only authenticated administrators can import users.");
+        var targetTenant = await ResolveTargetTenantIdAsync(actorInfo, request.TenantId, cancellationToken);
+        if (!targetTenant.Succeeded || targetTenant.Data is null)
+            return UserManagementOperationResult<BulkUserImportResult>.Failure(targetTenant.Errors.ToArray());
         var lines = request.CsvText
             .Split(new[] { "\r\n", "\n" }, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
             .ToList();
@@ -332,14 +339,20 @@ public sealed class UserManagementService : IUserManagementService
         if (lines.Count == 0)
             return UserManagementOperationResult<BulkUserImportResult>.Failure("CSV text did not contain any rows.");
 
+        var batch = new UserImportBatch { TenantId = targetTenant.Data.Value, RequestedByUserId = actorInfo.User.Id, BranchId = request.BranchId, RoleName = request.RoleName, Status = UserImportBatchStatus.Processing, SendActivationEmail = request.SendActivationEmail };
+        _dbContext.UserImportBatches.Add(batch);
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
         var startIndex = LooksLikeHeader(lines[0]) ? 1 : 0;
         for (var i = startIndex; i < lines.Count; i++)
         {
             cancellationToken.ThrowIfCancellationRequested();
             var rowNumber = i + 1;
             var fields = SplitCsvLine(lines[i]);
+            result.TotalRows++;
             if (fields.Count < 3)
             {
+                _dbContext.UserImportRows.Add(new UserImportRow { TenantId = batch.TenantId, UserImportBatchId = batch.Id, RowNumber = rowNumber, PayloadJson = JsonSerializer.Serialize(new { Raw = lines[i] }), IsValid = false, IsProcessed = true, Error = "Expected at least email, first name and last name." });
                 result.FailedRows++;
                 result.Rows.Add(new BulkUserImportRowResult { RowNumber = rowNumber, Message = "Expected at least email, first name and last name." });
                 continue;
@@ -364,10 +377,14 @@ public sealed class UserManagementService : IUserManagementService
                 SendActivationEmail = request.SendActivationEmail
             };
 
-            result.TotalRows++;
+            var persistedRow = new UserImportRow { TenantId = batch.TenantId, UserImportBatchId = batch.Id, RowNumber = rowNumber, PayloadJson = JsonSerializer.Serialize(createRequest), IsValid = true };
+            _dbContext.UserImportRows.Add(persistedRow);
+            await _dbContext.SaveChangesAsync(cancellationToken);
+
             var created = await CreateUserAsync(actor, createRequest, cancellationToken);
             if (created.Succeeded)
             {
+                persistedRow.IsProcessed = true; persistedRow.Succeeded = true; persistedRow.CreatedUserId = created.Data?.Id;
                 result.ValidRows++;
                 result.CreatedRows++;
                 result.Rows.Add(new BulkUserImportRowResult
@@ -383,6 +400,7 @@ public sealed class UserManagementService : IUserManagementService
             }
             else
             {
+                persistedRow.IsProcessed = true; persistedRow.Error = string.Join(" ", created.Errors);
                 result.FailedRows++;
                 result.Rows.Add(new BulkUserImportRowResult
                 {
@@ -392,7 +410,13 @@ public sealed class UserManagementService : IUserManagementService
                     Message = string.Join(" ", created.Errors)
                 });
             }
+            batch.ProcessedRows++; batch.SucceededRows = result.CreatedRows; batch.FailedRows = result.FailedRows;
+            await _dbContext.SaveChangesAsync(cancellationToken);
         }
+
+        batch.TotalRows = result.TotalRows; batch.ProcessedRows = result.TotalRows; batch.SucceededRows = result.CreatedRows; batch.FailedRows = result.FailedRows;
+        batch.Status = result.FailedRows == 0 ? UserImportBatchStatus.Completed : UserImportBatchStatus.CompletedWithErrors;
+        await _dbContext.SaveChangesAsync(cancellationToken);
 
         return UserManagementOperationResult<BulkUserImportResult>.Success(
             result,
@@ -1194,19 +1218,18 @@ public sealed class UserManagementService : IUserManagementService
             Status = NotificationStatus.Queued
         });
 
+        _dbContext.AccountEmailJobs.Add(new AccountEmailJob
+        {
+            TenantId = user.TenantId,
+            NotificationMessageId = messageId,
+            UserId = user.Id,
+            JobType = subject.Contains("password", StringComparison.OrdinalIgnoreCase) ? "PasswordReset" : "AccountInvitation",
+            Status = EmailJobStatus.Queued,
+            AvailableOn = DateTime.UtcNow
+        });
+
         await _dbContext.SaveChangesAsync(cancellationToken);
-
-        var dispatchResult = await _notificationDispatcher.DispatchAsync(messageId, cancellationToken);
-        if (dispatchResult.Succeeded)
-            return Array.Empty<string>();
-
-        _logger.LogWarning(
-            "Account email {Subject} for {Email} could not be delivered: {Error}",
-            subject,
-            user.Email,
-            dispatchResult.ErrorMessage);
-
-        return new[] { $"Email delivery failed: {dispatchResult.ErrorMessage}" };
+        return Array.Empty<string>();
     }
 
     private async Task<UserManagementOperationResult<Guid?>> ResolveTargetTenantIdAsync(

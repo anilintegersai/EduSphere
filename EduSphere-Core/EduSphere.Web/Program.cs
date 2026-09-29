@@ -78,6 +78,7 @@ builder.Services.AddScoped<IAIQuestionPaperService, AIQuestionPaperService>();
 builder.Services.AddScoped<IEffectivePermissionService, EffectivePermissionService>();
 builder.Services.AddScoped<ITenantFeatureService, TenantFeatureService>();
 builder.Services.AddScoped<IBackgroundJobMonitor, BackgroundJobMonitor>();
+builder.Services.AddHostedService<AccountEmailBackgroundWorker>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddSingleton<IAdmissionDocumentStorageService, FileSystemAdmissionDocumentStorageService>();
 builder.Services.AddInfrastructureServices(builder.Configuration);

@@ -4,6 +4,8 @@ using EduSphere.Application.DTOs.Auth;
 using EduSphere.Application.DTOs.UserManagement;
 using EduSphere.Application.Interfaces;
 using EduSphere.Domain.Entities;
+using EduSphere.Domain.Enums;
+using EduSphere.Infrastructure;
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -18,15 +20,18 @@ public class AuthController : ApiControllerBase
     private readonly UserManager<ApplicationUser> _userManager;
     private readonly IJwtTokenService _jwtTokenService;
     private readonly IUserManagementService _userManagement;
+    private readonly TenantDbContext _db;
 
     public AuthController(
         UserManager<ApplicationUser> userManager,
         IJwtTokenService jwtTokenService,
-        IUserManagementService userManagement)
+        IUserManagementService userManagement,
+        TenantDbContext db)
     {
         _userManager = userManager;
         _jwtTokenService = jwtTokenService;
         _userManagement = userManagement;
+        _db = db;
     }
 
     /// <summary>Exchange email + password for a signed JWT.</summary>
@@ -43,10 +48,26 @@ public class AuthController : ApiControllerBase
             !await _userManager.CheckPasswordAsync(user, request.Password))
             return Unauthorized(ApiResponse<LoginResponse>.Fail("Invalid email or password."));
 
+        if (await _userManager.GetTwoFactorEnabledAsync(user))
+        {
+            if (string.IsNullOrWhiteSpace(request.MfaCode))
+                return Unauthorized(ApiResponse<LoginResponse>.Fail("MFA code is required."));
+            var code = request.MfaCode.Replace(" ", string.Empty);
+            var valid = request.UseRecoveryCode
+                ? (await _userManager.RedeemTwoFactorRecoveryCodeAsync(user, code)).Succeeded
+                : await _userManager.VerifyTwoFactorTokenAsync(user, _userManager.Options.Tokens.AuthenticatorTokenProvider, code.Replace("-", string.Empty));
+            if (!valid)
+            {
+                await RecordSecurityEventAsync(user, SecurityEventType.MfaFailed, false);
+                return Unauthorized(ApiResponse<LoginResponse>.Fail("Invalid MFA code."));
+            }
+        }
+
         var roles = await _userManager.GetRolesAsync(user);
         var (token, expiresAt) = _jwtTokenService.GenerateToken(user, roles);
         user.LastLoginAt = DateTime.UtcNow;
         await _userManager.UpdateAsync(user);
+        await RecordSecurityEventAsync(user, SecurityEventType.LoginSucceeded, true);
 
         return Ok(ApiResponse<LoginResponse>.Ok(new LoginResponse
         {
@@ -55,6 +76,12 @@ public class AuthController : ApiControllerBase
             Email = user.Email!,
             Roles = roles
         }));
+    }
+
+    private async Task RecordSecurityEventAsync(ApplicationUser user, SecurityEventType eventType, bool succeeded)
+    {
+        _db.SecurityEvents.Add(new SecurityEvent { TenantId = user.TenantId, UserId = user.Id, Email = user.Email, EventType = eventType, Succeeded = succeeded, IpAddress = HttpContext.Connection.RemoteIpAddress?.ToString(), UserAgent = Request.Headers.UserAgent.ToString(), OccurredOn = DateTime.UtcNow });
+        await _db.SaveChangesAsync();
     }
 
     [HttpPost("forgot-password")]

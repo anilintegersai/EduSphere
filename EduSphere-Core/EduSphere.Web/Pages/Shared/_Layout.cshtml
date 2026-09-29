@@ -71,6 +71,10 @@
                             <li class="nav-item">
                                 <a class="nav-link @(currentPage == "/Index" ? "active" : "")" asp-page="/Index">Dashboard</a>
                             </li>
+                            @if (User.IsInRole(EduSphere.Domain.Constants.Roles.Parent))
+                            {
+                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Parent", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Parent/Index">My Children</a></li>
+                            }
                             @if (canManageTenants)
                             {
                                 <li class="nav-item">
@@ -115,6 +119,8 @@
                                                 <li><hr class="dropdown-divider" /></li>
                                             }
                                             <li><a class="dropdown-item" asp-page="/Users/Index">Users & Roles</a></li>
+                                            <li><a class="dropdown-item" asp-page="/People/StaffAdministration">Staff & Family Admin</a></li>
+                                            <li><a class="dropdown-item" asp-page="/Users/Security">Account Security</a></li>
                                         }
                                         @if (canManageTenantWorkspace)
                                         {
