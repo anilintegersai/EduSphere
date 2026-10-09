@@ -60,6 +60,17 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<TeacherLifecycleEvent> TeacherLifecycleEvents { get; set; }
     public DbSet<TeacherLifecycleRequest> TeacherLifecycleRequests { get; set; }
     public DbSet<ProfileDocument> ProfileDocuments { get; set; }
+    public DbSet<StudentMedicalProfile> StudentMedicalProfiles { get; set; }
+    public DbSet<StudentMedicalCondition> StudentMedicalConditions { get; set; }
+    public DbSet<ProfileStatusHistory> ProfileStatusHistories { get; set; }
+    public DbSet<LifecycleDocumentTemplate> LifecycleDocumentTemplates { get; set; }
+    public DbSet<StudentTranscript> StudentTranscripts { get; set; }
+    public DbSet<StudentTranscriptLine> StudentTranscriptLines { get; set; }
+    public DbSet<AlumniEngagement> AlumniEngagements { get; set; }
+    public DbSet<BulkStudentLifecycleRun> BulkStudentLifecycleRuns { get; set; }
+    public DbSet<BulkStudentLifecycleRow> BulkStudentLifecycleRows { get; set; }
+    public DbSet<ProfileDocumentPolicy> ProfileDocumentPolicies { get; set; }
+    public DbSet<DocumentApprovalSignature> DocumentApprovalSignatures { get; set; }
     public DbSet<ParentProfile> ParentProfiles { get; set; }
     public DbSet<StaffProfile> StaffProfiles { get; set; }
     public DbSet<UserBranchAssignment> UserBranchAssignments { get; set; }
@@ -671,6 +682,36 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<TeacherLifecycleRequest>().HasIndex(e => e.AppliedTeacherLifecycleEventId);
 
         modelBuilder.Entity<ProfileDocument>().HasIndex(d => new { d.OwnerType, d.OwnerId });
+        modelBuilder.Entity<ProfileDocument>().HasOne<ProfileDocumentPolicy>().WithMany().HasForeignKey(d => d.ProfileDocumentPolicyId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentMedicalProfile>().HasOne<StudentProfile>().WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentMedicalProfile>().HasIndex(x => new { x.TenantId, x.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<StudentMedicalCondition>().HasOne<StudentMedicalProfile>().WithMany(x => x.Conditions).HasForeignKey(x => x.StudentMedicalProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentMedicalCondition>().HasIndex(x => x.StudentMedicalProfileId);
+        modelBuilder.Entity<ProfileStatusHistory>().HasIndex(x => new { x.TenantId, x.OwnerType, x.OwnerId, x.EffectiveOn });
+        modelBuilder.Entity<LifecycleDocumentTemplate>().HasIndex(x => new { x.TenantId, x.Code, x.Version }).IsUnique();
+        modelBuilder.Entity<StudentTranscript>().HasMany(x => x.Lines).WithOne().HasForeignKey(x => x.StudentTranscriptId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTranscript>().HasOne<StudentProfile>().WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTranscript>().HasOne<AcademicYear>().WithMany().HasForeignKey(x => x.AcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTranscript>().HasOne<Course>().WithMany().HasForeignKey(x => x.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<StudentTranscript>().HasIndex(x => new { x.TenantId, x.TranscriptNumber }).IsUnique();
+        modelBuilder.Entity<StudentTranscript>().HasIndex(x => new { x.TenantId, x.StudentProfileId, x.IsFinal });
+        modelBuilder.Entity<StudentTranscriptLine>().HasIndex(x => x.StudentTranscriptId);
+        modelBuilder.Entity<AlumniEngagement>().Property(x => x.ContributionAmount).HasPrecision(18, 2);
+        modelBuilder.Entity<AlumniEngagement>().HasOne<StudentAlumniRecord>().WithMany().HasForeignKey(x => x.StudentAlumniRecordId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AlumniEngagement>().HasIndex(x => new { x.TenantId, x.StudentAlumniRecordId, x.OccurredOn });
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasMany(x => x.Rows).WithOne().HasForeignKey(x => x.BulkStudentLifecycleRunId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasOne<AcademicYear>().WithMany().HasForeignKey(x => x.FromAcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasOne<AcademicYear>().WithMany().HasForeignKey(x => x.ToAcademicYearId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasOne<Section>().WithMany().HasForeignKey(x => x.FromSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasOne<Section>().WithMany().HasForeignKey(x => x.ToSectionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRow>().HasOne<StudentProfile>().WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BulkStudentLifecycleRun>().HasIndex(x => new { x.TenantId, x.BranchId, x.StartedOn });
+        modelBuilder.Entity<BulkStudentLifecycleRow>().HasIndex(x => new { x.BulkStudentLifecycleRunId, x.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<ProfileDocumentPolicy>().HasIndex(x => new { x.TenantId, x.OwnerType, x.DocumentType }).IsUnique();
+        modelBuilder.Entity<DocumentApprovalSignature>().HasIndex(x => new { x.TenantId, x.SubjectId, x.SignedOn });
+        modelBuilder.Entity<DocumentApprovalSignature>().HasOne<ProfileDocument>().WithMany().HasForeignKey(x => x.ProfileDocumentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<DocumentApprovalSignature>().HasOne<LifecycleDocumentTemplate>().WithMany().HasForeignKey(x => x.LifecycleDocumentTemplateId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<ParentProfile>().HasIndex(p => new { p.TenantId, p.UserId }).IsUnique();
         modelBuilder.Entity<ParentProfile>().HasIndex(p => new { p.TenantId, p.Email });

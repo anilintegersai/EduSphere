@@ -81,6 +81,9 @@ builder.Services.AddScoped<IBackgroundJobMonitor, BackgroundJobMonitor>();
 builder.Services.AddHostedService<AccountEmailBackgroundWorker>();
 builder.Services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
 builder.Services.AddSingleton<IAdmissionDocumentStorageService, FileSystemAdmissionDocumentStorageService>();
+builder.Services.AddHttpClient();
+builder.Services.AddSingleton<IProfileDocumentStorage, ConfigurableProfileDocumentStorage>();
+builder.Services.AddSingleton<IDocumentVirusScanner, BuiltInDocumentVirusScanner>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddApplicationServices();
 

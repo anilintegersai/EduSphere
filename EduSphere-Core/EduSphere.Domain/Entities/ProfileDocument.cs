@@ -31,6 +31,15 @@ public class ProfileDocument : TenantEntityBase
     public long? SizeBytes { get; set; }
     public DateTime UploadedOn { get; set; } = DateTime.UtcNow;
     public bool IsVerified { get; set; }
+    [StringLength(30)] public string StorageProvider { get; set; } = "Local";
+    [StringLength(128)] public string? Sha256 { get; set; }
+    public DocumentScanStatus ScanStatus { get; set; } = DocumentScanStatus.Pending;
+    [StringLength(500)] public string? ScanMessage { get; set; }
+    public DateTime? ScannedOn { get; set; }
+    public DocumentVerificationStatus VerificationStatus { get; set; } = DocumentVerificationStatus.Pending;
+    public DateTime? ExpiresOn { get; set; }
+    public DateTime? RetainUntil { get; set; }
+    public Guid? ProfileDocumentPolicyId { get; set; }
 
     [StringLength(128)]
     public string? VerifiedBy { get; set; }

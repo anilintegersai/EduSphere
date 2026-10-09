@@ -9,6 +9,7 @@ using EduSphere.Domain.MultiTenancy;
 using EduSphere.Infrastructure;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -33,7 +34,8 @@ public class LifecycleModel : PageModel
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
     private readonly TenantDbContext _dbContext;
-    private readonly IWebHostEnvironment _environment;
+    private readonly IProfileDocumentStorage _documentStorage;
+    private readonly IDocumentVirusScanner _virusScanner;
 
     public LifecycleModel(
         IStudentTeacherLifecycleService lifecycle,
@@ -48,7 +50,8 @@ public class LifecycleModel : PageModel
         ITenantContext tenant,
         IBranchAccessService branchAccess,
         TenantDbContext dbContext,
-        IWebHostEnvironment environment)
+        IProfileDocumentStorage documentStorage,
+        IDocumentVirusScanner virusScanner)
     {
         _lifecycle = lifecycle;
         _students = students;
@@ -62,7 +65,8 @@ public class LifecycleModel : PageModel
         _tenant = tenant;
         _branchAccess = branchAccess;
         _dbContext = dbContext;
-        _environment = environment;
+        _documentStorage = documentStorage;
+        _virusScanner = virusScanner;
     }
 
     public bool HasTenant => _tenant.HasTenant;
@@ -259,8 +263,18 @@ public class LifecycleModel : PageModel
             ModelState.AddModelError("DocumentInput.OwnerId", "Select a student or teacher.");
         if (DocumentInput.File is null || DocumentInput.File.Length == 0)
             ModelState.AddModelError("DocumentInput.File", "Choose a document to upload.");
-        else if (DocumentInput.File.Length > MaxDocumentBytes)
-            ModelState.AddModelError("DocumentInput.File", "Document size must be 10 MB or smaller.");
+        var documentType = Normalize(DocumentInput.DocumentType) ?? "Lifecycle";
+        var policy = await _dbContext.ProfileDocumentPolicies.AsNoTracking()
+            .FirstOrDefaultAsync(x => x.OwnerType == DocumentInput.OwnerType && x.DocumentType == documentType && x.IsActive);
+        var maximumBytes = policy?.MaximumBytes ?? MaxDocumentBytes;
+        if (DocumentInput.File is not null && DocumentInput.File.Length > maximumBytes)
+            ModelState.AddModelError("DocumentInput.File", $"Document size must be {maximumBytes / 1024 / 1024} MB or smaller.");
+        if (DocumentInput.File is not null && policy is not null)
+        {
+            var allowed = policy.AllowedExtensions.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (!allowed.Contains(Path.GetExtension(DocumentInput.File.FileName), StringComparer.OrdinalIgnoreCase))
+                ModelState.AddModelError("DocumentInput.File", $"Allowed extensions: {policy.AllowedExtensions}.");
+        }
 
         var ownerBranchId = DocumentInput.OwnerId.HasValue
             ? await ResolveOwnerBranchAsync(DocumentInput.OwnerType, DocumentInput.OwnerId.Value)
@@ -280,33 +294,48 @@ public class LifecycleModel : PageModel
         var originalFileName = Path.GetFileName(file.FileName);
         var extension = Path.GetExtension(originalFileName);
         var storedFileName = $"{Guid.NewGuid():N}{extension}";
-        var relativePath = Path.Combine(
-            "App_Data",
-            "ProfileDocuments",
+        var storageKey = string.Join('/',
             _tenant.TenantId!.Value.ToString("N"),
             DocumentInput.OwnerType.ToString(),
             DocumentInput.OwnerId!.Value.ToString("N"),
             storedFileName);
-        var absolutePath = Path.Combine(_environment.ContentRootPath, relativePath);
-        Directory.CreateDirectory(Path.GetDirectoryName(absolutePath)!);
-
-        await using (var stream = System.IO.File.Create(absolutePath))
+        await using var content = new MemoryStream();
+        await file.CopyToAsync(content);
+        content.Position = 0;
+        var scan = policy?.RequiresVirusScan == false
+            ? new DocumentScanResult(DocumentScanStatus.NotRequired, "Virus scanning is disabled by policy.", Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(content.ToArray())))
+            : await _virusScanner.ScanAsync(content);
+        if (scan.Status == DocumentScanStatus.Infected)
         {
-            await file.CopyToAsync(stream);
+            ModelState.AddModelError("DocumentInput.File", scan.Message);
+            await LoadAsync();
+            return Page();
         }
+        content.Position = 0;
+        await _documentStorage.SaveAsync(storageKey, content, file.ContentType);
 
         _dbContext.ProfileDocuments.Add(new ProfileDocument
         {
             TenantId = _tenant.TenantId.Value,
             OwnerType = DocumentInput.OwnerType,
             OwnerId = DocumentInput.OwnerId.Value,
-            DocumentType = Normalize(DocumentInput.DocumentType) ?? "Lifecycle",
+            DocumentType = documentType,
             DisplayName = Normalize(DocumentInput.DisplayName) ?? Path.GetFileNameWithoutExtension(originalFileName),
             FileName = originalFileName,
             ContentType = file.ContentType,
-            StoragePath = relativePath,
+            StoragePath = storageKey,
+            StorageProvider = _documentStorage.ProviderName,
             SizeBytes = file.Length,
             UploadedOn = DateTime.UtcNow,
+            Sha256 = scan.Sha256,
+            ScanStatus = scan.Status,
+            ScanMessage = scan.Message,
+            ScannedOn = DateTime.UtcNow,
+            VerificationStatus = policy?.RequiresVerification == false ? DocumentVerificationStatus.Verified : DocumentVerificationStatus.Pending,
+            IsVerified = policy?.RequiresVerification == false,
+            ExpiresOn = policy?.ExpiryDays is int expiry ? DateTime.UtcNow.AddDays(expiry) : null,
+            RetainUntil = policy?.RetentionDays is int retention ? DateTime.UtcNow.AddDays(retention) : null,
+            ProfileDocumentPolicyId = policy?.Id,
             Notes = Normalize(DocumentInput.Notes)
         });
         await _dbContext.SaveChangesAsync();
@@ -323,12 +352,11 @@ public class LifecycleModel : PageModel
         if (document is null || !await CanAccessDocumentAsync(document))
             return NotFound();
 
-        var absolutePath = ResolveStoredPath(document.StoragePath);
-        if (!System.IO.File.Exists(absolutePath))
+        var stream = await _documentStorage.OpenReadAsync(document.StoragePath);
+        if (stream is null)
             return NotFound();
-
-        return PhysicalFile(
-            absolutePath,
+        return File(
+            stream,
             document.ContentType ?? "application/octet-stream",
             document.FileName);
     }
@@ -523,11 +551,6 @@ public class LifecycleModel : PageModel
         var ownerBranchId = await ResolveOwnerBranchAsync(document.OwnerType, document.OwnerId);
         return ownerBranchId.HasValue && await _branchAccess.CanAccessBranchAsync(User, ownerBranchId.Value);
     }
-
-    private string ResolveStoredPath(string storagePath)
-        => Path.IsPathRooted(storagePath)
-            ? storagePath
-            : Path.Combine(_environment.ContentRootPath, storagePath);
 
     private static string PrintableDocument(
         string title,

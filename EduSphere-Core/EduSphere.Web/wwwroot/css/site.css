@@ -237,6 +237,8 @@ a:hover {
 
 .navbar-tools {
   display: flex;
+  min-width: 0;
+  max-width: 100%;
   flex-wrap: wrap;
   gap: .65rem;
   align-items: center;
@@ -245,7 +247,9 @@ a:hover {
 
 .tenant-switcher {
   display: flex;
-  min-width: min(100%, 20rem);
+  min-width: 0;
+  width: min(20rem, 100%);
+  max-width: 100%;
   gap: .45rem;
   align-items: center;
   padding: .35rem;
@@ -264,7 +268,9 @@ a:hover {
 }
 
 .tenant-switcher-select {
-  width: auto;
+  flex: 1 1 8rem;
+  width: 100%;
+  min-width: 0;
   max-width: 15rem;
   border: 0;
   border-radius: 6px;
@@ -289,6 +295,9 @@ a:hover {
 
 .user-cluster {
   display: inline-flex;
+  min-width: 0;
+  max-width: 100%;
+  flex-wrap: wrap;
   gap: .65rem;
   align-items: center;
   color: #fff;
@@ -331,11 +340,33 @@ a:hover {
 }
 
 .btn-shell {
+  flex: 0 0 auto;
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: var(--edu-radius);
   color: #fff;
   background: rgba(255, 255, 255, .1);
   font-weight: 800;
+}
+
+.user-cluster form {
+  margin: 0;
+}
+
+@media (min-width: 1200px) and (max-width: 1799.98px) {
+  #mainNav {
+    flex-wrap: wrap;
+  }
+
+  .app-nav {
+    flex: 1 1 calc(100% - 12rem);
+    flex-wrap: wrap;
+  }
+
+  .navbar-tools {
+    width: 100%;
+    padding-top: .55rem;
+    justify-content: flex-end;
+  }
 }
 
 .btn-shell:hover,
@@ -1071,6 +1102,15 @@ textarea.form-control {
   .tenant-switcher,
   .tenant-switcher-select,
   .user-cluster {
+    width: 100%;
+  }
+
+  .user-cluster .btn-shell,
+  .user-cluster form {
+    flex: 1 1 auto;
+  }
+
+  .user-cluster form .btn-shell {
     width: 100%;
   }
 

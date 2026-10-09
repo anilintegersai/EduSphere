@@ -1417,6 +1417,73 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("AdmissionReviews");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.AlumniEngagement", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("ContributionAmount")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<DateTime>("OccurredOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentAlumniRecordId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<int>("Type")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentAlumniRecordId");
+
+                    b.HasIndex("TenantId", "StudentAlumniRecordId", "OccurredOn");
+
+                    b.ToTable("AlumniEngagements");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.Announcement", b =>
                 {
                     b.Property<Guid>("Id")
@@ -2709,6 +2776,155 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("BranchContacts");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.BulkStudentLifecycleRow", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BulkStudentLifecycleRunId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Message")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("Succeeded")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentProfileId");
+
+                    b.HasIndex("BulkStudentLifecycleRunId", "StudentProfileId")
+                        .IsUnique();
+
+                    b.ToTable("BulkStudentLifecycleRows");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.BulkStudentLifecycleRun", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("FailedCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("FromAcademicYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("FromSectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("RunBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("StartedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<int>("SucceededCount")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ToAcademicYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ToSectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("TotalCount")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("BranchId");
+
+                    b.HasIndex("FromAcademicYearId");
+
+                    b.HasIndex("FromSectionId");
+
+                    b.HasIndex("ToAcademicYearId");
+
+                    b.HasIndex("ToSectionId");
+
+                    b.HasIndex("TenantId", "BranchId", "StartedOn");
+
+                    b.ToTable("BulkStudentLifecycleRuns");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.CommunicationLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -3003,6 +3219,82 @@ namespace EduSphere.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("DiscountRules");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.DocumentApprovalSignature", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LifecycleDocumentTemplateId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ProfileDocumentId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("SignatureHash")
+                        .IsRequired()
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("SignedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("SignerName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("SignerTitle")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("SubjectId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LifecycleDocumentTemplateId");
+
+                    b.HasIndex("ProfileDocumentId");
+
+                    b.HasIndex("TenantId", "SubjectId", "SignedOn");
+
+                    b.ToTable("DocumentApprovalSignatures");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.EmailBounceEvent", b =>
@@ -6014,6 +6306,81 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("LibraryReservations");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.LifecycleDocumentTemplate", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("HtmlTemplate")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RequiresSignature")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "Code", "Version")
+                        .IsUnique();
+
+                    b.ToTable("LifecycleDocumentTemplates");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.LookupItem", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7011,6 +7378,9 @@ namespace EduSphere.Infrastructure.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
+                    b.Property<DateTime?>("ExpiresOn")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("FileName")
                         .IsRequired()
                         .HasMaxLength(255)
@@ -7039,6 +7409,26 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Property<int>("OwnerType")
                         .HasColumnType("int");
 
+                    b.Property<Guid?>("ProfileDocumentPolicyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("RetainUntil")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("ScanMessage")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("ScanStatus")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("ScannedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Sha256")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
                     b.Property<long?>("SizeBytes")
                         .HasColumnType("bigint");
 
@@ -7047,11 +7437,19 @@ namespace EduSphere.Infrastructure.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
+                    b.Property<string>("StorageProvider")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
                     b.Property<Guid>("TenantId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<DateTime>("UploadedOn")
                         .HasColumnType("datetime2");
+
+                    b.Property<int>("VerificationStatus")
+                        .HasColumnType("int");
 
                     b.Property<string>("VerifiedBy")
                         .HasMaxLength(128)
@@ -7062,9 +7460,163 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.HasKey("Id");
 
+                    b.HasIndex("ProfileDocumentPolicyId");
+
                     b.HasIndex("OwnerType", "OwnerId");
 
                     b.ToTable("ProfileDocuments");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.ProfileDocumentPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AllowedExtensions")
+                        .IsRequired()
+                        .HasMaxLength(300)
+                        .HasColumnType("nvarchar(300)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DocumentType")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<int?>("ExpiryDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<long>("MaximumBytes")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("RequiresVerification")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("RequiresVirusScan")
+                        .HasColumnType("bit");
+
+                    b.Property<int?>("RetentionDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OwnerType", "DocumentType")
+                        .IsUnique();
+
+                    b.ToTable("ProfileDocumentPolicies");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.ProfileStatusHistory", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("EffectiveOn")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("OwnerId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("OwnerType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PreviousStatus")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<string>("RecordedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<string>("Source")
+                        .IsRequired()
+                        .HasMaxLength(80)
+                        .HasColumnType("nvarchar(80)");
+
+                    b.Property<Guid?>("SourceEntityId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "OwnerType", "OwnerId", "EffectiveOn");
+
+                    b.ToTable("ProfileStatusHistories");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.PromotionRecord", b =>
@@ -9129,6 +9681,158 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("StudentLifecycleRequests");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentMedicalCondition", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CareInstructions")
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly?>("DiagnosedOn")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<DateOnly?>("ResolvedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("Severity")
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.Property<Guid>("StudentMedicalProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentMedicalProfileId");
+
+                    b.ToTable("StudentMedicalConditions");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentMedicalProfile", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Allergies")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("BloodGroup")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("CurrentMedications")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("EmergencyCareConsent")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("EmergencyInstructions")
+                        .HasMaxLength(2000)
+                        .HasColumnType("nvarchar(2000)");
+
+                    b.Property<string>("InsurancePolicyNumber")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<string>("InsuranceProvider")
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<DateOnly?>("LastReviewedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PhysicianName")
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<string>("PhysicianPhone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid>("StudentProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentProfileId");
+
+                    b.HasIndex("TenantId", "StudentProfileId")
+                        .IsUnique();
+
+                    b.ToTable("StudentMedicalProfiles");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.StudentProfile", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9244,6 +9948,152 @@ namespace EduSphere.Infrastructure.Migrations
                         .IsUnique();
 
                     b.ToTable("StudentProfiles");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentTranscript", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AcademicYearId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal?>("AggregatePercentage")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CourseId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("FinalGrade")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFinal")
+                        .HasColumnType("bit");
+
+                    b.Property<DateOnly>("IssuedOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("StudentProfileId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("TranscriptNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("nvarchar(50)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("AcademicYearId");
+
+                    b.HasIndex("CourseId");
+
+                    b.HasIndex("StudentProfileId");
+
+                    b.HasIndex("TenantId", "TranscriptNumber")
+                        .IsUnique();
+
+                    b.HasIndex("TenantId", "StudentProfileId", "IsFinal");
+
+                    b.ToTable("StudentTranscripts");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentTranscriptLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AssessmentName")
+                        .IsRequired()
+                        .HasMaxLength(150)
+                        .HasColumnType("nvarchar(150)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Grade")
+                        .HasMaxLength(20)
+                        .HasColumnType("nvarchar(20)");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsPassed")
+                        .HasColumnType("bit");
+
+                    b.Property<decimal>("MarksObtained")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<decimal>("MaximumMarks")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("Percentage")
+                        .HasColumnType("decimal(18,2)");
+
+                    b.Property<Guid>("StudentTranscriptId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("StudentTranscriptId");
+
+                    b.ToTable("StudentTranscriptLines");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.StudentTransportAssignment", b =>
@@ -12906,6 +13756,15 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("ReviewedByUser");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.AlumniEngagement", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.StudentAlumniRecord", null)
+                        .WithMany()
+                        .HasForeignKey("StudentAlumniRecordId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.Announcement", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
@@ -13120,6 +13979,53 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.BulkStudentLifecycleRow", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.BulkStudentLifecycleRun", null)
+                        .WithMany("Rows")
+                        .HasForeignKey("BulkStudentLifecycleRunId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduSphere.Domain.Entities.StudentProfile", null)
+                        .WithMany()
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.BulkStudentLifecycleRun", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.Branch", null)
+                        .WithMany()
+                        .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduSphere.Domain.Entities.AcademicYear", null)
+                        .WithMany()
+                        .HasForeignKey("FromAcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduSphere.Domain.Entities.Section", null)
+                        .WithMany()
+                        .HasForeignKey("FromSectionId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.AcademicYear", null)
+                        .WithMany()
+                        .HasForeignKey("ToAcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduSphere.Domain.Entities.Section", null)
+                        .WithMany()
+                        .HasForeignKey("ToSectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.CommunicationLog", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
@@ -13155,6 +14061,19 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Branch");
 
                     b.Navigation("Course");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.DocumentApprovalSignature", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.LifecycleDocumentTemplate", null)
+                        .WithMany()
+                        .HasForeignKey("LifecycleDocumentTemplateId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.ProfileDocument", null)
+                        .WithMany()
+                        .HasForeignKey("ProfileDocumentId")
+                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.Enrollment", b =>
@@ -14321,6 +15240,14 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.ProfileDocument", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.ProfileDocumentPolicy", null)
+                        .WithMany()
+                        .HasForeignKey("ProfileDocumentPolicyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.PromotionRecord", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.AcademicYear", "FromAcademicYear")
@@ -15058,6 +15985,24 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("ToSection");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentMedicalCondition", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.StudentMedicalProfile", null)
+                        .WithMany("Conditions")
+                        .HasForeignKey("StudentMedicalProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentMedicalProfile", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.StudentProfile", null)
+                        .WithMany()
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.StudentProfile", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
@@ -15081,6 +16026,34 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Section");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentTranscript", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.AcademicYear", null)
+                        .WithMany()
+                        .HasForeignKey("AcademicYearId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.Course", null)
+                        .WithMany()
+                        .HasForeignKey("CourseId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.StudentProfile", null)
+                        .WithMany()
+                        .HasForeignKey("StudentProfileId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentTranscriptLine", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.StudentTranscript", null)
+                        .WithMany("Lines")
+                        .HasForeignKey("StudentTranscriptId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.StudentTransportAssignment", b =>
@@ -15976,6 +16949,11 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Records");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.BulkStudentLifecycleRun", b =>
+                {
+                    b.Navigation("Rows");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.Exam", b =>
                 {
                     b.Navigation("Results");
@@ -16068,6 +17046,11 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Invoices");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentMedicalProfile", b =>
+                {
+                    b.Navigation("Conditions");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.StudentProfile", b =>
                 {
                     b.Navigation("AlumniRecords");
@@ -16077,6 +17060,11 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("LifecycleEvents");
 
                     b.Navigation("LifecycleRequests");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.StudentTranscript", b =>
+                {
+                    b.Navigation("Lines");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.TeacherProfile", b =>

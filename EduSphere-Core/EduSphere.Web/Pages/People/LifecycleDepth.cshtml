@@ -1,0 +1,74 @@
+@page
+@model EduSphere.Web.Pages.People.LifecycleDepthModel
+@using EduSphere.Domain.Enums
+@{
+    ViewData["Title"] = "Lifecycle Depth";
+}
+<section class="page-title-row">
+    <div><span class="eyebrow">People registry</span><h1>Lifecycle Depth</h1><p>Health records, status history, graduation evidence, alumni engagement, bulk rollover, and governed documents.</p></div>
+    <a asp-page="/People/Lifecycle" class="btn btn-outline-primary">Approval workspace</a>
+</section>
+@if (!Model.HasTenant) { <div class="alert alert-warning">Select a tenant first.</div> }
+else {
+    @if (!string.IsNullOrWhiteSpace(Model.StatusMessage)) { <div class="alert alert-info">@Model.StatusMessage</div> }
+    <div asp-validation-summary="All" class="text-danger"></div>
+    <div class="row g-4 workspace-grid">
+        <div class="col-xl-6"><div class="card form-card"><div class="card-header">Structured medical profile</div><div class="card-body">
+            <form method="post" asp-page-handler="Medical" class="row g-2">
+                <div class="col-12"><label class="form-label">Student</label><select asp-for="Medical.StudentProfileId" class="form-select"><option value="">Select student</option>@foreach(var x in Model.Students){<option value="@x.Id">@Model.Student(x.Id)</option>}</select></div>
+                <div class="col-md-4"><label class="form-label">Blood group</label><input asp-for="Medical.BloodGroup" class="form-control" /></div>
+                <div class="col-md-8"><label class="form-label">Allergies</label><input asp-for="Medical.Allergies" class="form-control" /></div>
+                <div class="col-md-6"><label class="form-label">Current medications</label><textarea asp-for="Medical.CurrentMedications" class="form-control"></textarea></div>
+                <div class="col-md-6"><label class="form-label">Emergency instructions</label><textarea asp-for="Medical.EmergencyInstructions" class="form-control"></textarea></div>
+                <div class="col-md-6"><label class="form-label">Physician</label><input asp-for="Medical.PhysicianName" class="form-control" /></div><div class="col-md-6"><label class="form-label">Physician phone</label><input asp-for="Medical.PhysicianPhone" class="form-control" /></div>
+                <div class="col-md-6"><label class="form-label">Insurance provider</label><input asp-for="Medical.InsuranceProvider" class="form-control" /></div><div class="col-md-6"><label class="form-label">Policy number</label><input asp-for="Medical.InsurancePolicyNumber" class="form-control" /></div>
+                <div class="col-md-5"><label class="form-label">Condition</label><input asp-for="Medical.ConditionName" class="form-control" /></div><div class="col-md-3"><label class="form-label">Severity</label><input asp-for="Medical.ConditionSeverity" class="form-control" /></div><div class="col-md-4"><label class="form-label">Diagnosed</label><input asp-for="Medical.DiagnosedOn" type="date" class="form-control" /></div>
+                <div class="col-12"><label class="form-label">Care instructions</label><textarea asp-for="Medical.CareInstructions" class="form-control"></textarea></div>
+                <div class="col-12 form-check ms-2"><input asp-for="Medical.EmergencyCareConsent" class="form-check-input" /><label asp-for="Medical.EmergencyCareConsent" class="form-check-label">Emergency care consent recorded</label></div>
+                <div><button class="btn btn-primary">Save medical profile</button></div>
+            </form>
+        </div></div></div>
+        <div class="col-xl-6"><div class="card form-card"><div class="card-header">Bulk promotion & session rollover</div><div class="card-body">
+            <form method="post" asp-page-handler="Bulk" class="row g-2">
+                <div class="col-md-6"><label class="form-label">From academic year</label><select asp-for="Bulk.FromAcademicYearId" class="form-select"><option value="">Select year</option>@foreach(var x in Model.AcademicYears){<option value="@x.Id">@x.Name</option>}</select></div>
+                <div class="col-md-6"><label class="form-label">From section</label><select asp-for="Bulk.FromSectionId" class="form-select"><option value="">All active students</option>@foreach(var x in Model.Sections){<option value="@x.Id">@x.Name</option>}</select></div>
+                <div class="col-md-8"><label class="form-label">Target section</label><select asp-for="Bulk.ToSectionId" class="form-select"><option value="">Select target</option>@foreach(var x in Model.Sections){<option value="@x.Id">@x.Name - @x.Batch?.Name</option>}</select></div>
+                <div class="col-md-4"><label class="form-label">Effective date</label><input asp-for="Bulk.EffectiveOn" type="date" class="form-control" /></div>
+                <div><button class="btn btn-primary">Run promotion</button></div>
+            </form>
+            <hr /><h3 class="h6">Recent runs</h3>
+            @foreach(var run in Model.BulkRuns){<div class="d-flex justify-content-between border-bottom py-2"><span>@run.StartedOn.ToLocalTime().ToString("g") · @run.Status</span><strong>@run.SucceededCount/@run.TotalCount</strong></div>}
+        </div></div></div>
+        <div class="col-xl-6"><div class="card form-card"><div class="card-header">Document template & formal signature</div><div class="card-body">
+            <form method="post" asp-page-handler="Template" class="row g-2">
+                <div class="col-md-4"><label class="form-label">Code</label><input asp-for="Template.Code" class="form-control" /></div><div class="col-md-8"><label class="form-label">Name</label><input asp-for="Template.Name" class="form-control" /></div>
+                <div class="col-md-6"><label class="form-label">Owner</label><select asp-for="Template.OwnerType" asp-items="Html.GetEnumSelectList<ProfileStatusOwnerType>()" class="form-select"></select></div><div class="col-md-6"><label class="form-label">Document type</label><input asp-for="Template.DocumentType" class="form-control" /></div>
+                <div class="col-12"><label class="form-label">HTML template</label><textarea asp-for="Template.HtmlTemplate" rows="5" class="form-control"></textarea><div class="form-text">Tokens: {{Name}}, {{Number}}, {{Branch}}, {{Date}}</div></div>
+                <div class="col-12 form-check ms-2"><input asp-for="Template.RequiresSignature" class="form-check-input" /><label asp-for="Template.RequiresSignature" class="form-check-label">Require formal signature</label></div><div><button class="btn btn-primary">Create version</button></div>
+            </form><hr />
+            <form method="post" asp-page-handler="Sign" class="row g-2">
+                <div class="col-md-6"><label class="form-label">Template</label><select asp-for="Signature.TemplateId" class="form-select"><option value="">Select template</option>@foreach(var x in Model.Templates){<option value="@x.Id">@x.Name v@x.Version</option>}</select></div>
+                <div class="col-md-6"><label class="form-label">Document subject</label><select asp-for="Signature.SubjectId" class="form-select"><option value="">Select person</option><optgroup label="Students">@foreach(var x in Model.Students){<option value="@x.Id">@Model.Student(x.Id)</option>}</optgroup><optgroup label="Teachers">@foreach(var x in Model.Teachers){<option value="@x.Id">@Model.Person(ProfileStatusOwnerType.Teacher,x.Id)</option>}</optgroup></select></div>
+                <div class="col-md-6"><label class="form-label">Signer name</label><input asp-for="Signature.SignerName" class="form-control" /></div><div class="col-md-6"><label class="form-label">Signer title</label><input asp-for="Signature.SignerTitle" class="form-control" /></div>
+                <div><button class="btn btn-outline-primary">Record signature</button></div>
+            </form>
+            @foreach(var x in Model.Templates.Take(6)){<div class="border-top mt-2 pt-2"><strong>@x.Name v@x.Version</strong> @foreach(var s in Model.Students.Take(3)){<a class="btn btn-link btn-sm" target="_blank" asp-page-handler="PrintTemplate" asp-route-templateId="@x.Id" asp-route-subjectId="@s.Id">@s.AdmissionNumber</a>}</div>}
+        </div></div></div>
+        <div class="col-xl-6"><div class="card form-card"><div class="card-header">Document policy</div><div class="card-body">
+            <form method="post" asp-page-handler="Policy" class="row g-2">
+                <div class="col-md-5"><label class="form-label">Owner</label><select asp-for="Policy.OwnerType" asp-items="Html.GetEnumSelectList<ProfileDocumentOwnerType>()" class="form-select"></select></div><div class="col-md-7"><label class="form-label">Document type</label><input asp-for="Policy.DocumentType" class="form-control" /></div>
+                <div class="col-md-8"><label class="form-label">Allowed extensions</label><input asp-for="Policy.AllowedExtensions" class="form-control" /></div><div class="col-md-4"><label class="form-label">Maximum MB</label><input asp-for="Policy.MaximumMegabytes" class="form-control" /></div>
+                <div class="col-md-6"><label class="form-label">Retention days</label><input asp-for="Policy.RetentionDays" class="form-control" /></div><div class="col-md-6"><label class="form-label">Expiry days</label><input asp-for="Policy.ExpiryDays" class="form-control" /></div>
+                <div class="col-md-6 form-check ms-2"><input asp-for="Policy.RequiresVirusScan" class="form-check-input" /><label asp-for="Policy.RequiresVirusScan" class="form-check-label">Virus scan</label></div><div class="col-md-5 form-check"><input asp-for="Policy.RequiresVerification" class="form-check-input" /><label asp-for="Policy.RequiresVerification" class="form-check-label">Verification</label></div>
+                <div><button class="btn btn-primary">Save policy</button></div>
+            </form><hr />
+            @foreach(var d in Model.Documents){<div class="d-flex gap-2 align-items-center border-bottom py-2"><div class="flex-grow-1"><strong>@d.DisplayName</strong><div class="small text-muted">@d.ScanStatus · @d.VerificationStatus · expires @(d.ExpiresOn?.ToString("d") ?? "never")</div></div><form method="post" asp-page-handler="VerifyDocument"><input type="hidden" name="id" value="@d.Id" /><button name="approve" value="true" class="btn btn-sm btn-outline-success">Verify</button><button name="approve" value="false" class="btn btn-sm btn-outline-danger">Reject</button></form></div>}
+        </div></div></div>
+    </div>
+
+    <div class="card mt-4"><div class="card-header">Independent status-history timeline</div><div class="table-responsive"><table class="table align-middle mb-0"><thead><tr><th>Date</th><th>Person</th><th>Transition</th><th>Source</th><th>Recorded by</th></tr></thead><tbody>@foreach(var x in Model.StatusHistory){<tr><td>@x.EffectiveOn</td><td>@Model.Person(x.OwnerType,x.OwnerId)</td><td>@x.PreviousStatus → <strong>@x.Status</strong></td><td>@x.Source</td><td>@x.RecordedBy</td></tr>}</tbody></table></div></div>
+    <div class="row g-4 mt-1">
+        <div class="col-xl-6"><div class="card"><div class="card-header">Graduation transcripts</div><div class="card-body">@foreach(var x in Model.Transcripts){<div class="d-flex justify-content-between border-bottom py-2"><span>@Model.Student(x.StudentProfileId)<br /><small>@x.TranscriptNumber · @x.AggregatePercentage%</small></span><a target="_blank" asp-page-handler="Transcript" asp-route-id="@x.Id" class="btn btn-sm btn-outline-primary">Print</a></div>}</div></div></div>
+        <div class="col-xl-6"><div class="card"><div class="card-header">Alumni directory & engagement</div><div class="card-body"><form method="post" asp-page-handler="Engagement" class="row g-2"><div class="col-12"><select asp-for="Engagement.AlumniRecordId" class="form-select"><option value="">Select alumnus</option>@foreach(var x in Model.Alumni){<option value="@x.Id">@x.AlumniNumber - @Model.Student(x.StudentProfileId)</option>}</select></div><div class="col-md-5"><select asp-for="Engagement.Type" asp-items="Html.GetEnumSelectList<AlumniEngagementType>()" class="form-select"></select></div><div class="col-md-7"><input asp-for="Engagement.Title" placeholder="Engagement title" class="form-control" /></div><div class="col-md-6"><input asp-for="Engagement.OccurredOn" type="datetime-local" class="form-control" /></div><div class="col-md-6"><input asp-for="Engagement.ContributionAmount" placeholder="Contribution amount" class="form-control" /></div><div class="col-12"><textarea asp-for="Engagement.Notes" placeholder="Notes" class="form-control"></textarea></div><div><button class="btn btn-primary">Record engagement</button></div></form><hr />@foreach(var x in Model.Engagements){<div class="border-bottom py-2"><strong>@x.Title</strong><div class="small text-muted">@x.Type · @x.OccurredOn.ToLocalTime().ToString("g")</div></div>}</div></div></div>
+    </div>
+}

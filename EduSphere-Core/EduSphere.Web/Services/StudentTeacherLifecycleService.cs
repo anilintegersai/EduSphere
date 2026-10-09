@@ -90,6 +90,7 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
 
         var lifecycleEvent = new StudentLifecycleEvent
         {
+            Id = Guid.NewGuid(),
             TenantId = student.TenantId,
             StudentProfileId = student.Id,
             BranchId = targetBranchId,
@@ -148,6 +149,19 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
                 cancellationToken);
 
             _dbContext.StudentLifecycleEvents.Add(lifecycleEvent);
+            _dbContext.ProfileStatusHistories.Add(new ProfileStatusHistory
+            {
+                TenantId = student.TenantId,
+                OwnerType = ProfileStatusOwnerType.Student,
+                OwnerId = student.Id,
+                PreviousStatus = lifecycleEvent.FromStatus.ToString(),
+                Status = lifecycleEvent.ToStatus.ToString(),
+                EffectiveOn = request.EffectiveOn,
+                Source = request.EventType.ToString(),
+                SourceEntityId = lifecycleEvent.Id,
+                Notes = lifecycleEvent.Notes ?? lifecycleEvent.Reason,
+                RecordedBy = actor.Identity?.Name
+            });
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             recordedEvent = Map(lifecycleEvent);
@@ -423,6 +437,7 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         var actorUserId = _branchAccess.GetUserId(actor);
         var lifecycleEvent = new TeacherLifecycleEvent
         {
+            Id = Guid.NewGuid(),
             TenantId = teacher.TenantId,
             TeacherProfileId = teacher.Id,
             BranchId = targetBranchId,
@@ -462,6 +477,19 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
                 cancellationToken);
 
             _dbContext.TeacherLifecycleEvents.Add(lifecycleEvent);
+            _dbContext.ProfileStatusHistories.Add(new ProfileStatusHistory
+            {
+                TenantId = teacher.TenantId,
+                OwnerType = ProfileStatusOwnerType.Teacher,
+                OwnerId = teacher.Id,
+                PreviousStatus = lifecycleEvent.FromStatus.ToString(),
+                Status = lifecycleEvent.ToStatus.ToString(),
+                EffectiveOn = request.EffectiveOn,
+                Source = request.EventType.ToString(),
+                SourceEntityId = lifecycleEvent.Id,
+                Notes = lifecycleEvent.Notes ?? lifecycleEvent.Reason,
+                RecordedBy = actor.Identity?.Name
+            });
             await _dbContext.SaveChangesAsync(cancellationToken);
             await transaction.CommitAsync(cancellationToken);
             recordedEvent = Map(lifecycleEvent);
@@ -864,6 +892,8 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
                     Notes = lifecycleEvent.Notes ?? lifecycleEvent.Reason
                 });
             }
+
+            await CreateGraduationTranscriptAsync(student, currentPlacement, lifecycleEvent.EffectiveOn, cancellationToken);
         }
 
         return null;
@@ -969,6 +999,65 @@ public sealed class StudentTeacherLifecycleService : IStudentTeacherLifecycleSer
         }
 
         throw new InvalidOperationException("Could not generate a unique alumni number.");
+    }
+
+    private async Task CreateGraduationTranscriptAsync(
+        StudentProfile student,
+        StudentPlacement placement,
+        DateOnly issuedOn,
+        CancellationToken cancellationToken)
+    {
+        if (await _dbContext.StudentTranscripts.AnyAsync(x => x.StudentProfileId == student.Id && x.IsFinal, cancellationToken))
+            return;
+
+        var results = await _dbContext.Results
+            .AsNoTracking()
+            .Include(x => x.Exam)
+            .Where(x => x.StudentProfileId == student.Id && x.Status == ResultStatus.Published)
+            .OrderBy(x => x.Exam!.StartDate)
+            .ToListAsync(cancellationToken);
+
+        var transcript = new StudentTranscript
+        {
+            TenantId = student.TenantId,
+            StudentProfileId = student.Id,
+            AcademicYearId = placement.AcademicYearId,
+            CourseId = placement.CourseId,
+            TranscriptNumber = await NextTranscriptNumberAsync(student.TenantId, cancellationToken),
+            IssuedOn = issuedOn,
+            AggregatePercentage = results.Count == 0 ? null : Math.Round(results.Average(x => x.Percentage), 2),
+            FinalGrade = results.LastOrDefault()?.Grade,
+            IsFinal = true
+        };
+
+        foreach (var result in results)
+        {
+            transcript.Lines.Add(new StudentTranscriptLine
+            {
+                TenantId = student.TenantId,
+                AssessmentName = result.Exam?.Name ?? "Assessment",
+                MaximumMarks = result.TotalMarks,
+                MarksObtained = result.MarksObtained,
+                Percentage = result.Percentage,
+                Grade = result.Grade,
+                IsPassed = result.IsPassed
+            });
+        }
+
+        _dbContext.StudentTranscripts.Add(transcript);
+    }
+
+    private async Task<string> NextTranscriptNumberAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        for (var i = 1; i < 100_000; i++)
+        {
+            var number = $"TRN-{DateTime.UtcNow:yyyy}-{i:0000}";
+            if (!await _dbContext.StudentTranscripts.IgnoreQueryFilters()
+                    .AnyAsync(x => x.TenantId == tenantId && x.TranscriptNumber == number, cancellationToken))
+                return number;
+        }
+
+        throw new InvalidOperationException("Could not generate a unique transcript number.");
     }
 
     private static StudentLifecycleEventDto Map(StudentLifecycleEvent e) => new()
