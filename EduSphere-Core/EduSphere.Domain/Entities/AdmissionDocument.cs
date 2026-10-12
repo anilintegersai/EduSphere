@@ -30,6 +30,10 @@ public class AdmissionDocument : TenantEntityBase
     public ApplicationUser? UploadedByUser { get; set; }
 
     public bool IsVerified { get; set; }
+    public AdmissionDocumentReviewStatus ReviewStatus { get; set; } = AdmissionDocumentReviewStatus.Pending;
+    public Guid? ReplacesDocumentId { get; set; }
+    public Guid? ReplacedByDocumentId { get; set; }
+    [StringLength(1000)] public string? ReviewFeedback { get; set; }
     public Guid? VerifiedByUserId { get; set; }
     public ApplicationUser? VerifiedByUser { get; set; }
     public DateTime? VerifiedOn { get; set; }

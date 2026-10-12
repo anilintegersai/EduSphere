@@ -97,6 +97,10 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<AdmissionDocument> AdmissionDocuments { get; set; }
     public DbSet<AdmissionReview> AdmissionReviews { get; set; }
     public DbSet<AdmissionInterview> AdmissionInterviews { get; set; }
+    public DbSet<AdmissionApplicantAccount> AdmissionApplicantAccounts { get; set; }
+    public DbSet<BranchAdmissionSetting> BranchAdmissionSettings { get; set; }
+    public DbSet<AdmissionInterviewerAvailability> AdmissionInterviewerAvailabilities { get; set; }
+    public DbSet<AdmissionAutomationLog> AdmissionAutomationLogs { get; set; }
     public DbSet<Enrollment> Enrollments { get; set; }
     public DbSet<PromotionRecord> PromotionRecords { get; set; }
     public DbSet<AttendanceSession> AttendanceSessions { get; set; }
@@ -786,6 +790,8 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AdmissionApplication>()
             .HasOne(a => a.EnrolledStudentProfile).WithMany()
             .HasForeignKey(a => a.EnrolledStudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>().HasOne<AdmissionApplicantAccount>().WithMany().HasForeignKey(a => a.ApplicantAccountId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionApplication>().HasOne<StudentProfile>().WithMany().HasForeignKey(a => a.ReAdmissionStudentProfileId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<AdmissionDocument>()
             .HasOne(d => d.AdmissionApplication).WithMany(a => a.Documents)
@@ -796,6 +802,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AdmissionDocument>()
             .HasOne(d => d.VerifiedByUser).WithMany()
             .HasForeignKey(d => d.VerifiedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionDocument>().HasOne<AdmissionDocument>().WithOne().HasForeignKey<AdmissionDocument>(d => d.ReplacesDocumentId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<AdmissionReview>()
             .HasOne(r => r.AdmissionApplication).WithMany(a => a.Reviews)
@@ -813,6 +820,10 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AdmissionInterview>()
             .HasOne(i => i.InterviewerUser).WithMany()
             .HasForeignKey(i => i.InterviewerUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BranchAdmissionSetting>().HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionInterviewerAvailability>().HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionInterviewerAvailability>().HasOne<ApplicationUser>().WithMany().HasForeignKey(x => x.InterviewerUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AdmissionAutomationLog>().HasOne<AdmissionApplication>().WithMany().HasForeignKey(x => x.AdmissionApplicationId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<Enrollment>()
             .HasOne(e => e.StudentProfile).WithMany()
@@ -992,12 +1003,18 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.SectionId);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.Status);
         modelBuilder.Entity<AdmissionApplication>().HasIndex(a => a.EnrolledStudentProfileId);
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => new { a.TenantId, a.ApplicantAccountId, a.Status });
+        modelBuilder.Entity<AdmissionApplication>().HasIndex(a => new { a.TenantId, a.BranchId, a.CourseId, a.WaitlistPosition });
         modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.AdmissionApplicationId);
         modelBuilder.Entity<AdmissionDocument>().HasIndex(d => d.UploadedByUserId);
         modelBuilder.Entity<AdmissionReview>().HasIndex(r => r.AdmissionApplicationId);
         modelBuilder.Entity<AdmissionInterview>().HasIndex(i => i.AdmissionApplicationId);
         modelBuilder.Entity<AdmissionInterview>().HasIndex(i => new { i.TenantId, i.BranchId, i.StartsOn, i.Status });
         modelBuilder.Entity<AdmissionInterview>().HasIndex(i => new { i.TenantId, i.InterviewerUserId, i.StartsOn, i.EndsOn });
+        modelBuilder.Entity<AdmissionApplicantAccount>().HasIndex(x => new { x.TenantId, x.Email }).IsUnique();
+        modelBuilder.Entity<BranchAdmissionSetting>().HasIndex(x => new { x.TenantId, x.BranchId }).IsUnique();
+        modelBuilder.Entity<AdmissionInterviewerAvailability>().HasIndex(x => new { x.TenantId, x.InterviewerUserId, x.DayOfWeek, x.StartsAt, x.EndsAt });
+        modelBuilder.Entity<AdmissionAutomationLog>().HasIndex(x => new { x.TenantId, x.AdmissionApplicationId, x.OccurredOn });
         modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.EnrollmentNumber }).IsUnique();
         modelBuilder.Entity<Enrollment>().HasIndex(e => new { e.TenantId, e.StudentProfileId, e.AcademicYearId }).IsUnique();
         modelBuilder.Entity<PromotionRecord>().HasIndex(p => p.StudentProfileId);

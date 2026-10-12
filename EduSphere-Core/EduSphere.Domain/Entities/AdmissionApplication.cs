@@ -6,6 +6,7 @@ namespace EduSphere.Domain.Entities;
 
 public class AdmissionApplication : TenantEntityBase
 {
+    public Guid? ApplicantAccountId { get; set; }
     public Guid? AdmissionFormTemplateId { get; set; }
     public AdmissionFormTemplate? AdmissionFormTemplate { get; set; }
 
@@ -59,6 +60,13 @@ public class AdmissionApplication : TenantEntityBase
 
     public DateOnly AppliedOn { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow);
     public AdmissionApplicationStatus Status { get; set; } = AdmissionApplicationStatus.Submitted;
+    public DateTime? LastSavedOn { get; set; }
+    public DateTime? SubmittedOn { get; set; }
+    public DateTime? OfferExpiresOn { get; set; }
+    public DateTime? FeeDueOn { get; set; }
+    public int? WaitlistPosition { get; set; }
+    [StringLength(100)] public string? ApplicationSource { get; set; }
+    public Guid? ReAdmissionStudentProfileId { get; set; }
 
     [StringLength(1000)]
     public string? ReviewNotes { get; set; }

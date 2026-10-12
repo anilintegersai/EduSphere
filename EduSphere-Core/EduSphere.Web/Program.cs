@@ -71,6 +71,12 @@ builder.Services.AddScoped<IBranchAccessService, BranchAccessService>();
 builder.Services.AddScoped<IUserManagementService, UserManagementService>();
 builder.Services.AddScoped<IStudentTeacherLifecycleService, StudentTeacherLifecycleService>();
 builder.Services.AddScoped<IAdmissionWorkflowService, AdmissionWorkflowService>();
+builder.Services.AddScoped<IAdmissionNumberService, AdmissionNumberService>();
+builder.Services.AddScoped<IAdmissionPaymentGateway, StripeAdmissionPaymentGateway>();
+builder.Services.AddScoped<IAdmissionAutomationService, AdmissionAutomationService>();
+builder.Services.AddScoped<IAdmissionCalendarService, AdmissionCalendarService>();
+builder.Services.AddScoped<IPasswordHasher<AdmissionApplicantAccount>, PasswordHasher<AdmissionApplicantAccount>>();
+builder.Services.AddHostedService<AdmissionAutomationWorker>();
 builder.Services.AddScoped<IAttendanceTimetableWorkflowService, AttendanceTimetableWorkflowService>();
 builder.Services.AddScoped<IAcademicPlanningService, AcademicPlanningService>();
 builder.Services.AddScoped<IAISecretProtector, DataProtectionAISecretProtector>();
@@ -85,6 +91,8 @@ builder.Services.AddHttpClient();
 builder.Services.AddSingleton<IProfileDocumentStorage, ConfigurableProfileDocumentStorage>();
 builder.Services.AddSingleton<IDocumentVirusScanner, BuiltInDocumentVirusScanner>();
 builder.Services.AddInfrastructureServices(builder.Configuration);
+builder.Services.AddScoped<INotificationChannelSender, TwilioSmsNotificationSender>();
+builder.Services.AddScoped<INotificationChannelSender, TwilioWhatsAppNotificationSender>();
 builder.Services.AddApplicationServices();
 
 // ---- Validation ----
@@ -126,6 +134,14 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.LogoutPath = "/Account/Logout";
     options.AccessDeniedPath = "/Account/AccessDenied";
     options.ExpireTimeSpan = TimeSpan.FromHours(8);
+    options.SlidingExpiration = true;
+});
+builder.Services.AddAuthentication().AddCookie("Applicant", options =>
+{
+    options.LoginPath = "/Apply/Account";
+    options.AccessDeniedPath = "/Apply/Account";
+    options.Cookie.Name = "EduSphere.Applicant";
+    options.ExpireTimeSpan = TimeSpan.FromDays(14);
     options.SlidingExpiration = true;
 });
 

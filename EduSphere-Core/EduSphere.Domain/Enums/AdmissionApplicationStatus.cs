@@ -10,5 +10,8 @@ public enum AdmissionApplicationStatus
     Waitlisted = 5,
     FeePending = 6,
     Enrolled = 7,
-    Withdrawn = 8
+    Withdrawn = 8,
+    Draft = 9,
+    OfferExpired = 10,
+    FeeDeadlineExpired = 11
 }

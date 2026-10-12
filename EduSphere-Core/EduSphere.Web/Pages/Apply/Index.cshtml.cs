@@ -6,6 +6,8 @@ using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Infrastructure;
+using EduSphere.Web.Services;
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
@@ -22,17 +24,20 @@ public class IndexModel : PageModel
     private readonly ITenantContext _tenantContext;
     private readonly IAdmissionDocumentStorageService _storage;
     private readonly INotificationDispatcher _notificationDispatcher;
+    private readonly IAdmissionNumberService _numbers;
 
     public IndexModel(
         TenantDbContext dbContext,
         ITenantContext tenantContext,
         IAdmissionDocumentStorageService storage,
-        INotificationDispatcher notificationDispatcher)
+        INotificationDispatcher notificationDispatcher,
+        IAdmissionNumberService numbers)
     {
         _dbContext = dbContext;
         _tenantContext = tenantContext;
         _storage = storage;
         _notificationDispatcher = notificationDispatcher;
+        _numbers = numbers;
     }
 
     public IReadOnlyList<Tenant> Tenants { get; private set; } = new List<Tenant>();
@@ -53,6 +58,7 @@ public class IndexModel : PageModel
     [BindProperty(SupportsGet = true)] public Guid? BatchId { get; set; }
     [BindProperty(SupportsGet = true)] public Guid? SectionId { get; set; }
     [BindProperty(SupportsGet = true)] public Guid? AdmissionFormTemplateId { get; set; }
+    [BindProperty(SupportsGet = true)] public Guid? ApplicationId { get; set; }
     [BindProperty] public ApplicantInputModel ApplicantInput { get; set; } = new();
     [BindProperty] public Dictionary<string, string?> FormResponses { get; set; } = new(StringComparer.OrdinalIgnoreCase);
     [TempData] public string? StatusMessage { get; set; }
@@ -60,6 +66,7 @@ public class IndexModel : PageModel
     public async Task OnGetAsync()
     {
         await LoadAsync();
+        await LoadDraftAsync();
     }
 
     public async Task<IActionResult> OnPostSubmitAsync()
@@ -86,37 +93,49 @@ public class IndexModel : PageModel
         if (!ModelState.IsValid)
             return Page();
 
-        var application = new AdmissionApplication
+        var applicantAccountId = await ApplicantAccountIdAsync();
+        var application = ApplicationId.HasValue
+            ? await _dbContext.AdmissionApplications.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == ApplicationId && x.ApplicantAccountId == applicantAccountId && x.Status == AdmissionApplicationStatus.Draft)
+            : null;
+        application ??= new AdmissionApplication
         {
             TenantId = TenantId!.Value,
-            AdmissionFormTemplateId = AdmissionFormTemplateId,
-            BranchId = BranchId!.Value,
-            AcademicYearId = AcademicYearId,
-            CourseId = CourseId!.Value,
-            BatchId = BatchId,
-            SectionId = SectionId,
-            ApplicationNumber = await NextApplicationNumberAsync(TenantId.Value),
-            ApplicantFirstName = ApplicantInput.ApplicantFirstName.Trim(),
-            ApplicantMiddleName = Normalize(ApplicantInput.ApplicantMiddleName),
-            ApplicantLastName = ApplicantInput.ApplicantLastName.Trim(),
-            DateOfBirth = ApplicantInput.DateOfBirth,
-            Gender = ApplicantInput.Gender,
-            Email = Normalize(ApplicantInput.Email),
-            PhoneNumber = Normalize(ApplicantInput.PhoneNumber),
-            GuardianName = Normalize(ApplicantInput.GuardianName),
-            GuardianPhone = Normalize(ApplicantInput.GuardianPhone),
-            Address = Normalize(ApplicantInput.Address),
-            AppliedOn = DateOnly.FromDateTime(DateTime.UtcNow),
-            Status = AdmissionApplicationStatus.Submitted,
-            FormResponseJson = responseJson
+            ApplicantAccountId = applicantAccountId,
+            ApplicationNumber = await _numbers.NextApplicationNumberAsync(TenantId.Value, BranchId!.Value)
         };
-
-        _dbContext.AdmissionApplications.Add(application);
+        application.AdmissionFormTemplateId = AdmissionFormTemplateId;
+        application.BranchId = BranchId!.Value; application.AcademicYearId = AcademicYearId; application.CourseId = CourseId!.Value; application.BatchId = BatchId; application.SectionId = SectionId;
+        application.ApplicantFirstName = ApplicantInput.ApplicantFirstName.Trim();
+        application.ApplicantMiddleName = Normalize(ApplicantInput.ApplicantMiddleName);
+        application.ApplicantLastName = ApplicantInput.ApplicantLastName.Trim();
+        application.DateOfBirth = ApplicantInput.DateOfBirth; application.Gender = ApplicantInput.Gender; application.Email = Normalize(ApplicantInput.Email);
+        application.PhoneNumber = Normalize(ApplicantInput.PhoneNumber); application.GuardianName = Normalize(ApplicantInput.GuardianName); application.GuardianPhone = Normalize(ApplicantInput.GuardianPhone);
+        application.Address = Normalize(ApplicantInput.Address); application.AppliedOn = DateOnly.FromDateTime(DateTime.UtcNow); application.Status = AdmissionApplicationStatus.Submitted;
+        application.SubmittedOn = DateTime.UtcNow; application.LastSavedOn = DateTime.UtcNow; application.FormResponseJson = responseJson; application.ApplicationSource ??= "Applicant portal";
+        if (application.Id == Guid.Empty)
+            _dbContext.AdmissionApplications.Add(application);
         await _dbContext.SaveChangesAsync();
         await SaveDocumentsAsync(application);
         await QueueSubmittedNotificationAsync(application);
 
         return RedirectToPage("Submitted", new { tenantId = application.TenantId, applicationNumber = application.ApplicationNumber });
+    }
+
+    public async Task<IActionResult> OnPostSaveDraftAsync()
+    {
+        await LoadAsync();
+        var accountId = await ApplicantAccountIdAsync();
+        if (!accountId.HasValue) return RedirectToPage("Account");
+        if (TenantId is not Guid tenantId || BranchId is not Guid branchId || CourseId is not Guid courseId || AdmissionFormTemplateId is not Guid formId)
+        { ModelState.AddModelError(string.Empty, "Choose the institution, branch, course, and admission form before saving a draft."); return Page(); }
+        var application = ApplicationId.HasValue ? await _dbContext.AdmissionApplications.IgnoreQueryFilters().FirstOrDefaultAsync(x => x.Id == ApplicationId && x.ApplicantAccountId == accountId && x.Status == AdmissionApplicationStatus.Draft) : null;
+        application ??= new AdmissionApplication { TenantId = tenantId, ApplicantAccountId = accountId, ApplicationNumber = await _numbers.NextApplicationNumberAsync(tenantId, branchId) };
+        application.BranchId = branchId; application.CourseId = courseId; application.AdmissionFormTemplateId = formId; application.AcademicYearId = AcademicYearId; application.BatchId = BatchId; application.SectionId = SectionId;
+        application.ApplicantFirstName = string.IsNullOrWhiteSpace(ApplicantInput.ApplicantFirstName) ? "Draft" : ApplicantInput.ApplicantFirstName.Trim(); application.ApplicantLastName = string.IsNullOrWhiteSpace(ApplicantInput.ApplicantLastName) ? "Applicant" : ApplicantInput.ApplicantLastName.Trim();
+        application.ApplicantMiddleName = Normalize(ApplicantInput.ApplicantMiddleName); application.DateOfBirth = ApplicantInput.DateOfBirth; application.Gender = ApplicantInput.Gender; application.Email = Normalize(ApplicantInput.Email); application.PhoneNumber = Normalize(ApplicantInput.PhoneNumber); application.GuardianName = Normalize(ApplicantInput.GuardianName); application.GuardianPhone = Normalize(ApplicantInput.GuardianPhone); application.Address = Normalize(ApplicantInput.Address);
+        application.FormResponseJson = BuildResponseJson(); application.Status = AdmissionApplicationStatus.Draft; application.LastSavedOn = DateTime.UtcNow; application.ApplicationSource ??= "Applicant portal";
+        if (application.Id == Guid.Empty) _dbContext.AdmissionApplications.Add(application); await _dbContext.SaveChangesAsync();
+        StatusMessage = "Draft saved. You can resume it from My applications."; return RedirectToPage("Portal");
     }
 
     public string DynamicValue(AdmissionFormField field)
@@ -326,34 +345,31 @@ public class IndexModel : PageModel
         var smsDestination = Normalize(application.PhoneNumber) ?? Normalize(application.GuardianPhone);
         if (!string.IsNullOrWhiteSpace(smsDestination))
         {
-            _dbContext.CommunicationLogs.Add(new CommunicationLog
+            foreach (var channel in new[] { CommunicationChannel.Sms, CommunicationChannel.WhatsApp })
             {
-                TenantId = application.TenantId,
-                BranchId = application.BranchId,
-                Channel = CommunicationChannel.Sms,
-                Direction = CommunicationDirection.Outbound,
-                Recipient = smsDestination,
-                Subject = subject,
-                Status = NotificationStatus.Queued,
-                PayloadSummary = body,
-                OccurredOn = DateTime.UtcNow
-            });
-            await _dbContext.SaveChangesAsync();
+                var message = new NotificationMessage { TenantId = application.TenantId, BranchId = application.BranchId, Channel = channel, Subject = subject, Body = body, Status = NotificationStatus.Queued };
+                message.Recipients.Add(new NotificationRecipient { TenantId = application.TenantId, BranchId = application.BranchId, DisplayName = applicantName, DestinationAddress = smsDestination, Status = NotificationStatus.Queued });
+                _dbContext.NotificationMessages.Add(message); await _dbContext.SaveChangesAsync(); await _notificationDispatcher.DispatchAsync(message.Id);
+            }
         }
     }
 
-    private async Task<string> NextApplicationNumberAsync(Guid tenantId)
+    private async Task<Guid?> ApplicantAccountIdAsync()
     {
-        for (var i = 1; i < 100_000; i++)
-        {
-            var number = $"APP-{DateTime.UtcNow:yyyy}-{i:0000}";
-            if (!await _dbContext.AdmissionApplications
-                    .IgnoreQueryFilters()
-                    .AnyAsync(a => a.TenantId == tenantId && a.ApplicationNumber == number))
-                return number;
-        }
+        var auth = await HttpContext.AuthenticateAsync("Applicant");
+        return Guid.TryParse(auth.Principal?.FindFirst(ApplicantClaimTypes.AccountId)?.Value, out var id) ? id : null;
+    }
 
-        throw new InvalidOperationException("Could not generate a unique application number.");
+    private async Task LoadDraftAsync()
+    {
+        if (!ApplicationId.HasValue) return;
+        var accountId = await ApplicantAccountIdAsync();
+        var app = await _dbContext.AdmissionApplications.IgnoreQueryFilters().AsNoTracking().FirstOrDefaultAsync(x => x.Id == ApplicationId && x.ApplicantAccountId == accountId && x.Status == AdmissionApplicationStatus.Draft);
+        if (app is null) return;
+        TenantId = app.TenantId; BranchId = app.BranchId; CourseId = app.CourseId; AcademicYearId = app.AcademicYearId; BatchId = app.BatchId; SectionId = app.SectionId; AdmissionFormTemplateId = app.AdmissionFormTemplateId;
+        ApplicantInput = new ApplicantInputModel { ApplicantFirstName = app.ApplicantFirstName == "Draft" ? "" : app.ApplicantFirstName, ApplicantMiddleName = app.ApplicantMiddleName, ApplicantLastName = app.ApplicantLastName == "Applicant" ? "" : app.ApplicantLastName, DateOfBirth = app.DateOfBirth, Gender = app.Gender, Email = app.Email, PhoneNumber = app.PhoneNumber, GuardianName = app.GuardianName, GuardianPhone = app.GuardianPhone, Address = app.Address };
+        if (!string.IsNullOrWhiteSpace(app.FormResponseJson)) FormResponses = JsonSerializer.Deserialize<Dictionary<string,string?>>(app.FormResponseJson) ?? new();
+        await LoadAsync();
     }
 
     private static string? Normalize(string? value)

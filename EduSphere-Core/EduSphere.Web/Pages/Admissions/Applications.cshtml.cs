@@ -75,6 +75,7 @@ public class ApplicationsModel : PageModel
     public IReadOnlyList<Course> Courses { get; private set; } = new List<Course>();
     public IReadOnlyList<Batch> Batches { get; private set; } = new List<Batch>();
     public IReadOnlyList<Section> Sections { get; private set; } = new List<Section>();
+    public IReadOnlyList<StudentProfile> Students { get; private set; } = new List<StudentProfile>();
     public IReadOnlyList<AdmissionFormTemplateDto> FormTemplates { get; private set; } = new List<AdmissionFormTemplateDto>();
     public IReadOnlyList<AdmissionFormFieldDto> ApplicationFormFields { get; private set; } = new List<AdmissionFormFieldDto>();
     public IReadOnlyList<AdmissionFormFieldDto> SelectedFormFields { get; private set; } = new List<AdmissionFormFieldDto>();
@@ -470,6 +471,7 @@ public class ApplicationsModel : PageModel
         Courses = (await _courses.ListAsync()).OrderBy(c => c.Name).ToList();
         Batches = (await _batches.ListAsync()).OrderBy(b => b.Name).ToList();
         Sections = (await _sections.ListAsync()).OrderBy(s => s.Name).ToList();
+        Students = await _dbContext.StudentProfiles.AsNoTracking().Where(s => !_branchAccess.IsBranchAdminOnly(User) || (assignedBranchId.HasValue && s.BranchId == assignedBranchId.Value)).OrderBy(s => s.AdmissionNumber).ToListAsync();
         FormTemplates = await _workflow.ListFormTemplatesAsync(User);
 
         if (_branchAccess.IsBranchAdminOnly(User) && assignedBranchId.HasValue && ApplicationInput.BranchId is null)
@@ -717,6 +719,8 @@ public class ApplicationsModel : PageModel
         entity.Status = ApplicationInput.Status;
         entity.ReviewNotes = Normalize(ApplicationInput.ReviewNotes);
         entity.FormResponseJson = Normalize(ApplicationInput.FormResponseJson);
+        entity.ReAdmissionStudentProfileId = ApplicationInput.ReAdmissionStudentProfileId;
+        entity.ApplicationSource = Normalize(ApplicationInput.ApplicationSource) ?? entity.ApplicationSource ?? "Administrative entry";
         return entity;
     }
 
@@ -788,6 +792,8 @@ public class ApplicationsModel : PageModel
         Status = e.Status,
         ReviewNotes = e.ReviewNotes,
         FormResponseJson = e.FormResponseJson
+        ,ReAdmissionStudentProfileId = e.ReAdmissionStudentProfileId
+        ,ApplicationSource = e.ApplicationSource
     };
 
     private static string? Normalize(string? value)
@@ -817,6 +823,8 @@ public class ApplicationsModel : PageModel
         public AdmissionApplicationStatus Status { get; set; } = AdmissionApplicationStatus.Submitted;
         [StringLength(1000), Display(Name = "Review notes")] public string? ReviewNotes { get; set; }
         [StringLength(4000), Display(Name = "Form responses JSON")] public string? FormResponseJson { get; set; }
+        [Display(Name = "Re-admission student")] public Guid? ReAdmissionStudentProfileId { get; set; }
+        [StringLength(100), Display(Name = "Application source")] public string? ApplicationSource { get; set; }
     }
 
     public class TemplateInputModel

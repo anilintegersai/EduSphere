@@ -30,4 +30,6 @@ public class AdmissionInterview : TenantEntityBase
 
     [StringLength(1000)]
     public string? OutcomeNotes { get; set; }
+    [StringLength(80)] public string? CalendarProvider { get; set; }
+    [StringLength(200)] public string? ExternalCalendarEventId { get; set; }
 }

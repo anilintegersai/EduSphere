@@ -16,7 +16,7 @@ public sealed class NotificationDispatcher : INotificationDispatcher
         _dbContext = dbContext;
         _senders = senders
             .GroupBy(sender => sender.Channel)
-            .ToDictionary(group => group.Key, group => group.First());
+            .ToDictionary(group => group.Key, group => group.Last());
     }
 
     public async Task<NotificationDispatchResult> DispatchAsync(Guid notificationMessageId, CancellationToken cancellationToken = default)

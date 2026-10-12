@@ -120,6 +120,7 @@
                         <input type="hidden" asp-for="BatchId" />
                         <input type="hidden" asp-for="SectionId" />
                         <input type="hidden" asp-for="AdmissionFormTemplateId" />
+                        <input type="hidden" asp-for="ApplicationId" />
 
                         <div class="row g-2">
                             <div class="col-md-4">
@@ -224,7 +225,9 @@
                         </div>
 
                         <div class="form-actions mt-3">
+                            <button class="btn btn-outline-primary" type="submit" asp-page-handler="SaveDraft">Save draft</button>
                             <button class="btn btn-success" type="submit">Submit application</button>
+                            <a asp-page="Account" class="btn btn-link">Applicant sign in</a>
                         </div>
                     </form>
                 }

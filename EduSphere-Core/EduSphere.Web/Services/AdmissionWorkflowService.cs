@@ -19,19 +19,25 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
     private readonly IBranchAccessService _branchAccess;
     private readonly IAdmissionDocumentStorageService _storage;
     private readonly INotificationDispatcher _notificationDispatcher;
+    private readonly IAdmissionCalendarService _calendar;
+    private readonly IAdmissionNumberService _numbers;
 
     public AdmissionWorkflowService(
         TenantDbContext dbContext,
         ITenantContext tenantContext,
         IBranchAccessService branchAccess,
         IAdmissionDocumentStorageService storage,
-        INotificationDispatcher notificationDispatcher)
+        INotificationDispatcher notificationDispatcher,
+        IAdmissionCalendarService calendar,
+        IAdmissionNumberService numbers)
     {
         _dbContext = dbContext;
         _tenantContext = tenantContext;
         _branchAccess = branchAccess;
         _storage = storage;
         _notificationDispatcher = notificationDispatcher;
+        _calendar = calendar;
+        _numbers = numbers;
     }
 
     public async Task<IReadOnlyList<AdmissionFormTemplateDto>> ListFormTemplatesAsync(
@@ -172,6 +178,8 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         {
             return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("The interviewer already has an interview in this time slot.");
         }
+        if (request.InterviewerUserId.HasValue && !await IsInterviewerAvailableAsync(request.InterviewerUserId.Value, application.BranchId, request.StartsOn, request.EndsOn, cancellationToken))
+            return OperationsWorkflowResult<AdmissionInterviewDto>.Failure("The selected time is outside the interviewer's configured availability.");
 
         var fromStatus = application.Status;
         var interview = new AdmissionInterview
@@ -208,6 +216,8 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         }
 
         await _dbContext.SaveChangesAsync(cancellationToken);
+        var calendar = await _calendar.CreateEventAsync(interview, application, cancellationToken);
+        if (calendar.Provider is not null) { interview.CalendarProvider = calendar.Provider; interview.ExternalCalendarEventId = calendar.EventId; interview.MeetingLink ??= calendar.MeetingLink; await _dbContext.SaveChangesAsync(cancellationToken); }
         await QueueAdmissionNotificationAsync(application, AdmissionApplicationStatus.InterviewScheduled, cancellationToken);
         return OperationsWorkflowResult<AdmissionInterviewDto>.Success(Map(interview), "Interview scheduled.");
     }
@@ -356,6 +366,8 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
             return OperationsWorkflowResult<AdmissionDocumentDto>.Failure("Admission document was not found.");
 
         document.IsVerified = isVerified;
+        document.ReviewStatus = isVerified ? AdmissionDocumentReviewStatus.Approved : AdmissionDocumentReviewStatus.ReplacementRequested;
+        document.ReviewFeedback = isVerified ? null : Normalize(notes);
         document.VerifiedByUserId = isVerified ? _branchAccess.GetUserId(actor) : null;
         document.VerifiedOn = isVerified ? DateTime.UtcNow : null;
         document.Notes = Normalize(notes) ?? document.Notes;
@@ -387,6 +399,13 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         var fromStatus = application.Status;
         application.Status = request.ToStatus;
         application.ReviewNotes = Normalize(request.Notes);
+        var admissionSetting = await _dbContext.BranchAdmissionSettings.FirstOrDefaultAsync(x => x.BranchId == application.BranchId, cancellationToken);
+        if (request.ToStatus == AdmissionApplicationStatus.Accepted)
+            application.OfferExpiresOn = DateTime.UtcNow.AddDays(admissionSetting?.OfferValidityDays ?? 7);
+        if (request.ToStatus == AdmissionApplicationStatus.FeePending)
+            application.FeeDueOn = DateTime.UtcNow.AddDays(admissionSetting?.FeeDeadlineDays ?? 7);
+        if (request.ToStatus == AdmissionApplicationStatus.Waitlisted)
+            application.WaitlistPosition = (await _dbContext.AdmissionApplications.Where(x => x.BranchId == application.BranchId && x.CourseId == application.CourseId && x.Status == AdmissionApplicationStatus.Waitlisted).MaxAsync(x => (int?)x.WaitlistPosition, cancellationToken) ?? 0) + 1;
 
         _dbContext.AdmissionReviews.Add(new AdmissionReview
         {
@@ -449,7 +468,7 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
             return OperationsWorkflowResult<AdmissionEnrollmentResultDto>.Failure(referenceError);
 
         var admissionNumber = Normalize(request.AdmissionNumber)
-            ?? await NextStudentAdmissionNumberAsync(application.TenantId, application.ApplicationNumber, cancellationToken);
+            ?? (application.ReAdmissionStudentProfileId.HasValue ? null : await _numbers.NextAdmissionNumberAsync(application.TenantId, application.BranchId, cancellationToken));
         var enrollmentNumber = Normalize(request.EnrollmentNumber)
             ?? await NextEnrollmentNumberAsync(application.TenantId, cancellationToken);
         var actorUserId = _branchAccess.GetUserId(actor);
@@ -464,7 +483,7 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         {
             await using var transaction = await _dbContext.Database.BeginTransactionAsync(cancellationToken);
 
-            var admissionExists = await _dbContext.StudentProfiles.AnyAsync(s =>
+            var admissionExists = admissionNumber is not null && await _dbContext.StudentProfiles.AnyAsync(s =>
                 s.TenantId == application.TenantId &&
                 s.AdmissionNumber == admissionNumber,
                 cancellationToken);
@@ -475,13 +494,15 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
                 return;
             }
 
-            student = new StudentProfile
+            student = application.ReAdmissionStudentProfileId.HasValue
+                ? await _dbContext.StudentProfiles.FirstOrDefaultAsync(x => x.Id == application.ReAdmissionStudentProfileId.Value, cancellationToken)
+                : new StudentProfile
             {
                 Id = Guid.NewGuid(),
                 TenantId = application.TenantId,
                 BranchId = application.BranchId,
                 SectionId = sectionId,
-                AdmissionNumber = admissionNumber,
+                AdmissionNumber = admissionNumber!,
                 FirstName = application.ApplicantFirstName,
                 MiddleName = application.ApplicantMiddleName,
                 LastName = application.ApplicantLastName,
@@ -495,7 +516,9 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
                 Address = application.Address,
                 Status = StudentStatus.Active
             };
-            _dbContext.StudentProfiles.Add(student);
+            if (student is null) { saveError = "The student selected for re-admission was not found."; await transaction.RollbackAsync(cancellationToken); return; }
+            if (!application.ReAdmissionStudentProfileId.HasValue) _dbContext.StudentProfiles.Add(student);
+            else { student.Status = StudentStatus.Active; student.BranchId = application.BranchId; student.SectionId = sectionId; }
 
             enrollment = new Enrollment
             {
@@ -519,7 +542,7 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
                 TenantId = application.TenantId,
                 StudentProfileId = student.Id,
                 BranchId = application.BranchId,
-                EventType = StudentLifecycleEventType.Enrolled,
+                EventType = application.ReAdmissionStudentProfileId.HasValue ? StudentLifecycleEventType.ReAdmitted : StudentLifecycleEventType.Enrolled,
                 FromStatus = StudentStatus.Active,
                 ToStatus = StudentStatus.Active,
                 FromBranchId = application.BranchId,
@@ -761,6 +784,16 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
             cancellationToken);
     }
 
+    private async Task<bool> IsInterviewerAvailableAsync(Guid userId, Guid branchId, DateTime startsOn, DateTime endsOn, CancellationToken cancellationToken)
+    {
+        var rules = await _dbContext.AdmissionInterviewerAvailabilities.AsNoTracking()
+            .Where(x => x.InterviewerUserId == userId && x.BranchId == branchId && x.IsActive && x.DayOfWeek == startsOn.DayOfWeek)
+            .ToListAsync(cancellationToken);
+        if (rules.Count == 0) return true;
+        var date = DateOnly.FromDateTime(startsOn);
+        return rules.Any(x => (!x.EffectiveFrom.HasValue || x.EffectiveFrom <= date) && (!x.EffectiveUntil.HasValue || x.EffectiveUntil >= date) && x.StartsAt <= TimeOnly.FromDateTime(startsOn) && x.EndsAt >= TimeOnly.FromDateTime(endsOn));
+    }
+
     private async Task<string> NextAdmissionFeeInvoiceNumberAsync(Guid tenantId, CancellationToken cancellationToken)
     {
         for (var i = 1; i < 100_000; i++)
@@ -925,19 +958,12 @@ public sealed class AdmissionWorkflowService : IAdmissionWorkflowService
         var smsDestination = Normalize(application.PhoneNumber) ?? Normalize(application.GuardianPhone);
         if (!string.IsNullOrWhiteSpace(smsDestination))
         {
-            _dbContext.CommunicationLogs.Add(new CommunicationLog
+            foreach (var channel in new[] { CommunicationChannel.Sms, CommunicationChannel.WhatsApp })
             {
-                TenantId = application.TenantId,
-                BranchId = application.BranchId,
-                Channel = CommunicationChannel.Sms,
-                Direction = CommunicationDirection.Outbound,
-                Recipient = smsDestination,
-                Subject = subject,
-                Status = NotificationStatus.Queued,
-                PayloadSummary = body.Length > 500 ? body[..500] : body,
-                OccurredOn = DateTime.UtcNow
-            });
-            await _dbContext.SaveChangesAsync(cancellationToken);
+                var message = new NotificationMessage { TenantId = application.TenantId, BranchId = application.BranchId, Channel = channel, Subject = subject, Body = body, Status = NotificationStatus.Queued };
+                message.Recipients.Add(new NotificationRecipient { TenantId = application.TenantId, BranchId = application.BranchId, DisplayName = applicantName, DestinationAddress = smsDestination, Status = NotificationStatus.Queued });
+                _dbContext.NotificationMessages.Add(message); await _dbContext.SaveChangesAsync(cancellationToken); await _notificationDispatcher.DispatchAsync(message.Id, cancellationToken);
+            }
         }
     }
 

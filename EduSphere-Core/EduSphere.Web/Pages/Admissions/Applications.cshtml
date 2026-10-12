@@ -98,6 +98,8 @@ else
                                 <label asp-for="ApplicationInput.Status" class="form-label"></label>
                                 <select asp-for="ApplicationInput.Status" asp-items="Html.GetEnumSelectList<AdmissionApplicationStatus>()" class="form-select"></select>
                             </div>
+                            <div class="col-md-6"><label asp-for="ApplicationInput.ApplicationSource" class="form-label"></label><input asp-for="ApplicationInput.ApplicationSource" class="form-control" placeholder="Website, referral, campaign..." /></div>
+                            <div class="col-md-6"><label asp-for="ApplicationInput.ReAdmissionStudentProfileId" class="form-label"></label><select asp-for="ApplicationInput.ReAdmissionStudentProfileId" class="form-select"><option value="">New admission</option>@foreach(var student in Model.Students){<option value="@student.Id">@student.AdmissionNumber - @student.FirstName @student.LastName</option>}</select></div>
                             <div class="col-md-4">
                                 <label asp-for="ApplicationInput.ApplicantFirstName" class="form-label"></label>
                                 <input asp-for="ApplicationInput.ApplicantFirstName" class="form-control" />

@@ -133,8 +133,9 @@
                             }
                             @if (canManageBranchWorkspace)
                             {
-                                <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Admissions/Applications">Admissions</a>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown">Admissions</a>
+                                    <ul class="dropdown-menu app-dropdown"><li><a class="dropdown-item" asp-page="/Admissions/Applications">Applications</a></li><li><a class="dropdown-item" asp-page="/Admissions/Refinements">Refinements & reports</a></li></ul>
                                 </li>
                             }
                             @if (canManageAIQuestionPapers && aiEnabled)
