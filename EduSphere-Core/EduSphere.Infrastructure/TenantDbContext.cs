@@ -139,6 +139,21 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<Result> Results { get; set; }
     public DbSet<ResultPublicationBatch> ResultPublicationBatches { get; set; }
     public DbSet<ResultRankingRule> ResultRankingRules { get; set; }
+    public DbSet<ExamSeatingPlan> ExamSeatingPlans { get; set; }
+    public DbSet<ExamSeatAssignment> ExamSeatAssignments { get; set; }
+    public DbSet<ExamHallTicket> ExamHallTickets { get; set; }
+    public DbSet<MarkRubric> MarkRubrics { get; set; }
+    public DbSet<MarkRubricCriterion> MarkRubricCriteria { get; set; }
+    public DbSet<MarkRubricScore> MarkRubricScores { get; set; }
+    public DbSet<MarksImportBatch> MarksImportBatches { get; set; }
+    public DbSet<MarksImportRow> MarksImportRows { get; set; }
+    public DbSet<ResultReviewRequest> ResultReviewRequests { get; set; }
+    public DbSet<ReportCardTemplate> ReportCardTemplates { get; set; }
+    public DbSet<QuestionPaperReviewPolicy> QuestionPaperReviewPolicies { get; set; }
+    public DbSet<MarkingSchemeRelease> MarkingSchemeReleases { get; set; }
+    public DbSet<ExamAttendanceRecord> ExamAttendanceRecords { get; set; }
+    public DbSet<ExamMalpracticeRecord> ExamMalpracticeRecords { get; set; }
+    public DbSet<ExternalGradingRule> ExternalGradingRules { get; set; }
     public DbSet<AIProviderSetting> AIProviderSettings { get; set; }
     public DbSet<AIPromptTemplate> AIPromptTemplates { get; set; }
     public DbSet<AIGenerationRequest> AIGenerationRequests { get; set; }
@@ -1347,6 +1362,36 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .Property(r => r.MinimumPercentageToRank)
             .HasPrecision(5, 2);
 
+        modelBuilder.Entity<ExamSeatingPlan>().HasOne(x => x.ExamSchedule).WithMany().HasForeignKey(x => x.ExamScheduleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSeatingPlan>().HasOne(x => x.GeneratedByUser).WithMany().HasForeignKey(x => x.GeneratedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSeatAssignment>().HasOne(x => x.ExamSeatingPlan).WithMany(x => x.Assignments).HasForeignKey(x => x.ExamSeatingPlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSeatAssignment>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamSeatAssignment>().HasOne(x => x.Room).WithMany().HasForeignKey(x => x.RoomId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamHallTicket>().HasOne(x => x.Exam).WithMany().HasForeignKey(x => x.ExamId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamHallTicket>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkRubric>().HasOne(x => x.ExamSchedule).WithMany().HasForeignKey(x => x.ExamScheduleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkRubricCriterion>().HasOne(x => x.MarkRubric).WithMany(x => x.Criteria).HasForeignKey(x => x.MarkRubricId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkRubricCriterion>().Property(x => x.MaximumMarks).HasPrecision(9, 2);
+        modelBuilder.Entity<MarkRubricScore>().HasOne(x => x.MarkEntry).WithMany().HasForeignKey(x => x.MarkEntryId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkRubricScore>().HasOne(x => x.MarkRubricCriterion).WithMany().HasForeignKey(x => x.MarkRubricCriterionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkRubricScore>().Property(x => x.MarksAwarded).HasPrecision(9, 2);
+        modelBuilder.Entity<MarksImportBatch>().HasOne(x => x.ExamSchedule).WithMany().HasForeignKey(x => x.ExamScheduleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarksImportBatch>().HasOne(x => x.UploadedByUser).WithMany().HasForeignKey(x => x.UploadedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarksImportRow>().HasOne(x => x.MarksImportBatch).WithMany(x => x.Rows).HasForeignKey(x => x.MarksImportBatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarksImportRow>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarksImportRow>().Property(x => x.MarksObtained).HasPrecision(9, 2);
+        modelBuilder.Entity<ResultReviewRequest>().HasOne(x => x.MarkEntry).WithMany().HasForeignKey(x => x.MarkEntryId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultReviewRequest>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultReviewRequest>().HasOne(x => x.RequestedByUser).WithMany().HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultReviewRequest>().HasOne(x => x.ReviewedByUser).WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ResultReviewRequest>().Property(x => x.OriginalMarks).HasPrecision(9, 2); modelBuilder.Entity<ResultReviewRequest>().Property(x => x.RevisedMarks).HasPrecision(9, 2);
+        modelBuilder.Entity<ReportCardTemplate>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ReportCardTemplate>().HasOne(x => x.Course).WithMany().HasForeignKey(x => x.CourseId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<QuestionPaperReviewPolicy>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<MarkingSchemeRelease>().HasOne(x => x.QuestionPaperVersion).WithMany().HasForeignKey(x => x.QuestionPaperVersionId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<MarkingSchemeRelease>().HasOne(x => x.ReleasedToUser).WithMany().HasForeignKey(x => x.ReleasedToUserId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<MarkingSchemeRelease>().HasOne(x => x.ReleasedByUser).WithMany().HasForeignKey(x => x.ReleasedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamAttendanceRecord>().HasOne(x => x.ExamSchedule).WithMany().HasForeignKey(x => x.ExamScheduleId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ExamAttendanceRecord>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ExamAttendanceRecord>().HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExamMalpracticeRecord>().HasOne(x => x.ExamSchedule).WithMany().HasForeignKey(x => x.ExamScheduleId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ExamMalpracticeRecord>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ExamMalpracticeRecord>().HasOne(x => x.ReportedByUser).WithMany().HasForeignKey(x => x.ReportedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ExternalGradingRule>().HasOne(x => x.GradingScheme).WithMany().HasForeignKey(x => x.GradingSchemeId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ExternalGradingRule>().Property(x => x.MaximumGraceMarks).HasPrecision(9, 2); modelBuilder.Entity<ExternalGradingRule>().Property(x => x.MaximumGracePercentage).HasPrecision(5, 2);
+
         modelBuilder.Entity<Exam>().HasIndex(e => new { e.TenantId, e.BranchId, e.AcademicYearId, e.Name }).IsUnique();
         modelBuilder.Entity<Exam>().HasIndex(e => e.Status);
         modelBuilder.Entity<ExamSchedule>().HasIndex(s => new { s.TenantId, s.ExamId, s.SectionId, s.SubjectId }).IsUnique();
@@ -1370,6 +1415,23 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<Result>().HasIndex(r => new { r.TenantId, r.BranchId, r.Status });
         modelBuilder.Entity<ResultPublicationBatch>().HasIndex(p => new { p.TenantId, p.BranchId, p.ExamId, p.SectionId, p.Status });
         modelBuilder.Entity<ResultRankingRule>().HasIndex(r => new { r.TenantId, r.ExamId, r.SectionId }).IsUnique();
+        modelBuilder.Entity<ExamSeatingPlan>().HasIndex(x => new { x.TenantId, x.ExamScheduleId, x.GeneratedOn });
+        modelBuilder.Entity<ExamSeatAssignment>().HasIndex(x => new { x.ExamSeatingPlanId, x.RoomId, x.SeatNumber }).IsUnique();
+        modelBuilder.Entity<ExamSeatAssignment>().HasIndex(x => new { x.ExamSeatingPlanId, x.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<ExamHallTicket>().HasIndex(x => new { x.TenantId, x.ExamId, x.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<ExamHallTicket>().HasIndex(x => new { x.TenantId, x.TicketNumber }).IsUnique();
+        modelBuilder.Entity<MarkRubric>().HasIndex(x => new { x.TenantId, x.ExamScheduleId, x.Name }).IsUnique();
+        modelBuilder.Entity<MarkRubricCriterion>().HasIndex(x => new { x.MarkRubricId, x.SortOrder }).IsUnique();
+        modelBuilder.Entity<MarkRubricScore>().HasIndex(x => new { x.MarkEntryId, x.MarkRubricCriterionId }).IsUnique();
+        modelBuilder.Entity<MarksImportBatch>().HasIndex(x => new { x.TenantId, x.ExamScheduleId, x.UploadedOn });
+        modelBuilder.Entity<MarksImportRow>().HasIndex(x => new { x.MarksImportBatchId, x.RowNumber }).IsUnique();
+        modelBuilder.Entity<ResultReviewRequest>().HasIndex(x => new { x.TenantId, x.StudentProfileId, x.Status });
+        modelBuilder.Entity<ReportCardTemplate>().HasIndex(x => new { x.TenantId, x.BranchId, x.Name }).IsUnique();
+        modelBuilder.Entity<QuestionPaperReviewPolicy>().HasIndex(x => new { x.TenantId, x.BranchId, x.Name }).IsUnique();
+        modelBuilder.Entity<MarkingSchemeRelease>().HasIndex(x => new { x.TenantId, x.QuestionPaperVersionId, x.ReleasedToUserId }).IsUnique();
+        modelBuilder.Entity<ExamAttendanceRecord>().HasIndex(x => new { x.TenantId, x.ExamScheduleId, x.StudentProfileId }).IsUnique();
+        modelBuilder.Entity<ExamMalpracticeRecord>().HasIndex(x => new { x.TenantId, x.ExamScheduleId, x.StudentProfileId, x.ReportedOn });
+        modelBuilder.Entity<ExternalGradingRule>().HasIndex(x => new { x.TenantId, x.GradingSchemeId, x.AuthorityCode }).IsUnique();
     }
 
     private static void ConfigureEnterpriseServices(ModelBuilder modelBuilder)

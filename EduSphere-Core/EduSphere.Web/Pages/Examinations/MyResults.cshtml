@@ -1,0 +1,6 @@
+@page
+@model EduSphere.Web.Pages.Examinations.MyResultsModel
+@{ViewData["Title"]="My Results";}
+<section class="page-title-row"><div><span class="eyebrow">Academic outcomes</span><h1>My Results</h1><p>Published results, progress across academic years and printable report cards.</p></div></section>
+@if(Model.Students.Count>1){<div class="d-flex flex-wrap gap-2 mb-3">@foreach(var x in Model.Students){<a asp-route-studentId="@x.Id" class="btn @(x.Id==Model.SelectedStudentId?"btn-primary":"btn-outline-primary")">@x.FirstName @x.LastName</a>}</div>}
+<div class="card data-card"><div class="table-responsive"><table class="table"><thead><tr><th>Academic year</th><th>Exam</th><th>Score</th><th>Grade</th><th>Outcome</th><th>Rank</th><th></th></tr></thead><tbody>@foreach(var x in Model.Results){<tr><td>@x.AcademicYear?.Name</td><td>@x.Exam?.Name</td><td>@x.MarksObtained / @x.TotalMarks (@x.Percentage.ToString("0.##")%)</td><td>@x.Grade</td><td>@(x.IsPassed?"Pass":"Needs improvement")</td><td>@x.Rank</td><td><a asp-page="/Examinations/ReportCard" asp-route-id="@x.Id" target="_blank" class="btn btn-sm btn-outline-primary">Report card</a></td></tr>}@if(Model.Results.Count==0){<tr><td colspan="7" class="empty-state">No published results are available yet.</td></tr>}</tbody></table></div></div>

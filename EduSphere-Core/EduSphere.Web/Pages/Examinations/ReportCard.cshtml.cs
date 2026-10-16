@@ -3,13 +3,16 @@ using EduSphere.Domain.Entities;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Infrastructure;
+using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 
 namespace EduSphere.Web.Pages.Examinations;
 
-[Authorize(Policy = AuthorizationPolicies.BranchAdmin)]
+[Authorize]
 public class ReportCardModel : PageModel
 {
     private readonly ICrudService<Result> _results;
@@ -24,6 +27,7 @@ public class ReportCardModel : PageModel
     private readonly ICrudService<ResultRankingRule> _rankingRules;
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
+    private readonly TenantDbContext _db;
 
     public ReportCardModel(
         ICrudService<Result> results,
@@ -37,7 +41,8 @@ public class ReportCardModel : PageModel
         ICrudService<Subject> subjects,
         ICrudService<ResultRankingRule> rankingRules,
         ITenantContext tenant,
-        IBranchAccessService branchAccess)
+        IBranchAccessService branchAccess,
+        TenantDbContext db)
     {
         _results = results;
         _exams = exams;
@@ -51,6 +56,7 @@ public class ReportCardModel : PageModel
         _rankingRules = rankingRules;
         _tenant = tenant;
         _branchAccess = branchAccess;
+        _db = db;
     }
 
     public Result Result { get; private set; } = null!;
@@ -61,12 +67,17 @@ public class ReportCardModel : PageModel
     public Section? Section { get; private set; }
     public IReadOnlyList<MarkSheetRow> MarkRows { get; private set; } = new List<MarkSheetRow>();
     public bool ShowRank { get; private set; }
+    public ReportCardTemplate? Template { get; private set; }
 
     public async Task<IActionResult> OnGetAsync(Guid id)
     {
         if (!_tenant.HasTenant) return NotFound();
         var result = await _results.GetAsync(id);
-        if (result is null || !await _branchAccess.CanAccessBranchAsync(User, result.BranchId)) return NotFound();
+        if (result is null) return NotFound();
+        var userId = Guid.TryParse(User.FindFirstValue(ClaimTypes.NameIdentifier), out var parsed) ? parsed : Guid.Empty;
+        var owns = await _db.StudentProfiles.AnyAsync(x => x.Id == result.StudentProfileId && x.UserId == userId);
+        var parent = await _db.StudentGuardians.AnyAsync(x => x.StudentProfileId == result.StudentProfileId && x.ParentUserId == userId && x.HasPortalAccess);
+        if (!owns && !parent && !await _branchAccess.CanAccessBranchAsync(User, result.BranchId)) return Forbid();
         if (result.Status != Domain.Enums.ResultStatus.Published) return Forbid();
 
         var exam = await _exams.GetAsync(result.ExamId);
@@ -103,6 +114,8 @@ public class ReportCardModel : PageModel
         var rule = (await _rankingRules.ListAsync(r => r.ExamId == result.ExamId && r.SectionId == result.SectionId)).FirstOrDefault()
             ?? (await _rankingRules.ListAsync(r => r.ExamId == result.ExamId && r.SectionId == null)).FirstOrDefault();
         ShowRank = rule?.ShowRankOnReportCard ?? true;
+        Template = await _db.ReportCardTemplates.Where(x => (!x.BranchId.HasValue || x.BranchId == result.BranchId) && (!x.CourseId.HasValue || x.CourseId == result.CourseId)).OrderByDescending(x => x.BranchId.HasValue).ThenByDescending(x => x.CourseId.HasValue).ThenByDescending(x => x.IsDefault).FirstOrDefaultAsync();
+        if (Template is not null) ShowRank = ShowRank && Template.ShowRank;
         return Page();
     }
 

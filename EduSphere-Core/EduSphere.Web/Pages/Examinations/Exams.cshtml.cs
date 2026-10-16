@@ -7,6 +7,7 @@ using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Http;
@@ -32,6 +33,7 @@ public class ExamsModel : PageModel
     private readonly ICrudService<Result> _results;
     private readonly ICrudService<ResultPublicationBatch> _publicationBatches;
     private readonly ICrudService<ResultRankingRule> _rankingRules;
+    private readonly ICrudService<ExternalGradingRule> _externalGradingRules;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<AcademicYear> _years;
     private readonly ICrudService<Section> _sections;
@@ -45,6 +47,7 @@ public class ExamsModel : PageModel
     private readonly ITenantContext _tenant;
     private readonly IBranchAccessService _branchAccess;
     private readonly UserManager<ApplicationUser> _userManager;
+    private readonly ExaminationDepthService _examinationDepth;
 
     public ExamsModel(
         ICrudService<Exam> exams,
@@ -60,6 +63,7 @@ public class ExamsModel : PageModel
         ICrudService<Result> results,
         ICrudService<ResultPublicationBatch> publicationBatches,
         ICrudService<ResultRankingRule> rankingRules,
+        ICrudService<ExternalGradingRule> externalGradingRules,
         ICrudService<Branch> branches,
         ICrudService<AcademicYear> years,
         ICrudService<Section> sections,
@@ -72,7 +76,8 @@ public class ExamsModel : PageModel
         ICrudService<Room> rooms,
         ITenantContext tenant,
         IBranchAccessService branchAccess,
-        UserManager<ApplicationUser> userManager)
+        UserManager<ApplicationUser> userManager,
+        ExaminationDepthService examinationDepth)
     {
         _exams = exams;
         _schedules = schedules;
@@ -87,6 +92,7 @@ public class ExamsModel : PageModel
         _results = results;
         _publicationBatches = publicationBatches;
         _rankingRules = rankingRules;
+        _externalGradingRules = externalGradingRules;
         _branches = branches;
         _years = years;
         _sections = sections;
@@ -100,6 +106,7 @@ public class ExamsModel : PageModel
         _tenant = tenant;
         _branchAccess = branchAccess;
         _userManager = userManager;
+        _examinationDepth = examinationDepth;
     }
 
     public bool HasTenant => _tenant.HasTenant;
@@ -616,22 +623,11 @@ public class ExamsModel : PageModel
         if (paper is null || !await CanUseBranchAsync(paper.BranchId) || paper.Status != ApprovalStatus.UnderReview)
             return RedirectToPage();
 
-        var reviewerId = CurrentUserId();
-        await _papers.UpdateAsync(id, p =>
-        {
-            p.Status = decision;
-            p.ApprovedByUserId = decision == ApprovalStatus.Approved ? reviewerId : null;
-            p.ApprovedOn = decision == ApprovalStatus.Approved ? DateTime.UtcNow : null;
-        });
-        await _paperModerations.CreateAsync(new QuestionPaperModeration
-        {
-            QuestionPaperId = id,
-            Decision = decision,
-            ReviewedByUserId = reviewerId,
-            ReviewedOn = DateTime.UtcNow,
-            Notes = notes
-        });
-        TempData["StatusMessage"] = $"Question paper {decision.ToString().ToLowerInvariant()}.";
+        await _examinationDepth.ApplyModerationDecisionAsync(id, CurrentUserId()!.Value, decision, notes, HttpContext.RequestAborted);
+        var updated = await _papers.GetAsync(id);
+        TempData["StatusMessage"] = updated?.Status == ApprovalStatus.UnderReview
+            ? "Review recorded. The paper remains under review until its approval threshold is met."
+            : $"Question paper {updated?.Status.ToString().ToLowerInvariant()}.";
         return RedirectToPage();
     }
 
@@ -1082,8 +1078,25 @@ public class ExamsModel : PageModel
         var total = schedules.Sum(s => s.MaximumMarks);
         var marksBySchedule = markEntries.GroupBy(m => m.ExamScheduleId).ToDictionary(g => g.Key, g => g.OrderByDescending(m => m.EnteredOn).First());
         var obtained = schedules.Sum(s => marksBySchedule.TryGetValue(s.Id, out var mark) && !mark.IsAbsent ? mark.MarksObtained : 0);
+        decimal graceApplied = 0;
+        if (input.GradingSchemeId.HasValue)
+        {
+            var externalRule = (await _externalGradingRules.ListAsync(x => x.GradingSchemeId == input.GradingSchemeId.Value)).FirstOrDefault();
+            if (externalRule is not null)
+            {
+                foreach (var schedule in schedules)
+                {
+                    if (!marksBySchedule.TryGetValue(schedule.Id, out var mark) || mark.IsAbsent || mark.MarksObtained >= schedule.PassingMarks) continue;
+                    var gap = schedule.PassingMarks - mark.MarksObtained;
+                    var allowed = Math.Min(externalRule.MaximumGraceMarks, schedule.MaximumMarks * externalRule.MaximumGracePercentage / 100m);
+                    if (gap <= allowed) graceApplied += gap;
+                }
+                obtained += graceApplied;
+            }
+        }
         var percentage = total <= 0 ? 0 : Math.Round(obtained * 100 / total, 2);
-        var isPassed = schedules.All(s => marksBySchedule.TryGetValue(s.Id, out var mark) && !mark.IsAbsent && mark.MarksObtained >= s.PassingMarks);
+        var remainingGrace = graceApplied;
+        var isPassed = schedules.All(s => marksBySchedule.TryGetValue(s.Id, out var mark) && !mark.IsAbsent && (mark.MarksObtained >= s.PassingMarks || (remainingGrace >= s.PassingMarks - mark.MarksObtained && (remainingGrace -= s.PassingMarks - mark.MarksObtained) >= 0)));
         var grade = await ResolveGradeAsync(input.GradingSchemeId, exam.BranchId, batch?.CourseId, percentage);
         var existing = (await _results.ListAsync(r => r.ExamId == examId && r.StudentProfileId == studentId)).FirstOrDefault();
 
@@ -1106,7 +1119,7 @@ public class ExamsModel : PageModel
                 GradePoint = grade.GradePoint,
                 Status = ResultStatus.Computed,
                 ComputedOn = DateTime.UtcNow,
-                Remarks = input.Remarks
+                Remarks = graceApplied > 0 ? $"{input.Remarks} Grace marks applied: {graceApplied:0.##}.".Trim() : input.Remarks
             });
         }
 
@@ -1129,7 +1142,7 @@ public class ExamsModel : PageModel
             result.PublishedOn = null;
             result.Rank = null;
             result.Percentile = null;
-            result.Remarks = input.Remarks;
+            result.Remarks = graceApplied > 0 ? $"{input.Remarks} Grace marks applied: {graceApplied:0.##}.".Trim() : input.Remarks;
         });
         return await _results.GetAsync(existing.Id);
     }

@@ -1,0 +1,6 @@
+@page
+@model EduSphere.Web.Pages.Examinations.SeatingPlanModel
+@{ Layout = null; }
+<!doctype html><html><head><meta charset="utf-8"/><title>@Model.Plan.Name</title><style>body{font-family:Segoe UI,Arial;color:#17222e;margin:32px}button{float:right;padding:9px 16px}h1{border-bottom:4px solid #135d66;padding-bottom:12px}table{width:100%;border-collapse:collapse}th,td{padding:9px;border:1px solid #ccd5df;text-align:left}th{background:#135d66;color:white}@@media print{button{display:none}body{margin:10mm}}</style></head><body>
+<button onclick="print()">Print / Save PDF</button><h1>@Model.Plan.Name</h1><p>@Model.Plan.ExamSchedule?.Subject?.Name · @Model.Plan.ExamSchedule?.ExamDate.ToString("dd MMM yyyy") · @Model.Plan.CandidateCount candidates</p>
+<table><thead><tr><th>Seat</th><th>Room</th><th>Admission no.</th><th>Candidate</th><th>Status</th></tr></thead><tbody>@foreach(var x in Model.Plan.Assignments.OrderBy(x=>x.Room!.Code).ThenBy(x=>x.SeatNumber)){<tr><td>@x.SeatNumber</td><td>@x.Room?.Code</td><td>@x.StudentProfile?.AdmissionNumber</td><td>@x.StudentProfile?.FirstName @x.StudentProfile?.LastName</td><td>@x.CandidateStatus</td></tr>}</tbody></table></body></html>
