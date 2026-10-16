@@ -109,6 +109,15 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<AttendancePolicy> AttendancePolicies { get; set; }
     public DbSet<LeaveApplication> LeaveApplications { get; set; }
     public DbSet<AttendanceAlert> AttendanceAlerts { get; set; }
+    public DbSet<AttendanceDevice> AttendanceDevices { get; set; }
+    public DbSet<AttendanceDeviceImportBatch> AttendanceDeviceImportBatches { get; set; }
+    public DbSet<AttendanceDevicePunch> AttendanceDevicePunches { get; set; }
+    public DbSet<AttendanceCondonationRequest> AttendanceCondonationRequests { get; set; }
+    public DbSet<AttendanceLeaveReconciliation> AttendanceLeaveReconciliations { get; set; }
+    public DbSet<BusAttendanceRecord> BusAttendanceRecords { get; set; }
+    public DbSet<TeacherAttendanceRecord> TeacherAttendanceRecords { get; set; }
+    public DbSet<ParentAbsenceExplanation> ParentAbsenceExplanations { get; set; }
+    public DbSet<AttendanceAlertSchedule> AttendanceAlertSchedules { get; set; }
     public DbSet<Room> Rooms { get; set; }
     public DbSet<TimeSlot> TimeSlots { get; set; }
     public DbSet<Timetable> Timetables { get; set; }
@@ -932,6 +941,34 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .Property(a => a.ThresholdPercentage)
             .HasPrecision(5, 2);
 
+        modelBuilder.Entity<AttendanceDevice>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceDeviceImportBatch>().HasOne(x => x.AttendanceDevice).WithMany().HasForeignKey(x => x.AttendanceDeviceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceDevicePunch>().HasOne(x => x.AttendanceDevice).WithMany().HasForeignKey(x => x.AttendanceDeviceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceDevicePunch>().HasOne(x => x.AttendanceDeviceImportBatch).WithMany().HasForeignKey(x => x.AttendanceDeviceImportBatchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceDevicePunch>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceDevicePunch>().HasOne(x => x.StaffProfile).WithMany().HasForeignKey(x => x.StaffProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceDevicePunch>().HasOne(x => x.TeacherProfile).WithMany().HasForeignKey(x => x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCondonationRequest>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCondonationRequest>().HasOne(x => x.RequestedByUser).WithMany().HasForeignKey(x => x.RequestedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceCondonationRequest>().HasOne(x => x.ReviewedByUser).WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceLeaveReconciliation>().HasOne(x => x.LeaveApplication).WithMany().HasForeignKey(x => x.LeaveApplicationId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceLeaveReconciliation>().HasOne(x => x.AttendanceRecord).WithMany().HasForeignKey(x => x.AttendanceRecordId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceLeaveReconciliation>().HasOne(x => x.ReconciledByUser).WithMany().HasForeignKey(x => x.ReconciledByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BusAttendanceRecord>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BusAttendanceRecord>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BusAttendanceRecord>().HasOne(x => x.TransportRoute).WithMany().HasForeignKey(x => x.TransportRouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BusAttendanceRecord>().HasOne(x => x.Vehicle).WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BusAttendanceRecord>().HasOne(x => x.TransportRouteStop).WithMany().HasForeignKey(x => x.TransportRouteStopId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BusAttendanceRecord>().HasOne(x => x.RecordedByUser).WithMany().HasForeignKey(x => x.RecordedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherAttendanceRecord>().HasOne(x => x.TeacherProfile).WithMany().HasForeignKey(x => x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TeacherAttendanceRecord>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentAbsenceExplanation>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentAbsenceExplanation>().HasOne(x => x.AttendanceRecord).WithMany().HasForeignKey(x => x.AttendanceRecordId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentAbsenceExplanation>().HasOne(x => x.SubmittedByUser).WithMany().HasForeignKey(x => x.SubmittedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentAbsenceExplanation>().HasOne(x => x.ReviewedByUser).WithMany().HasForeignKey(x => x.ReviewedByUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceAlertSchedule>().HasOne(x => x.Branch).WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<AttendanceAlertSchedule>().Property(x => x.ThresholdPercentage).HasPrecision(5, 2);
+
         modelBuilder.Entity<Room>()
             .HasOne(r => r.Branch).WithMany()
             .HasForeignKey(r => r.BranchId).OnDelete(DeleteBehavior.Restrict);
@@ -1028,6 +1065,16 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AttendancePolicy>().HasIndex(p => new { p.TenantId, p.Name }).IsUnique();
         modelBuilder.Entity<LeaveApplication>().HasIndex(l => new { l.TenantId, l.StudentProfileId, l.FromDate });
         modelBuilder.Entity<AttendanceAlert>().HasIndex(a => new { a.TenantId, a.StudentProfileId, a.Status });
+        modelBuilder.Entity<AttendanceDevice>().HasIndex(x => new { x.TenantId, x.DeviceIdentifier }).IsUnique();
+        modelBuilder.Entity<AttendanceDeviceImportBatch>().HasIndex(x => new { x.TenantId, x.AttendanceDeviceId, x.UploadedOn });
+        modelBuilder.Entity<AttendanceDevicePunch>().HasIndex(x => new { x.TenantId, x.AttendanceDeviceId, x.ExternalRecordId }).IsUnique();
+        modelBuilder.Entity<AttendanceDevicePunch>().HasIndex(x => new { x.TenantId, x.PersonCode, x.PunchedOn });
+        modelBuilder.Entity<AttendanceCondonationRequest>().HasIndex(x => new { x.TenantId, x.StudentProfileId, x.Status });
+        modelBuilder.Entity<AttendanceLeaveReconciliation>().HasIndex(x => new { x.TenantId, x.LeaveApplicationId, x.AttendanceRecordId }).IsUnique();
+        modelBuilder.Entity<BusAttendanceRecord>().HasIndex(x => new { x.TenantId, x.StudentProfileId, x.AttendanceDate, x.Status });
+        modelBuilder.Entity<TeacherAttendanceRecord>().HasIndex(x => new { x.TenantId, x.TeacherProfileId, x.AttendanceDate }).IsUnique();
+        modelBuilder.Entity<ParentAbsenceExplanation>().HasIndex(x => new { x.TenantId, x.StudentProfileId, x.Status });
+        modelBuilder.Entity<AttendanceAlertSchedule>().HasIndex(x => new { x.IsActive, x.NextRunOn });
 
         modelBuilder.Entity<Room>().HasIndex(r => new { r.TenantId, r.BranchId, r.Code }).IsUnique();
         modelBuilder.Entity<TimeSlot>().HasIndex(t => new { t.TenantId, t.BranchId, t.DayOfWeek, t.PeriodNumber }).IsUnique();

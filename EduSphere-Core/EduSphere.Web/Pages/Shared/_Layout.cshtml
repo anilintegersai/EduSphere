@@ -138,31 +138,35 @@
                                     <ul class="dropdown-menu app-dropdown"><li><a class="dropdown-item" asp-page="/Admissions/Applications">Applications</a></li><li><a class="dropdown-item" asp-page="/Admissions/Refinements">Refinements & reports</a></li></ul>
                                 </li>
                             }
-                            @if (canManageAIQuestionPapers && aiEnabled)
+                            @if (canMarkAttendance || canManageBranchWorkspace || (canManageAIQuestionPapers && aiEnabled))
                             {
-                                <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/AI", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/AI/QuestionPapers">AI Papers</a>
+                                <li class="nav-item dropdown">
+                                    <a class="nav-link dropdown-toggle @((currentPage.StartsWith("/Attendance", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Timetable", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/AI", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Operations</a>
+                                    <ul class="dropdown-menu app-dropdown">
+                                        @if (canMarkAttendance)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Attendance/Mark">Attendance</a></li>
+                                            @if (canManageBranchWorkspace)
+                                            {
+                                                <li><a class="dropdown-item" asp-page="/Attendance/Depth">Attendance operations</a></li>
+                                            }
+                                        }
+                                        @if (canManageBranchWorkspace)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/Timetable/Schedule">Timetable</a></li>
+                                            <li><a class="dropdown-item" asp-page="/Examinations/Exams">Exams</a></li>
+                                        }
+                                        @if (canManageAIQuestionPapers && aiEnabled)
+                                        {
+                                            <li><a class="dropdown-item" asp-page="/AI/QuestionPapers">AI question papers</a></li>
+                                        }
+                                    </ul>
                                 </li>
                             }
                             @if (canViewAdministration)
                             {
                                 <li class="nav-item">
                                     <a class="nav-link @(currentPage.StartsWith("/Administration", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Administration/Index">Administration</a>
-                                </li>
-                            }
-                            @if (canMarkAttendance)
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Attendance", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Attendance/Mark">Attendance</a>
-                                </li>
-                            }
-                            @if (canManageBranchWorkspace)
-                            {
-                                <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Timetable", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Timetable/Schedule">Timetable</a>
-                                </li>
-                                <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Examinations/Exams">Exams</a>
                                 </li>
                             }
                             @if ((canManageFinance && financeEnabled) || (canManageTransport && transportEnabled) || (canManageLibrary && libraryEnabled) || (canManageHostel && hostelEnabled) || (canManageCommunications && communicationsEnabled))

@@ -9,6 +9,7 @@ using EduSphere.Web.Security;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.RazorPages;
+using System.Text;
 using DomainTimetable = EduSphere.Domain.Entities.Timetable;
 
 namespace EduSphere.Web.Pages.Timetable;
@@ -397,6 +398,42 @@ public class ScheduleModel : PageModel
         return RedirectToPage();
     }
 
+    public async Task<IActionResult> OnPostMoveEntryAsync(Guid entryId, Guid timeSlotId)
+    {
+        var entry = await _entries.GetAsync(entryId);
+        if (entry is null) return NotFound();
+        var input = new EntryInputModel { Id = entry.Id, TimetableId = entry.TimetableId, SectionId = entry.SectionId, SubjectId = entry.SubjectId, TeacherProfileId = entry.TeacherProfileId, TimeSlotId = timeSlotId, RoomId = entry.RoomId, Notes = entry.Notes };
+        var error = await ValidateEntryAsync(input, entry.Id);
+        if (error is not null) { Feedback = error; return RedirectToPage(); }
+        await _entries.UpdateAsync(entry.Id, x => x.TimeSlotId = timeSlotId);
+        Feedback = "Timetable entry moved successfully.";
+        return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnGetCalendarAsync(Guid timetableId)
+    {
+        await LoadAsync();
+        var timetable = Timetables.FirstOrDefault(x => x.Id == timetableId);
+        if (timetable is null || !await CanUseBranchAsync(timetable.BranchId)) return NotFound();
+        var entries = Entries.Where(x => x.TimetableId == timetableId).ToList();
+        var until = timetable.EffectiveTo ?? timetable.EffectiveFrom.AddMonths(6);
+        var calendar = new StringBuilder("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//EduSphere//Timetable//EN\r\nCALSCALE:GREGORIAN\r\n");
+        foreach (var entry in entries)
+        {
+            var slot = TimeSlots.First(x => x.Id == entry.TimeSlotId);
+            var offset = ((int)slot.DayOfWeek - (int)timetable.EffectiveFrom.DayOfWeek + 7) % 7;
+            var date = timetable.EffectiveFrom.AddDays(offset); if (date > until) continue;
+            var start = date.ToDateTime(slot.StartsAt); var end = date.ToDateTime(slot.EndsAt);
+            calendar.Append("BEGIN:VEVENT\r\n").Append("UID:").Append(entry.Id).Append("@edusphere\r\n")
+                .Append("DTSTART:").Append(start.ToString("yyyyMMdd'T'HHmmss")).Append("\r\nDTEND:").Append(end.ToString("yyyyMMdd'T'HHmmss")).Append("\r\n")
+                .Append("RRULE:FREQ=WEEKLY;UNTIL=").Append(until.ToDateTime(new TimeOnly(23, 59)).ToUniversalTime().ToString("yyyyMMdd'T'HHmmss'Z'")).Append("\r\n")
+                .Append("SUMMARY:").Append(Ical(SubjectName(entry.SubjectId))).Append("\r\nLOCATION:").Append(Ical(RoomName(entry.RoomId))).Append("\r\n")
+                .Append("DESCRIPTION:").Append(Ical($"{SectionName(entry.SectionId)} · {TeacherName(entry.TeacherProfileId)}")).Append("\r\nEND:VEVENT\r\n");
+        }
+        calendar.Append("END:VCALENDAR\r\n");
+        return File(Encoding.UTF8.GetBytes(calendar.ToString()), "text/calendar", $"{SafeName(timetable.Name)}.ics");
+    }
+
     private async Task LoadAsync()
     {
         var assignedBranchId = await _branchAccess.GetAssignedBranchIdAsync(User);
@@ -510,6 +547,8 @@ public class ScheduleModel : PageModel
     }
 
     private Task<bool> CanUseBranchAsync(Guid branchId) => _branchAccess.CanAccessBranchAsync(User, branchId);
+    private static string Ical(string value) => value.Replace("\\", "\\\\").Replace(";", "\\;").Replace(",", "\\,").Replace("\r", "").Replace("\n", "\\n");
+    private static string SafeName(string value) => string.Concat(value.Select(x => char.IsLetterOrDigit(x) || x is '-' or '_' ? x : '-')).Trim('-');
 
     private Room Apply(Room entity, Guid branchId)
     {

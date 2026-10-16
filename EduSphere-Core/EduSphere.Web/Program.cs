@@ -78,6 +78,8 @@ builder.Services.AddScoped<IAdmissionCalendarService, AdmissionCalendarService>(
 builder.Services.AddScoped<IPasswordHasher<AdmissionApplicantAccount>, PasswordHasher<AdmissionApplicantAccount>>();
 builder.Services.AddHostedService<AdmissionAutomationWorker>();
 builder.Services.AddScoped<IAttendanceTimetableWorkflowService, AttendanceTimetableWorkflowService>();
+builder.Services.AddScoped<AttendanceDepthService>();
+builder.Services.AddHostedService<AttendanceAlertBackgroundWorker>();
 builder.Services.AddScoped<IAcademicPlanningService, AcademicPlanningService>();
 builder.Services.AddScoped<IAISecretProtector, DataProtectionAISecretProtector>();
 builder.Services.AddScoped<IAIQuestionPaperService, AIQuestionPaperService>();

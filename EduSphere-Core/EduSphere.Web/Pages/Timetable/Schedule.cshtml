@@ -254,6 +254,30 @@ else
     </div>
 
     <div class="row g-4 mt-1">
+        <div class="col-12">
+            <div class="card data-card timetable-calendar-card">
+                <div class="card-header"><span>Weekly Calendar</span><span class="action-stack"><a asp-page="/Academic/Planning" class="btn btn-sm btn-outline-primary">Automatic generation & optimization</a>@foreach(var t in Model.Timetables.Take(3)){<a asp-page-handler="Calendar" asp-route-timetableId="@t.Id" class="btn btn-sm btn-outline-secondary">@t.Name iCal</a>}</span></div>
+                <div class="timetable-board" aria-label="Drag and drop timetable editor">
+                    @foreach (var day in Enum.GetValues<DayOfWeek>().Where(x => x is not DayOfWeek.Saturday and not DayOfWeek.Sunday))
+                    {
+                        <section class="timetable-day"><h3>@day</h3>
+                        @foreach (var slot in Model.TimeSlots.Where(x => x.DayOfWeek == day && !x.IsBreak).OrderBy(x => x.PeriodNumber))
+                        {
+                            <div class="timetable-slot" data-slot-id="@slot.Id"><div class="timetable-slot-time">P@slot.PeriodNumber · @slot.StartsAt.ToString("HH:mm")</div>
+                            @foreach(var entry in Model.Entries.Where(x => x.TimeSlotId == slot.Id))
+                            {
+                                <article class="timetable-event" draggable="true" data-entry-id="@entry.Id" title="Drag to another available slot">
+                                    <strong>@Model.SubjectName(entry.SubjectId)</strong><span>@Model.SectionName(entry.SectionId)</span><small>@Model.TeacherName(entry.TeacherProfileId) · @Model.RoomName(entry.RoomId)</small>
+                                </article>
+                            }
+                            </div>
+                        }
+                        </section>
+                    }
+                </div>
+                <form method="post" asp-page-handler="MoveEntry" id="move-entry-form" class="d-none"><input type="hidden" name="entryId" id="move-entry-id"/><input type="hidden" name="timeSlotId" id="move-slot-id"/></form>
+            </div>
+        </div>
         <div class="col-xl-7">
             <div class="card data-card">
                 <div class="card-header"><span>Timetable Entries</span><span class="count-pill">@Model.Entries.Count records</span></div>
@@ -313,4 +337,14 @@ else
         </div>
     </div>
 }
-@section Scripts { <partial name="_ValidationScriptsPartial" /> }
+@section Scripts { <partial name="_ValidationScriptsPartial" /><script>
+(() => {
+  let entryId = null;
+  document.querySelectorAll('.timetable-event').forEach(event => event.addEventListener('dragstart', e => { entryId = event.dataset.entryId; e.dataTransfer.effectAllowed = 'move'; }));
+  document.querySelectorAll('.timetable-slot').forEach(slot => {
+    slot.addEventListener('dragover', e => { e.preventDefault(); slot.classList.add('is-drop-target'); });
+    slot.addEventListener('dragleave', () => slot.classList.remove('is-drop-target'));
+    slot.addEventListener('drop', e => { e.preventDefault(); slot.classList.remove('is-drop-target'); if (!entryId) return; document.getElementById('move-entry-id').value = entryId; document.getElementById('move-slot-id').value = slot.dataset.slotId; document.getElementById('move-entry-form').submit(); });
+  });
+})();
+</script> }

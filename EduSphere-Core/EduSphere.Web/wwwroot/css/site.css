@@ -123,7 +123,7 @@ a:hover {
 }
 
 .app-navbar {
-  width: min(100% - 1.5rem, 1500px);
+  width: min(100% - 1.5rem, 1800px);
   margin: 0 auto;
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: var(--edu-radius);
@@ -239,7 +239,8 @@ a:hover {
   display: flex;
   min-width: 0;
   max-width: 100%;
-  flex-wrap: wrap;
+  flex: 0 1 auto;
+  flex-wrap: nowrap;
   gap: .65rem;
   align-items: center;
   justify-content: flex-end;
@@ -248,7 +249,7 @@ a:hover {
 .tenant-switcher {
   display: flex;
   min-width: 0;
-  width: min(20rem, 100%);
+  width: clamp(12rem, 17vw, 18rem);
   max-width: 100%;
   gap: .45rem;
   align-items: center;
@@ -271,7 +272,7 @@ a:hover {
   flex: 1 1 8rem;
   width: 100%;
   min-width: 0;
-  max-width: 15rem;
+  max-width: 13rem;
   border: 0;
   border-radius: 6px;
   color: var(--edu-ink);
@@ -293,14 +294,41 @@ a:hover {
   color: #fff;
 }
 
-.user-cluster {
+.user-menu {
+  display: inline-block;
+  min-width: 0;
+  color: #fff;
+}
+
+.user-menu-toggle {
   display: inline-flex;
   min-width: 0;
-  max-width: 100%;
-  flex-wrap: wrap;
-  gap: .65rem;
+  max-width: 13rem;
+  gap: .6rem;
   align-items: center;
+  padding: .32rem .65rem .32rem .35rem;
+  border: 1px solid rgba(255, 255, 255, .2);
+  border-radius: var(--edu-radius);
   color: #fff;
+  background: rgba(255, 255, 255, .08);
+  text-align: left;
+}
+
+.user-menu-toggle:hover,
+.user-menu-toggle:focus,
+.user-menu-toggle[aria-expanded="true"] {
+  border-color: rgba(255, 255, 255, .38);
+  background: rgba(255, 255, 255, .16);
+}
+
+.user-menu-toggle:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, .24);
+  outline-offset: 2px;
+}
+
+.user-menu-toggle::after {
+  flex: 0 0 auto;
+  margin-left: auto;
 }
 
 .user-avatar {
@@ -348,8 +376,37 @@ a:hover {
   font-weight: 800;
 }
 
-.user-cluster form {
+.user-menu form {
   margin: 0;
+}
+
+.user-menu-dropdown {
+  width: min(18rem, calc(100vw - 2rem));
+}
+
+.user-menu-heading {
+  display: grid;
+  min-width: 0;
+  padding: .45rem .7rem .25rem;
+}
+
+.user-menu-heading span {
+  color: var(--edu-muted);
+  font-size: .7rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.user-menu-heading strong {
+  overflow: hidden;
+  color: var(--edu-ink);
+  font-size: .88rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.user-menu-signout {
+  color: #b42318;
 }
 
 @media (min-width: 1200px) and (max-width: 1799.98px) {
@@ -1054,6 +1111,9 @@ textarea.form-control {
   }
 
   .navbar-tools {
+    width: 100%;
+    flex-wrap: wrap;
+    padding: .5rem 0 .75rem;
     justify-content: flex-start;
   }
 }
@@ -1100,18 +1160,17 @@ textarea.form-control {
   }
 
   .tenant-switcher,
-  .tenant-switcher-select,
-  .user-cluster {
+  .tenant-switcher-select {
     width: 100%;
   }
 
-  .user-cluster .btn-shell,
-  .user-cluster form {
-    flex: 1 1 auto;
+  .user-menu {
+    width: 100%;
   }
 
-  .user-cluster form .btn-shell {
+  .user-menu-toggle {
     width: 100%;
+    max-width: none;
   }
 
   .user-meta {
@@ -1128,6 +1187,29 @@ textarea.form-control {
 }
 
 /* Dense operational workspaces */
+.timetable-board {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(12rem, 1fr));
+  gap: .75rem;
+  overflow-x: auto;
+  padding: 1rem;
+}
+
+.timetable-day { min-width: 12rem; }
+.timetable-day h3 { margin: 0 0 .55rem; font-size: .9rem; font-weight: 850; }
+.timetable-slot { min-height: 5.5rem; margin-bottom: .6rem; padding: .45rem; border: 1px dashed #c8d4e3; border-radius: 6px; background: #f7f9fc; transition: border-color .15s, background-color .15s; }
+.timetable-slot.is-drop-target { border-color: var(--edu-primary); background: #eaf2ff; }
+.timetable-slot-time { margin-bottom: .35rem; color: var(--edu-muted); font-size: .72rem; font-weight: 800; }
+.timetable-event { display: grid; gap: .08rem; padding: .5rem; border-left: 3px solid var(--tenant-primary, #176b87); border-radius: 4px; background: #fff; box-shadow: 0 1px 4px rgba(31, 42, 55, .1); cursor: grab; }
+.timetable-event:active { cursor: grabbing; }
+.timetable-event strong { font-size: .82rem; }
+.timetable-event span, .timetable-event small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.timetable-event span { font-size: .76rem; }
+.timetable-event small { color: var(--edu-muted); font-size: .68rem; }
+
+@media (max-width: 767.98px) {
+  .timetable-board { grid-template-columns: repeat(5, 13rem); }
+}
 .workflow-jumpbar {
   position: sticky;
   top: 5.4rem;

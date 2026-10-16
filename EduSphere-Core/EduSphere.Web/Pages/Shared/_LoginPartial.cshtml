@@ -8,17 +8,29 @@
 
 @if (SignInManager.IsSignedIn(User))
 {
-    <div class="user-cluster">
-        <span class="user-avatar" aria-hidden="true">@initial</span>
-        <span class="user-meta">
-            <span class="user-label">Signed in</span>
-            <span class="user-name">@displayName</span>
-        </span>
-        <a class="btn btn-shell" asp-page="/Account/ChangePassword">Password</a>
-        <a class="btn btn-shell" asp-page="/Account/MfaSetup">MFA</a>
-        <form asp-page="/Account/Logout" method="post">
-            <button type="submit" class="btn btn-shell">Sign out</button>
-        </form>
+    <div class="dropdown user-menu">
+        <button class="user-menu-toggle dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false" aria-label="Open account menu for @displayName">
+            <span class="user-avatar" aria-hidden="true">@initial</span>
+            <span class="user-meta">
+                <span class="user-label">Signed in</span>
+                <span class="user-name">@displayName</span>
+            </span>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end app-dropdown user-menu-dropdown">
+            <li class="user-menu-heading">
+                <span>Account</span>
+                <strong title="@displayName">@displayName</strong>
+            </li>
+            <li><hr class="dropdown-divider" /></li>
+            <li><a class="dropdown-item" asp-page="/Account/ChangePassword">Change password</a></li>
+            <li><a class="dropdown-item" asp-page="/Account/MfaSetup">MFA settings</a></li>
+            <li><hr class="dropdown-divider" /></li>
+            <li>
+                <form asp-page="/Account/Logout" method="post">
+                    <button type="submit" class="dropdown-item user-menu-signout">Sign out</button>
+                </form>
+            </li>
+        </ul>
     </div>
 }
 else
