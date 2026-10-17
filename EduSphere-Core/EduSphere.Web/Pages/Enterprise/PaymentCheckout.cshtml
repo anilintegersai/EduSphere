@@ -1,0 +1,6 @@
+@page
+@model EduSphere.Web.Pages.Enterprise.PaymentCheckoutModel
+@{ViewData["Title"]="Secure Fee Payment";}
+<section class="page-title-row"><div><span class="eyebrow">Secure checkout</span><h1>Pay @Model.Transaction.Amount.ToString("N2") @Model.Transaction.Currency</h1><p>Invoice @Model.Transaction.FeeInvoice?.InvoiceNumber · payment is confirmed only after a verified provider webhook.</p></div></section>
+<div class="card form-card mx-auto" style="max-width:560px"><div class="card-body text-center py-5"><h2>@Model.InstitutionName</h2><p class="text-muted">Razorpay supports cards, net banking and UPI applications.</p><button id="pay-now" class="btn btn-primary btn-lg">Open secure payment</button><a asp-page="/Enterprise/Finance" class="btn btn-link d-block mt-2">Return to finance</a></div></div>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script><script>document.getElementById('pay-now').addEventListener('click',function(){new Razorpay({key:@Html.Raw(Model.KeyJson),amount:@((long)Math.Round(Model.Transaction.Amount*100)),currency:@Html.Raw(Model.CurrencyJson),name:@Html.Raw(Model.NameJson),description:'Fee payment',order_id:@Html.Raw(Model.OrderJson),handler:function(){window.location='@Url.Page("/Enterprise/Finance")';},theme:{color:'#135d66'}}).open();});</script>

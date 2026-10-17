@@ -137,7 +137,7 @@ else
                         {
                             <tr>
                                 <td>@payment.PaymentNumber</td><td>@Model.InvoiceName(payment.FeeInvoiceId)</td><td>@payment.Mode</td><td>@payment.Amount.ToString("N2")</td>
-                                <td class="text-end"><form method="post" asp-page-handler="DeletePayment" asp-route-id="@payment.Id" class="d-inline"><button class="btn btn-sm btn-outline-danger">Remove</button></form></td>
+                                <td class="text-end"><a asp-page-handler="Receipt" asp-route-paymentId="@payment.Id" class="btn btn-sm btn-outline-primary">Receipt PDF</a></td>
                             </tr>
                         }
                         @if (Model.Invoices.Count == 0 && Model.Payments.Count == 0) { <tr><td colspan="5" class="text-center empty-state">No invoices or payments yet.</td></tr> }
@@ -157,7 +157,7 @@ else
                         <div class="row g-2">
                             <div class="col-md-6"><label asp-for="OnlinePaymentInput.BranchId" class="form-label"></label><select asp-for="OnlinePaymentInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
                             <div class="col-md-6"><label asp-for="OnlinePaymentInput.FeeInvoiceId" class="form-label"></label><select asp-for="OnlinePaymentInput.FeeInvoiceId" class="form-select"><option value="">Invoice</option>@foreach (var i in Model.Invoices) { <option value="@i.Id">@i.InvoiceNumber</option> }</select></div>
-                            <div class="col-md-6"><label asp-for="OnlinePaymentInput.GatewayProviderKey" class="form-label"></label><input asp-for="OnlinePaymentInput.GatewayProviderKey" class="form-control" /></div>
+                            <div class="col-md-6"><label asp-for="OnlinePaymentInput.GatewayProviderKey" class="form-label"></label><select asp-for="OnlinePaymentInput.GatewayProviderKey" class="form-select"><option value="stripe">Stripe</option><option value="razorpay">Razorpay</option><option value="upi">UPI via Razorpay</option></select></div>
                             <div class="col-md-3"><label asp-for="OnlinePaymentInput.Currency" class="form-label"></label><input asp-for="OnlinePaymentInput.Currency" class="form-control" /></div>
                             <div class="col-md-3"><label asp-for="OnlinePaymentInput.Amount" class="form-label"></label><input asp-for="OnlinePaymentInput.Amount" type="number" step="0.01" class="form-control" /></div>
                         </div>
@@ -249,7 +249,7 @@ else
                     <tr>
                         <td>Gateway</td><td>@transaction.GatewayOrderId</td><td>@transaction.Status</td><td>@Model.InvoiceName(transaction.FeeInvoiceId) / @transaction.Amount.ToString("N2")</td>
                         <td class="text-end">
-                            <form method="post" asp-page-handler="CompleteOnlinePayment" asp-route-id="@transaction.Id" class="d-inline"><button class="btn btn-sm btn-outline-success">Complete</button></form>
+                            <span class="small text-muted">Verified by webhook</span>
                         </td>
                     </tr>
                 }

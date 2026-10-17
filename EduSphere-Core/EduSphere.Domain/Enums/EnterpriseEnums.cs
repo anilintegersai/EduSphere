@@ -100,7 +100,10 @@ public enum LedgerExportType
     Payments = 2,
     Refunds = 3,
     Concessions = 4,
-    TrialBalance = 5
+    TrialBalance = 5,
+    GeneralLedger = 6,
+    Tally = 7,
+    QuickBooks = 8
 }
 
 public enum LedgerExportFormat

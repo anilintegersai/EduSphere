@@ -176,6 +176,19 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<FeeRefund> FeeRefunds { get; set; }
     public DbSet<FeeConcessionRequest> FeeConcessionRequests { get; set; }
     public DbSet<LedgerExportBatch> LedgerExportBatches { get; set; }
+    public DbSet<FinanceNumberSequence> FinanceNumberSequences { get; set; }
+    public DbSet<FeeInstallmentPlan> FeeInstallmentPlans { get; set; }
+    public DbSet<FeeInstallment> FeeInstallments { get; set; }
+    public DbSet<LateFeeRule> LateFeeRules { get; set; }
+    public DbSet<ConcessionRule> ConcessionRules { get; set; }
+    public DbSet<TaxCode> TaxCodes { get; set; }
+    public DbSet<ChartOfAccount> ChartOfAccounts { get; set; }
+    public DbSet<AccountingPeriod> AccountingPeriods { get; set; }
+    public DbSet<JournalEntry> JournalEntries { get; set; }
+    public DbSet<JournalLine> JournalLines { get; set; }
+    public DbSet<BankAccount> BankAccounts { get; set; }
+    public DbSet<BankStatementLine> BankStatementLines { get; set; }
+    public DbSet<PaymentGatewayWebhookEvent> PaymentGatewayWebhookEvents { get; set; }
     public DbSet<Vehicle> Vehicles { get; set; }
     public DbSet<TransportDriver> TransportDrivers { get; set; }
     public DbSet<TransportRoute> TransportRoutes { get; set; }
@@ -1437,6 +1450,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     private static void ConfigureEnterpriseServices(ModelBuilder modelBuilder)
     {
         ConfigureFinance(modelBuilder);
+        ConfigureFinanceAccounting(modelBuilder);
         ConfigureTransport(modelBuilder);
         ConfigureLibrary(modelBuilder);
         ConfigureHostel(modelBuilder);
@@ -1643,6 +1657,25 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<FeeRefund>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
         modelBuilder.Entity<FeeConcessionRequest>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
         modelBuilder.Entity<LedgerExportBatch>().HasIndex(e => new { e.TenantId, e.BranchId, e.ExportType, e.RequestedOn });
+    }
+
+    private static void ConfigureFinanceAccounting(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<FinanceNumberSequence>().HasIndex(x=>new{x.TenantId,x.BranchId,x.DocumentType}).IsUnique();
+        modelBuilder.Entity<FeeInstallmentPlan>().HasOne(x=>x.FeeStructure).WithMany().HasForeignKey(x=>x.FeeStructureId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInstallmentPlan>().HasIndex(x=>new{x.TenantId,x.FeeStructureId,x.Name}).IsUnique();
+        modelBuilder.Entity<FeeInstallment>().HasOne(x=>x.FeeInstallmentPlan).WithMany(x=>x.Installments).HasForeignKey(x=>x.FeeInstallmentPlanId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<FeeInstallment>().Property(x=>x.Amount).HasPrecision(12,2); modelBuilder.Entity<FeeInstallment>().Property(x=>x.Percentage).HasPrecision(7,4);
+        modelBuilder.Entity<LateFeeRule>().Property(x=>x.Value).HasPrecision(12,2); modelBuilder.Entity<LateFeeRule>().Property(x=>x.MaximumAmount).HasPrecision(12,2);
+        modelBuilder.Entity<ConcessionRule>().Property(x=>x.Value).HasPrecision(12,2); modelBuilder.Entity<ConcessionRule>().Property(x=>x.MaximumAmount).HasPrecision(12,2); modelBuilder.Entity<ConcessionRule>().HasIndex(x=>new{x.TenantId,x.Code}).IsUnique();
+        modelBuilder.Entity<TaxCode>().Property(x=>x.Rate).HasPrecision(7,4); modelBuilder.Entity<TaxCode>().HasIndex(x=>new{x.TenantId,x.Code}).IsUnique();
+        modelBuilder.Entity<ChartOfAccount>().HasOne(x=>x.ParentAccount).WithMany().HasForeignKey(x=>x.ParentAccountId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<ChartOfAccount>().HasIndex(x=>new{x.TenantId,x.Code}).IsUnique();
+        modelBuilder.Entity<AccountingPeriod>().HasIndex(x=>new{x.TenantId,x.BranchId,x.StartsOn,x.EndsOn}).IsUnique();
+        modelBuilder.Entity<JournalEntry>().HasIndex(x=>new{x.TenantId,x.JournalNumber}).IsUnique();
+        modelBuilder.Entity<JournalLine>().HasOne(x=>x.JournalEntry).WithMany(x=>x.Lines).HasForeignKey(x=>x.JournalEntryId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<JournalLine>().HasOne(x=>x.ChartOfAccount).WithMany().HasForeignKey(x=>x.ChartOfAccountId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<JournalLine>().HasOne(x=>x.TaxCode).WithMany().HasForeignKey(x=>x.TaxCodeId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<JournalLine>().Property(x=>x.Debit).HasPrecision(14,2); modelBuilder.Entity<JournalLine>().Property(x=>x.Credit).HasPrecision(14,2);
+        modelBuilder.Entity<BankAccount>().HasOne<ChartOfAccount>().WithMany().HasForeignKey(x=>x.ChartOfAccountId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<BankAccount>().HasIndex(x=>new{x.TenantId,x.BranchId,x.AccountNumberMasked}).IsUnique();
+        modelBuilder.Entity<BankStatementLine>().HasOne(x=>x.BankAccount).WithMany().HasForeignKey(x=>x.BankAccountId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<BankStatementLine>().Property(x=>x.Debit).HasPrecision(14,2); modelBuilder.Entity<BankStatementLine>().Property(x=>x.Credit).HasPrecision(14,2);
+        modelBuilder.Entity<PaymentGatewayWebhookEvent>().HasIndex(x=>new{x.TenantId,x.Provider,x.EventId}).IsUnique();
     }
 
     private static void ConfigureTransport(ModelBuilder modelBuilder)

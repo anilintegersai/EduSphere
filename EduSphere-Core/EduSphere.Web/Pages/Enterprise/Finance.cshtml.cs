@@ -7,6 +7,7 @@ using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -22,6 +23,7 @@ public class FinanceModel : EnterprisePageModel
     private readonly ICrudService<StudentFeeAssignment> _assignments;
     private readonly ICrudService<FeeInvoice> _invoices;
     private readonly ICrudService<FeePayment> _payments;
+    private readonly ICrudService<FeeReceipt> _receipts;
     private readonly ICrudService<OnlinePaymentTransaction> _onlineTransactions;
     private readonly ICrudService<FeeReminder> _feeReminders;
     private readonly ICrudService<FeeRefund> _refunds;
@@ -32,6 +34,7 @@ public class FinanceModel : EnterprisePageModel
     private readonly ICrudService<Course> _courses;
     private readonly ICrudService<Batch> _batches;
     private readonly ICrudService<StudentProfile> _students;
+    private readonly IFinanceAccountingService _financeAccounting;
 
     public FinanceModel(
         ICrudService<FeeStructure> structures,
@@ -41,6 +44,7 @@ public class FinanceModel : EnterprisePageModel
         ICrudService<StudentFeeAssignment> assignments,
         ICrudService<FeeInvoice> invoices,
         ICrudService<FeePayment> payments,
+        ICrudService<FeeReceipt> receipts,
         ICrudService<OnlinePaymentTransaction> onlineTransactions,
         ICrudService<FeeReminder> feeReminders,
         ICrudService<FeeRefund> refunds,
@@ -51,6 +55,7 @@ public class FinanceModel : EnterprisePageModel
         ICrudService<Course> courses,
         ICrudService<Batch> batches,
         ICrudService<StudentProfile> students,
+        IFinanceAccountingService financeAccounting,
         ITenantContext tenant,
         IBranchAccessService branchAccess)
         : base(tenant, branchAccess)
@@ -62,6 +67,7 @@ public class FinanceModel : EnterprisePageModel
         _assignments = assignments;
         _invoices = invoices;
         _payments = payments;
+        _receipts = receipts;
         _onlineTransactions = onlineTransactions;
         _feeReminders = feeReminders;
         _refunds = refunds;
@@ -72,6 +78,7 @@ public class FinanceModel : EnterprisePageModel
         _courses = courses;
         _batches = batches;
         _students = students;
+        _financeAccounting = financeAccounting;
     }
 
     public IReadOnlyList<FeeStructure> Structures { get; private set; } = new List<FeeStructure>();
@@ -403,7 +410,7 @@ public class FinanceModel : EnterprisePageModel
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
         var total = InvoiceInput.SubTotal - InvoiceInput.DiscountAmount + InvoiceInput.FineAmount;
-        await _invoices.CreateAsync(new FeeInvoice
+        var createdInvoice=await _invoices.CreateAsync(new FeeInvoice
         {
             BranchId = InvoiceInput.BranchId!.Value,
             StudentFeeAssignmentId = InvoiceInput.StudentFeeAssignmentId!.Value,
@@ -417,6 +424,7 @@ public class FinanceModel : EnterprisePageModel
             FineAmount = InvoiceInput.FineAmount,
             TotalAmount = Math.Max(total, 0)
         });
+        if(createdInvoice.Status!=InvoiceStatus.Draft)await _financeAccounting.PostInvoiceAsync(createdInvoice.Id,HttpContext.RequestAborted);
         return RedirectToPage();
     }
 
@@ -433,7 +441,7 @@ public class FinanceModel : EnterprisePageModel
             invoice = selectedInvoice;
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        await _payments.CreateAsync(new FeePayment
+        var createdPayment=await _payments.CreateAsync(new FeePayment
         {
             BranchId = PaymentInput.BranchId!.Value,
             FeeInvoiceId = PaymentInput.FeeInvoiceId!.Value,
@@ -444,18 +452,7 @@ public class FinanceModel : EnterprisePageModel
             Status = PaymentInput.Status,
             TransactionReference = PaymentInput.TransactionReference
         });
-        if (invoice is not null && PaymentInput.Status == PaymentStatus.Completed)
-        {
-            await _invoices.UpdateAsync(invoice.Id, e =>
-            {
-                e.PaidAmount = Math.Min(e.TotalAmount, e.PaidAmount + PaymentInput.Amount);
-                e.Status = e.PaidAmount >= e.TotalAmount
-                    ? InvoiceStatus.Paid
-                    : e.PaidAmount > 0
-                        ? InvoiceStatus.PartiallyPaid
-                        : e.Status;
-            });
-        }
+        if (invoice is not null && PaymentInput.Status == PaymentStatus.Completed)await _financeAccounting.FinalizePaymentAsync(createdPayment.Id,HttpContext.RequestAborted);
         return RedirectToPage();
     }
 
@@ -471,24 +468,17 @@ public class FinanceModel : EnterprisePageModel
     {
         if (!HasTenant) return RedirectToPage();
         KeepOnlyModelStateFor(nameof(OnlinePaymentInput));
+        FeeInvoice? invoice = null;
         if (!await ValidateBranchSelectionAsync("OnlinePaymentInput.BranchId", OnlinePaymentInput.BranchId, _branches))
             ModelState.AddModelError(string.Empty, "Fix branch selection.");
-        if (OnlinePaymentInput.FeeInvoiceId is not Guid invoiceId || await _invoices.GetAsync(invoiceId) is not { } invoice || invoice.BranchId != OnlinePaymentInput.BranchId)
+        if (OnlinePaymentInput.FeeInvoiceId is not Guid invoiceId || await _invoices.GetAsync(invoiceId) is not { } selectedInvoice || selectedInvoice.BranchId != OnlinePaymentInput.BranchId)
             ModelState.AddModelError("OnlinePaymentInput.FeeInvoiceId", "Selected invoice was not found for this branch.");
+        else invoice = selectedInvoice;
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        await _onlineTransactions.CreateAsync(new OnlinePaymentTransaction
-        {
-            BranchId = OnlinePaymentInput.BranchId!.Value,
-            FeeInvoiceId = OnlinePaymentInput.FeeInvoiceId!.Value,
-            GatewayProviderKey = OnlinePaymentInput.GatewayProviderKey,
-            GatewayOrderId = $"ORD-{DateTime.UtcNow:yyyyMMddHHmmssfff}",
-            Amount = OnlinePaymentInput.Amount,
-            Currency = OnlinePaymentInput.Currency.ToUpperInvariant(),
-            Status = OnlinePaymentInput.Status,
-            Notes = OnlinePaymentInput.Notes
-        });
-        return RedirectToPage();
+        var result=await _financeAccounting.CreateCheckoutAsync(invoice!.Id,OnlinePaymentInput.GatewayProviderKey,OnlinePaymentInput.Amount,OnlinePaymentInput.Currency,Url.Page("/Enterprise/Finance",null,null,Request.Scheme)!,HttpContext.RequestAborted);
+        if(!result.Succeeded){ModelState.AddModelError(string.Empty,result.Error??"Payment checkout could not be created.");await LoadAsync();return Page();}
+        return Redirect(result.RedirectUrl!);
     }
 
     public async Task<IActionResult> OnPostSaveReminderAsync()
@@ -593,6 +583,12 @@ public class FinanceModel : EnterprisePageModel
         var refund = await _refunds.GetAsync(id);
         if (refund is not null && await CanUseBranchAsync(refund.BranchId))
         {
+            if(status==FinanceApprovalStatus.Processed)
+            {
+                var executed=await _financeAccounting.ExecuteRefundAsync(id,HttpContext.RequestAborted);
+                if(!executed.Succeeded)TempData["StatusMessage"]=executed.Error;
+                return RedirectToPage();
+            }
             await _refunds.UpdateAsync(id, r =>
             {
                 r.Status = status;
@@ -602,10 +598,15 @@ public class FinanceModel : EnterprisePageModel
                 if (status == FinanceApprovalStatus.Processed)
                     r.ProcessedOn = DateTime.UtcNow;
             });
-            if (status == FinanceApprovalStatus.Processed)
-                await _payments.UpdateAsync(refund.FeePaymentId, p => p.Status = PaymentStatus.Refunded);
         }
         return RedirectToPage();
+    }
+
+    public async Task<IActionResult> OnGetReceiptAsync(Guid paymentId)
+    {
+        var receipt=(await _receipts.ListAsync(x=>x.FeePaymentId==paymentId)).FirstOrDefault();
+        if(receipt is null)return NotFound();
+        return File(await _financeAccounting.BuildReceiptPdfAsync(receipt.Id,HttpContext.RequestAborted),"application/pdf",$"receipt-{receipt.ReceiptNumber}.pdf");
     }
 
     public async Task<IActionResult> OnPostRequestConcessionAsync()
