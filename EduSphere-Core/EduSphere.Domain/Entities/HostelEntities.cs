@@ -119,6 +119,8 @@ public class HostelFee : TenantEntityBase
     public DateOnly DueDate { get; set; } = DateOnly.FromDateTime(DateTime.UtcNow.AddDays(10));
     public decimal Amount { get; set; }
     public decimal PaidAmount { get; set; }
+    public Guid? FeeInvoiceId { get; set; }
+    public FeeInvoice? FeeInvoice { get; set; }
     public InvoiceStatus Status { get; set; } = InvoiceStatus.Issued;
 
     [StringLength(500)]
@@ -154,6 +156,11 @@ public class HostelVisitorLog : TenantEntityBase
     public DateTime? CheckOutOn { get; set; }
     public Guid? ApprovedByUserId { get; set; }
     public ApplicationUser? ApprovedByUser { get; set; }
+    public HostelVisitorStatus Status { get; set; } = HostelVisitorStatus.Requested;
+    public DateTime? RequestedVisitOn { get; set; }
+    public DateTime? ApprovedOn { get; set; }
+    public Guid? CheckedInByUserId { get; set; }
+    public Guid? CheckedOutByUserId { get; set; }
 
     [StringLength(80)]
     public string? IdDocumentNumber { get; set; }
@@ -188,6 +195,10 @@ public class HostelMaintenanceRequest : TenantEntityBase
     public DateTime ReportedOn { get; set; } = DateTime.UtcNow;
     public DateTime? DueOn { get; set; }
     public DateTime? ResolvedOn { get; set; }
+    public int SlaMinutes { get; set; }
+    public DateTime? FirstResponseOn { get; set; }
+    public int EscalationLevel { get; set; }
+    public Guid? AssignedToUserId { get; set; }
 
     [Required]
     [StringLength(1000)]

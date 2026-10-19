@@ -17,7 +17,7 @@ public class PermissionMatrixTests
             [ModulePermission.ManageFinance] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Accountant],
             [ModulePermission.ManageTransport] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.TransportManager],
             [ModulePermission.ManageLibrary] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Librarian],
-            [ModulePermission.ManageHostel] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.HostelManager],
+            [ModulePermission.ManageHostel] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.HostelManager, Roles.Warden],
             [ModulePermission.ManageCommunications] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.StaffAdmin],
             [ModulePermission.ManageUsers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.StaffAdmin],
             [ModulePermission.ManageAIQuestionPapers] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.Teacher, Roles.ExamController]

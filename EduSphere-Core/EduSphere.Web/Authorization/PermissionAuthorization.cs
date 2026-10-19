@@ -35,7 +35,7 @@ public sealed class EffectivePermissionService(TenantDbContext db, ITenantContex
         [PermissionKeys.FinanceManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Accountant],
         [PermissionKeys.TransportManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.TransportManager],
         [PermissionKeys.LibraryManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Librarian],
-        [PermissionKeys.HostelManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.HostelManager],
+        [PermissionKeys.HostelManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.HostelManager, Roles.Warden],
         [PermissionKeys.CommunicationsManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.StaffAdmin],
         [PermissionKeys.UsersManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.StaffAdmin],
         [PermissionKeys.AIQuestionPapersManage] = [Roles.SuperAdmin, Roles.TenantAdmin, Roles.BranchAdmin, Roles.Principal, Roles.DepartmentAdmin, Roles.Teacher, Roles.ExamController]

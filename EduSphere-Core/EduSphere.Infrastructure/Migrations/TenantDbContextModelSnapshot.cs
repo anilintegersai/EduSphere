@@ -2085,6 +2085,14 @@ namespace EduSphere.Infrastructure.Migrations
                         },
                         new
                         {
+                            Id = new Guid("f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1"),
+                            ConcurrencyStamp = "f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1",
+                            Description = "Warden platform role",
+                            Name = "Warden",
+                            NormalizedName = "WARDEN"
+                        },
+                        new
+                        {
                             Id = new Guid("dddddddd-dddd-dddd-dddd-dddddddddddd"),
                             ConcurrencyStamp = "dddddddd-dddd-dddd-dddd-dddddddddddd",
                             Description = "ExamController platform role",
@@ -6825,6 +6833,212 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("HostelBlocks");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelClearanceItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Area")
+                        .HasColumnType("int");
+
+                    b.Property<Guid?>("ClearedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ClearedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("HostelClearanceRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsCleared")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelClearanceRequestId");
+
+                    b.HasIndex("TenantId", "HostelClearanceRequestId", "Area")
+                        .IsUnique();
+
+                    b.ToTable("HostelClearanceItems");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelClearanceRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly?>("ExpectedReturnOn")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("HostelAllocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsFinalCheckout")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateTime>("RequestedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("VacationFrom")
+                        .HasColumnType("date");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelAllocationId");
+
+                    b.HasIndex("TenantId", "BranchId", "Status");
+
+                    b.ToTable("HostelClearanceRequests");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelDamageAssessment", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("ChargedAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Description")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<decimal>("EstimatedCost")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid?>("FeeInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("HostelAllocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HostelRoomInspectionId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("StudentLiable")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelRoomInspectionId");
+
+                    b.ToTable("HostelDamageAssessments");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelFee", b =>
                 {
                     b.Property<Guid>("Id")
@@ -6860,6 +7074,9 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.Property<DateOnly>("DueDate")
                         .HasColumnType("date");
+
+                    b.Property<Guid?>("FeeInvoiceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("HostelAllocationId")
                         .HasColumnType("uniqueidentifier");
@@ -6897,6 +7114,8 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.HasIndex("BranchId");
 
+                    b.HasIndex("FeeInvoiceId");
+
                     b.HasIndex("HostelAllocationId");
 
                     b.HasIndex("TenantId", "InvoiceNumber")
@@ -6907,10 +7126,157 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("HostelFees");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelGatePass", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ActualOutOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ActualReturnOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("ApprovedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("ApprovedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DecisionNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("HostelAllocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PlannedOutOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("PlannedReturnOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelAllocationId");
+
+                    b.HasIndex("TenantId", "BranchId", "Status", "PlannedReturnOn");
+
+                    b.ToTable("HostelGatePasses");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMaintenanceEscalation", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("AcknowledgedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("EscalatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("EscalatedToUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("HostelMaintenanceRequestId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("Level")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Reason")
+                        .IsRequired()
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelMaintenanceRequestId");
+
+                    b.ToTable("HostelMaintenanceEscalations");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelMaintenanceRequest", b =>
                 {
                     b.Property<Guid>("Id")
                         .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("AssignedToUserId")
                         .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("BranchId")
@@ -6944,6 +7310,12 @@ namespace EduSphere.Infrastructure.Migrations
                         .HasColumnType("nvarchar(1000)");
 
                     b.Property<DateTime?>("DueOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("EscalationLevel")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("FirstResponseOn")
                         .HasColumnType("datetime2");
 
                     b.Property<Guid?>("HostelBedId")
@@ -6981,6 +7353,9 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Property<DateTime?>("ResolvedOn")
                         .HasColumnType("datetime2");
 
+                    b.Property<int>("SlaMinutes")
+                        .HasColumnType("int");
+
                     b.Property<int>("Status")
                         .HasColumnType("int");
 
@@ -7002,6 +7377,223 @@ namespace EduSphere.Infrastructure.Migrations
                     b.HasIndex("TenantId", "BranchId", "Status", "Priority");
 
                     b.ToTable("HostelMaintenanceRequests");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMessAttendance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly>("AttendanceDate")
+                        .HasColumnType("date");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("HostelAllocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MealType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("RecordedByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("RecordedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelAllocationId");
+
+                    b.HasIndex("TenantId", "HostelAllocationId", "AttendanceDate", "MealType")
+                        .IsUnique();
+
+                    b.ToTable("HostelMessAttendances");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMessBill", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("ChargeableMeals")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FeeInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime>("GeneratedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("HostelAllocationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly>("PeriodEnd")
+                        .HasColumnType("date");
+
+                    b.Property<DateOnly>("PeriodStart")
+                        .HasColumnType("date");
+
+                    b.Property<decimal>("RatePerMeal")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeeInvoiceId");
+
+                    b.HasIndex("HostelAllocationId");
+
+                    b.HasIndex("TenantId", "HostelAllocationId", "PeriodStart", "PeriodEnd")
+                        .IsUnique();
+
+                    b.ToTable("HostelMessBills");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMessMenu", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("AllergenNotes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("GuestPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid?>("HostelBlockId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsVegetarian")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("MealType")
+                        .HasColumnType("int");
+
+                    b.Property<DateOnly>("MenuDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("MenuItems")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "HostelBlockId", "MenuDate", "MealType")
+                        .IsUnique()
+                        .HasFilter("[HostelBlockId] IS NOT NULL");
+
+                    b.ToTable("HostelMessMenus");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelRoom", b =>
@@ -7081,6 +7673,79 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("HostelRooms");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelRoomInspection", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("CleanlinessScore")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime?>("CompletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Findings")
+                        .HasMaxLength(1500)
+                        .HasColumnType("nvarchar(1500)");
+
+                    b.Property<Guid>("HostelRoomId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("InspectorUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("SafetyScore")
+                        .HasColumnType("int");
+
+                    b.Property<DateTime>("ScheduledOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("HostelRoomId");
+
+                    b.HasIndex("TenantId", "BranchId", "Status", "ScheduledOn");
+
+                    b.ToTable("HostelRoomInspections");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelVisitorLog", b =>
                 {
                     b.Property<Guid>("Id")
@@ -7090,6 +7755,9 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Property<Guid?>("ApprovedByUserId")
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("ApprovedOn")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
@@ -7098,6 +7766,12 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.Property<DateTime?>("CheckOutOn")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("CheckedInByUserId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("CheckedOutByUserId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<Guid>("ConcurrencyToken")
                         .IsConcurrencyToken()
@@ -7149,6 +7823,12 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Property<string>("Relationship")
                         .HasMaxLength(80)
                         .HasColumnType("nvarchar(80)");
+
+                    b.Property<DateTime?>("RequestedVisitOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
 
                     b.Property<Guid?>("StudentProfileId")
                         .HasColumnType("uniqueidentifier");
@@ -18110,6 +18790,39 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Branch");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelClearanceItem", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelClearanceRequest", "HostelClearanceRequest")
+                        .WithMany("Items")
+                        .HasForeignKey("HostelClearanceRequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelClearanceRequest");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelClearanceRequest", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelAllocation", "HostelAllocation")
+                        .WithMany()
+                        .HasForeignKey("HostelAllocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelAllocation");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelDamageAssessment", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelRoomInspection", "HostelRoomInspection")
+                        .WithMany("Damages")
+                        .HasForeignKey("HostelRoomInspectionId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelRoomInspection");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelFee", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
@@ -18117,6 +18830,11 @@ namespace EduSphere.Infrastructure.Migrations
                         .HasForeignKey("BranchId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
+
+                    b.HasOne("EduSphere.Domain.Entities.FeeInvoice", "FeeInvoice")
+                        .WithMany()
+                        .HasForeignKey("FeeInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("EduSphere.Domain.Entities.HostelAllocation", "HostelAllocation")
                         .WithMany("Fees")
@@ -18126,7 +18844,31 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.Navigation("Branch");
 
+                    b.Navigation("FeeInvoice");
+
                     b.Navigation("HostelAllocation");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelGatePass", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelAllocation", "HostelAllocation")
+                        .WithMany()
+                        .HasForeignKey("HostelAllocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelAllocation");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMaintenanceEscalation", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelMaintenanceRequest", "HostelMaintenanceRequest")
+                        .WithMany()
+                        .HasForeignKey("HostelMaintenanceRequestId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelMaintenanceRequest");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelMaintenanceRequest", b =>
@@ -18168,6 +18910,35 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("ReportedByUser");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMessAttendance", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelAllocation", "HostelAllocation")
+                        .WithMany()
+                        .HasForeignKey("HostelAllocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelAllocation");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelMessBill", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.FeeInvoice", "FeeInvoice")
+                        .WithMany()
+                        .HasForeignKey("FeeInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.HostelAllocation", "HostelAllocation")
+                        .WithMany()
+                        .HasForeignKey("HostelAllocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("FeeInvoice");
+
+                    b.Navigation("HostelAllocation");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelRoom", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
@@ -18185,6 +18956,17 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Branch");
 
                     b.Navigation("HostelBlock");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelRoomInspection", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.HostelRoom", "HostelRoom")
+                        .WithMany()
+                        .HasForeignKey("HostelRoomId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("HostelRoom");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelVisitorLog", b =>
@@ -20741,9 +21523,19 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("Rooms");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelClearanceRequest", b =>
+                {
+                    b.Navigation("Items");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.HostelRoom", b =>
                 {
                     b.Navigation("Beds");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.HostelRoomInspection", b =>
+                {
+                    b.Navigation("Damages");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.JournalEntry", b =>

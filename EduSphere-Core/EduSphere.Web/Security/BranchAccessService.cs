@@ -19,6 +19,7 @@ public sealed class BranchAccessService : IBranchAccessService
         Roles.Librarian,
         Roles.TransportManager,
         Roles.HostelManager,
+        Roles.Warden,
         Roles.ExamController,
         Roles.StaffAdmin
     };

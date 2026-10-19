@@ -216,6 +216,15 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<HostelVisitorLog> HostelVisitorLogs { get; set; }
     public DbSet<HostelMaintenanceRequest> HostelMaintenanceRequests { get; set; }
     public DbSet<HostelAllocationTransferRequest> HostelAllocationTransferRequests { get; set; }
+    public DbSet<HostelMessMenu> HostelMessMenus { get; set; }
+    public DbSet<HostelMessAttendance> HostelMessAttendances { get; set; }
+    public DbSet<HostelMessBill> HostelMessBills { get; set; }
+    public DbSet<HostelGatePass> HostelGatePasses { get; set; }
+    public DbSet<HostelMaintenanceEscalation> HostelMaintenanceEscalations { get; set; }
+    public DbSet<HostelRoomInspection> HostelRoomInspections { get; set; }
+    public DbSet<HostelDamageAssessment> HostelDamageAssessments { get; set; }
+    public DbSet<HostelClearanceRequest> HostelClearanceRequests { get; set; }
+    public DbSet<HostelClearanceItem> HostelClearanceItems { get; set; }
     public DbSet<NotificationProviderSetting> NotificationProviderSettings { get; set; }
     public DbSet<NotificationTemplate> NotificationTemplates { get; set; }
     public DbSet<NotificationMessage> NotificationMessages { get; set; }
@@ -1957,6 +1966,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .Property(e => e.Amount).HasPrecision(12, 2);
         modelBuilder.Entity<HostelFee>()
             .Property(e => e.PaidAmount).HasPrecision(12, 2);
+        modelBuilder.Entity<HostelFee>().HasOne(e=>e.FeeInvoice).WithMany().HasForeignKey(e=>e.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<HostelVisitorLog>()
             .HasOne(e => e.Branch).WithMany()
@@ -2022,6 +2032,15 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<HostelVisitorLog>().HasIndex(e => new { e.TenantId, e.BranchId, e.CheckInOn });
         modelBuilder.Entity<HostelMaintenanceRequest>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status, e.Priority });
         modelBuilder.Entity<HostelAllocationTransferRequest>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<HostelMessMenu>().Property(x=>x.GuestPrice).HasPrecision(12,2); modelBuilder.Entity<HostelMessMenu>().HasIndex(x=>new{x.TenantId,x.BranchId,x.HostelBlockId,x.MenuDate,x.MealType}).IsUnique();
+        modelBuilder.Entity<HostelMessAttendance>().HasOne(x=>x.HostelAllocation).WithMany().HasForeignKey(x=>x.HostelAllocationId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<HostelMessAttendance>().HasIndex(x=>new{x.TenantId,x.HostelAllocationId,x.AttendanceDate,x.MealType}).IsUnique();
+        modelBuilder.Entity<HostelMessBill>().HasOne(x=>x.HostelAllocation).WithMany().HasForeignKey(x=>x.HostelAllocationId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<HostelMessBill>().HasOne(x=>x.FeeInvoice).WithMany().HasForeignKey(x=>x.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<HostelMessBill>().Property(x=>x.RatePerMeal).HasPrecision(12,2); modelBuilder.Entity<HostelMessBill>().Property(x=>x.Amount).HasPrecision(12,2); modelBuilder.Entity<HostelMessBill>().HasIndex(x=>new{x.TenantId,x.HostelAllocationId,x.PeriodStart,x.PeriodEnd}).IsUnique();
+        modelBuilder.Entity<HostelGatePass>().HasOne(x=>x.HostelAllocation).WithMany().HasForeignKey(x=>x.HostelAllocationId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<HostelGatePass>().HasIndex(x=>new{x.TenantId,x.BranchId,x.Status,x.PlannedReturnOn});
+        modelBuilder.Entity<HostelMaintenanceEscalation>().HasOne(x=>x.HostelMaintenanceRequest).WithMany().HasForeignKey(x=>x.HostelMaintenanceRequestId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<HostelRoomInspection>().HasOne(x=>x.HostelRoom).WithMany().HasForeignKey(x=>x.HostelRoomId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<HostelRoomInspection>().HasIndex(x=>new{x.TenantId,x.BranchId,x.Status,x.ScheduledOn});
+        modelBuilder.Entity<HostelDamageAssessment>().HasOne(x=>x.HostelRoomInspection).WithMany(x=>x.Damages).HasForeignKey(x=>x.HostelRoomInspectionId).OnDelete(DeleteBehavior.Restrict); modelBuilder.Entity<HostelDamageAssessment>().Property(x=>x.EstimatedCost).HasPrecision(12,2);modelBuilder.Entity<HostelDamageAssessment>().Property(x=>x.ChargedAmount).HasPrecision(12,2);
+        modelBuilder.Entity<HostelClearanceRequest>().HasOne(x=>x.HostelAllocation).WithMany().HasForeignKey(x=>x.HostelAllocationId).OnDelete(DeleteBehavior.Restrict);modelBuilder.Entity<HostelClearanceRequest>().HasIndex(x=>new{x.TenantId,x.BranchId,x.Status});
+        modelBuilder.Entity<HostelClearanceItem>().HasOne(x=>x.HostelClearanceRequest).WithMany(x=>x.Items).HasForeignKey(x=>x.HostelClearanceRequestId).OnDelete(DeleteBehavior.Restrict);modelBuilder.Entity<HostelClearanceItem>().HasIndex(x=>new{x.TenantId,x.HostelClearanceRequestId,x.Area}).IsUnique();
     }
 
     private static void ConfigureCommunications(ModelBuilder modelBuilder)

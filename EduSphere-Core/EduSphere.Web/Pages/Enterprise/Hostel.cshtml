@@ -12,7 +12,10 @@
     </div>
     @if (Model.HasTenant)
     {
-        <span class="count-pill">@Model.Allocations.Count allocations</span>
+        <div class="d-flex align-items-center gap-2">
+            <a asp-page="/Enterprise/HostelOperations" class="btn btn-primary">Warden operations</a>
+            <span class="count-pill">@Model.Allocations.Count allocations</span>
+        </div>
     }
 </section>
 

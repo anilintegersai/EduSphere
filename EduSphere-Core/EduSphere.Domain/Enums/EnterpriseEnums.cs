@@ -283,6 +283,14 @@ public enum HostelTransferStatus
     Cancelled = 5
 }
 
+public enum HostelMealType { Breakfast=1, Lunch=2, Snacks=3, Dinner=4 }
+public enum MessAttendanceStatus { Present=1, Absent=2, Leave=3, Guest=4 }
+public enum HostelVisitorStatus { Requested=1, Approved=2, Rejected=3, CheckedIn=4, CheckedOut=5 }
+public enum GatePassStatus { Requested=1, WardenApproved=2, ParentApproved=3, Rejected=4, CheckedOut=5, Returned=6, Overdue=7 }
+public enum HostelInspectionStatus { Scheduled=1, Completed=2, FollowUpRequired=3, Closed=4 }
+public enum HostelClearanceStatus { Requested=1, InProgress=2, Cleared=3, Blocked=4, Completed=5 }
+public enum NoDueArea { HostelFee=1, Mess=2, RoomDamage=3, Keys=4, Inventory=5, Library=6, Finance=7 }
+
 public enum CommunicationChannel
 {
     Email = 1,

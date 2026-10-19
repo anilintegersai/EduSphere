@@ -18,6 +18,7 @@ public static class Roles
     public const string Librarian = "Librarian";
     public const string TransportManager = "TransportManager";
     public const string HostelManager = "HostelManager";
+    public const string Warden = "Warden";
     public const string ExamController = "ExamController";
     public const string StaffAdmin = "StaffAdmin";
 
@@ -35,6 +36,7 @@ public static class Roles
         [Librarian] = Guid.Parse("aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"),
         [TransportManager] = Guid.Parse("bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"),
         [HostelManager] = Guid.Parse("cccccccc-cccc-cccc-cccc-cccccccccccc"),
+        [Warden] = Guid.Parse("f1f1f1f1-f1f1-f1f1-f1f1-f1f1f1f1f1f1"),
         [ExamController] = Guid.Parse("dddddddd-dddd-dddd-dddd-dddddddddddd"),
         [StaffAdmin] = Guid.Parse("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee"),
     };

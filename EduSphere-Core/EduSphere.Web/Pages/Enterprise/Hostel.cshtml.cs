@@ -6,6 +6,7 @@ using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -24,6 +25,7 @@ public class HostelModel : EnterprisePageModel
     private readonly ICrudService<HostelAllocationTransferRequest> _transferRequests;
     private readonly ICrudService<Branch> _branches;
     private readonly ICrudService<StudentProfile> _students;
+    private readonly IHostelDepthService _hostelDepth;
 
     public HostelModel(
         ICrudService<HostelBlock> blocks,
@@ -36,6 +38,7 @@ public class HostelModel : EnterprisePageModel
         ICrudService<HostelAllocationTransferRequest> transferRequests,
         ICrudService<Branch> branches,
         ICrudService<StudentProfile> students,
+        IHostelDepthService hostelDepth,
         ITenantContext tenant,
         IBranchAccessService branchAccess)
         : base(tenant, branchAccess)
@@ -50,6 +53,7 @@ public class HostelModel : EnterprisePageModel
         _transferRequests = transferRequests;
         _branches = branches;
         _students = students;
+        _hostelDepth = hostelDepth;
     }
 
     public IReadOnlyList<HostelBlock> Blocks { get; private set; } = new List<HostelBlock>();
@@ -271,7 +275,7 @@ public class HostelModel : EnterprisePageModel
         if (FeeInput.HostelAllocationId is not Guid allocationId || await _allocations.GetAsync(allocationId) is not { } allocation || allocation.BranchId != FeeInput.BranchId)
             ModelState.AddModelError("FeeInput.HostelAllocationId", "Selected allocation was not found for this branch.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
-        await _fees.CreateAsync(new HostelFee
+        var fee = await _fees.CreateAsync(new HostelFee
         {
             BranchId = FeeInput.BranchId!.Value,
             HostelAllocationId = FeeInput.HostelAllocationId!.Value,
@@ -282,6 +286,7 @@ public class HostelModel : EnterprisePageModel
             PaidAmount = FeeInput.PaidAmount,
             Status = FeeInput.Status
         });
+        await _hostelDepth.IntegrateHostelFeeAsync(fee.Id, HttpContext.RequestAborted);
         return RedirectToPage();
     }
 

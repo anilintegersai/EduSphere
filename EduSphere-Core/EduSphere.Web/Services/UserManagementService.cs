@@ -37,6 +37,7 @@ public sealed class UserManagementService : IUserManagementService
             new RoleDefinition(Roles.Librarian, "Librarian", 45, UserType.Librarian, true, UserProfileKind.Staff),
             new RoleDefinition(Roles.TransportManager, "Transport Manager", 45, UserType.Staff, true, UserProfileKind.Staff),
             new RoleDefinition(Roles.HostelManager, "Hostel Manager", 45, UserType.Staff, true, UserProfileKind.Staff),
+            new RoleDefinition(Roles.Warden, "Hostel Warden", 44, UserType.Staff, true, UserProfileKind.Staff),
             new RoleDefinition(Roles.Teacher, "Teacher", 40, UserType.Teacher, true, UserProfileKind.Teacher),
             new RoleDefinition(Roles.Parent, "Parent", 30, UserType.Parent, true, UserProfileKind.Parent),
             new RoleDefinition(Roles.Student, "Student", 20, UserType.Student, true, UserProfileKind.Student)
