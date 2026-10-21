@@ -10,6 +10,7 @@
         <h1>Library</h1>
         <p>Manage catalogue records, physical copies, memberships, issues, returns, and fines.</p>
     </div>
+    <a asp-page="/Enterprise/LibraryOperations" class="btn btn-primary">Advanced operations</a>
     @if (Model.HasTenant)
     {
         <span class="count-pill">@Model.Copies.Count copies</span>
@@ -96,7 +97,7 @@ else
                         <div class="row g-2">
                             <div class="col-md-4"><label asp-for="ReturnInput.BranchId" class="form-label"></label><select asp-for="ReturnInput.BranchId" class="form-select"><option value="">Branch</option>@foreach (var b in Model.Branches) { <option value="@b.Id">@b.Name</option> }</select></div>
                             <div class="col-md-4"><label asp-for="ReturnInput.LibraryBookIssueId" class="form-label"></label><select asp-for="ReturnInput.LibraryBookIssueId" class="form-select"><option value="">Issue</option>@foreach (var i in Model.Issues) { <option value="@i.Id">@Model.CopyName(i.LibraryBookCopyId)</option> }</select></div>
-                            <div class="col-md-4"><label asp-for="ReturnInput.FineAssessed" class="form-label"></label><input asp-for="ReturnInput.FineAssessed" type="number" step="0.01" class="form-control" /></div>
+                            <div class="col-md-4"><label asp-for="ReturnInput.Condition" class="form-label"></label><select asp-for="ReturnInput.Condition" asp-items="Html.GetEnumSelectList<LibraryItemCondition>()" class="form-select"></select></div>
                         </div>
                         <button type="submit" class="btn btn-outline-primary mt-3">Record return</button>
                     </form>

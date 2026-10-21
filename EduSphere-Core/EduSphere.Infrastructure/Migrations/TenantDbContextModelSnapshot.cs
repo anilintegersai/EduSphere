@@ -8511,6 +8511,9 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
 
+                    b.Property<DateTime?>("LastVerifiedOn")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("LibraryBookId")
                         .HasColumnType("uniqueidentifier");
 
@@ -8712,6 +8715,168 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("LibraryBookReturns");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryCirculationPolicy", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("DamageChargePercent")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<decimal>("FinePerDay")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int>("GraceDays")
+                        .HasColumnType("int");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<int>("LoanDays")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("LostBookMultiplier")
+                        .HasPrecision(8, 2)
+                        .HasColumnType("decimal(8,2)");
+
+                    b.Property<int>("MaxIssues")
+                        .HasColumnType("int");
+
+                    b.Property<int>("MaxRenewals")
+                        .HasColumnType("int");
+
+                    b.Property<decimal>("MaximumFine")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<int>("MemberType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ReservationHoldDays")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "MemberType")
+                        .IsUnique()
+                        .HasFilter("[BranchId] IS NOT NULL");
+
+                    b.ToTable("LibraryCirculationPolicies");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryDigitalResource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("AccessLevel")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LibraryBookId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateOnly?>("LicenseExpiresOn")
+                        .HasColumnType("date");
+
+                    b.Property<string>("LicenseName")
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("ResourceType")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ResourceUrl")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LibraryBookId");
+
+                    b.HasIndex("TenantId", "BranchId", "IsActive");
+
+                    b.ToTable("LibraryDigitalResources");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.LibraryFineRecord", b =>
                 {
                     b.Property<Guid>("Id")
@@ -8744,6 +8909,9 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.Property<DateTime?>("DeletedOn")
                         .HasColumnType("datetime2");
+
+                    b.Property<Guid?>("FeeInvoiceId")
+                        .HasColumnType("uniqueidentifier");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("bit");
@@ -8786,6 +8954,8 @@ namespace EduSphere.Infrastructure.Migrations
 
                     b.HasIndex("BranchId");
 
+                    b.HasIndex("FeeInvoiceId");
+
                     b.HasIndex("LibraryBookIssueId");
 
                     b.HasIndex("LibraryMemberId");
@@ -8793,6 +8963,93 @@ namespace EduSphere.Infrastructure.Migrations
                     b.HasIndex("TenantId", "LibraryMemberId", "Status");
 
                     b.ToTable("LibraryFineRecords");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryItemIncident", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("AssessedAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<int>("Condition")
+                        .HasColumnType("int");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Details")
+                        .IsRequired()
+                        .HasMaxLength(1000)
+                        .HasColumnType("nvarchar(1000)");
+
+                    b.Property<Guid?>("FeeInvoiceId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LibraryBookCopyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid?>("LibraryBookIssueId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LibraryMemberId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime>("ReportedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("ResolvedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("FeeInvoiceId");
+
+                    b.HasIndex("LibraryBookCopyId");
+
+                    b.HasIndex("LibraryBookIssueId");
+
+                    b.HasIndex("LibraryMemberId");
+
+                    b.HasIndex("TenantId", "BranchId", "Status");
+
+                    b.ToTable("LibraryItemIncidents");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.LibraryMember", b =>
@@ -8964,6 +9221,153 @@ namespace EduSphere.Infrastructure.Migrations
                     b.ToTable("LibraryOverdueNotifications");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryPurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateOnly?>("ExpectedOn")
+                        .HasColumnType("date");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid>("LibraryVendorId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<DateOnly>("OrderDate")
+                        .HasColumnType("date");
+
+                    b.Property<string>("OrderNumber")
+                        .IsRequired()
+                        .HasMaxLength(60)
+                        .HasColumnType("nvarchar(60)");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<decimal>("TotalAmount")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LibraryVendorId");
+
+                    b.HasIndex("TenantId", "BranchId", "OrderNumber")
+                        .IsUnique();
+
+                    b.ToTable("LibraryPurchaseOrders");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryPurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("Isbn")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<Guid?>("LibraryBookId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LibraryPurchaseOrderId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Quantity")
+                        .HasColumnType("int");
+
+                    b.Property<int>("ReceivedQuantity")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Title")
+                        .IsRequired()
+                        .HasMaxLength(250)
+                        .HasColumnType("nvarchar(250)");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(12, 2)
+                        .HasColumnType("decimal(12,2)");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LibraryBookId");
+
+                    b.HasIndex("LibraryPurchaseOrderId");
+
+                    b.ToTable("LibraryPurchaseOrderLines");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.LibraryRenewal", b =>
                 {
                     b.Property<Guid>("Id")
@@ -9041,6 +9445,9 @@ namespace EduSphere.Infrastructure.Migrations
                         .ValueGeneratedOnAdd()
                         .HasColumnType("uniqueidentifier");
 
+                    b.Property<DateTime?>("AvailabilityNotifiedOn")
+                        .HasColumnType("datetime2");
+
                     b.Property<Guid>("BranchId")
                         .HasColumnType("uniqueidentifier");
 
@@ -9093,6 +9500,9 @@ namespace EduSphere.Infrastructure.Migrations
                         .HasMaxLength(500)
                         .HasColumnType("nvarchar(500)");
 
+                    b.Property<int>("QueuePosition")
+                        .HasColumnType("int");
+
                     b.Property<DateTime>("ReservedOn")
                         .HasColumnType("datetime2");
 
@@ -9115,6 +9525,213 @@ namespace EduSphere.Infrastructure.Migrations
                     b.HasIndex("TenantId", "BranchId", "Status", "ExpiresOn");
 
                     b.ToTable("LibraryReservations");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryStockVerification", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<DateTime?>("CompletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("nvarchar(100)");
+
+                    b.Property<DateTime>("StartedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("int");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "Status");
+
+                    b.ToTable("LibraryStockVerifications");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryStockVerificationItem", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<Guid?>("LibraryBookCopyId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("LibraryStockVerificationId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Notes")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<int>("Result")
+                        .HasColumnType("int");
+
+                    b.Property<string>("ScanCode")
+                        .IsRequired()
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<DateTime>("ScannedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("LibraryBookCopyId");
+
+                    b.HasIndex("LibraryStockVerificationId");
+
+                    b.HasIndex("TenantId", "LibraryStockVerificationId", "ScanCode")
+                        .IsUnique();
+
+                    b.ToTable("LibraryStockVerificationItems");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryVendor", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("nvarchar(500)");
+
+                    b.Property<Guid>("BranchId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<Guid>("ConcurrencyToken")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uniqueidentifier");
+
+                    b.Property<string>("ContactPerson")
+                        .HasMaxLength(120)
+                        .HasColumnType("nvarchar(120)");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime>("CreatedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("DeletedBy")
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("DeletedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(254)
+                        .HasColumnType("nvarchar(254)");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
+                    b.Property<bool>("IsDeleted")
+                        .HasColumnType("bit");
+
+                    b.Property<string>("ModifiedBy")
+                        .HasMaxLength(128)
+                        .HasColumnType("nvarchar(128)");
+
+                    b.Property<DateTime?>("ModifiedOn")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(160)
+                        .HasColumnType("nvarchar(160)");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)");
+
+                    b.Property<string>("TaxNumber")
+                        .HasMaxLength(40)
+                        .HasColumnType("nvarchar(40)");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uniqueidentifier");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TenantId", "BranchId", "Name")
+                        .IsUnique();
+
+                    b.ToTable("LibraryVendors");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.LifecycleDocumentTemplate", b =>
@@ -19202,11 +19819,59 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("ReceivedByUser");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryDigitalResource", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.LibraryBook", "LibraryBook")
+                        .WithMany()
+                        .HasForeignKey("LibraryBookId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.Navigation("LibraryBook");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.LibraryFineRecord", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
                         .WithMany()
                         .HasForeignKey("BranchId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.HasOne("EduSphere.Domain.Entities.FeeInvoice", "FeeInvoice")
+                        .WithMany()
+                        .HasForeignKey("FeeInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.LibraryBookIssue", "LibraryBookIssue")
+                        .WithMany()
+                        .HasForeignKey("LibraryBookIssueId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.LibraryMember", "LibraryMember")
+                        .WithMany()
+                        .HasForeignKey("LibraryMemberId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("Branch");
+
+                    b.Navigation("FeeInvoice");
+
+                    b.Navigation("LibraryBookIssue");
+
+                    b.Navigation("LibraryMember");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryItemIncident", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.FeeInvoice", "FeeInvoice")
+                        .WithMany()
+                        .HasForeignKey("FeeInvoiceId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.LibraryBookCopy", "LibraryBookCopy")
+                        .WithMany()
+                        .HasForeignKey("LibraryBookCopyId")
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
@@ -19221,7 +19886,9 @@ namespace EduSphere.Infrastructure.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .IsRequired();
 
-                    b.Navigation("Branch");
+                    b.Navigation("FeeInvoice");
+
+                    b.Navigation("LibraryBookCopy");
 
                     b.Navigation("LibraryBookIssue");
 
@@ -19287,6 +19954,35 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("LibraryMember");
                 });
 
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryPurchaseOrder", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.LibraryVendor", "LibraryVendor")
+                        .WithMany()
+                        .HasForeignKey("LibraryVendorId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
+
+                    b.Navigation("LibraryVendor");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryPurchaseOrderLine", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.LibraryBook", "LibraryBook")
+                        .WithMany()
+                        .HasForeignKey("LibraryBookId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.LibraryPurchaseOrder", "LibraryPurchaseOrder")
+                        .WithMany("Lines")
+                        .HasForeignKey("LibraryPurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LibraryBook");
+
+                    b.Navigation("LibraryPurchaseOrder");
+                });
+
             modelBuilder.Entity("EduSphere.Domain.Entities.LibraryRenewal", b =>
                 {
                     b.HasOne("EduSphere.Domain.Entities.Branch", "Branch")
@@ -19345,6 +20041,24 @@ namespace EduSphere.Infrastructure.Migrations
                     b.Navigation("LibraryBookCopy");
 
                     b.Navigation("LibraryMember");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryStockVerificationItem", b =>
+                {
+                    b.HasOne("EduSphere.Domain.Entities.LibraryBookCopy", "LibraryBookCopy")
+                        .WithMany()
+                        .HasForeignKey("LibraryBookCopyId")
+                        .OnDelete(DeleteBehavior.Restrict);
+
+                    b.HasOne("EduSphere.Domain.Entities.LibraryStockVerification", "LibraryStockVerification")
+                        .WithMany("Items")
+                        .HasForeignKey("LibraryStockVerificationId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("LibraryBookCopy");
+
+                    b.Navigation("LibraryStockVerification");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.MarkEntry", b =>
@@ -21551,6 +22265,16 @@ namespace EduSphere.Infrastructure.Migrations
             modelBuilder.Entity("EduSphere.Domain.Entities.LibraryBookIssue", b =>
                 {
                     b.Navigation("Returns");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryPurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("EduSphere.Domain.Entities.LibraryStockVerification", b =>
+                {
+                    b.Navigation("Items");
                 });
 
             modelBuilder.Entity("EduSphere.Domain.Entities.MarkRubric", b =>

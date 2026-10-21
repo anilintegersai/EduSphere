@@ -233,6 +233,14 @@ public enum LibraryScanPurpose
     Reservation = 5
 }
 
+public enum LibraryItemCondition { Good = 1, Worn = 2, Damaged = 3, Lost = 4 }
+public enum LibraryIncidentStatus { Reported = 1, Assessed = 2, Invoiced = 3, Settled = 4, Waived = 5 }
+public enum LibraryPurchaseOrderStatus { Draft = 1, Submitted = 2, Approved = 3, PartiallyReceived = 4, Received = 5, Cancelled = 6 }
+public enum LibraryStockVerificationStatus { Draft = 1, InProgress = 2, Completed = 3, Reconciled = 4 }
+public enum LibraryStockResult { Pending = 1, Found = 2, Missing = 3, Damaged = 4, Unexpected = 5 }
+public enum DigitalResourceType { EBook = 1, Journal = 2, Video = 3, Database = 4, Document = 5, Link = 6 }
+public enum DigitalAccessLevel { AllMembers = 1, Students = 2, Teachers = 3, Staff = 4 }
+
 public enum HostelRoomStatus
 {
     Available = 1,

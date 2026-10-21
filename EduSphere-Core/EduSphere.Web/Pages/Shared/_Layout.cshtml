@@ -79,6 +79,10 @@
                             {
                                 <li class="nav-item"><a class="nav-link @(currentPage == "/Examinations/MyResults" ? "active" : "")" asp-page="/Examinations/MyResults">My Results</a></li>
                             }
+                            @if (User.IsInRole(EduSphere.Domain.Constants.Roles.Student) || User.IsInRole(EduSphere.Domain.Constants.Roles.Teacher))
+                            {
+                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Library", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Library/Opac">Library</a></li>
+                            }
                             @if (canManageTenants)
                             {
                                 <li class="nav-item">
@@ -191,6 +195,7 @@
                                         @if (canManageLibrary && libraryEnabled)
                                         {
                                             <li><a class="dropdown-item" asp-page="/Enterprise/Library">Library</a></li>
+                                            <li><a class="dropdown-item" asp-page="/Enterprise/LibraryOperations">Library operations</a></li>
                                         }
                                         @if (canManageHostel && hostelEnabled)
                                         {

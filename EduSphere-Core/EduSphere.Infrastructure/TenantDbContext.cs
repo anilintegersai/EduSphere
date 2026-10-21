@@ -208,6 +208,14 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<LibraryRenewal> LibraryRenewals { get; set; }
     public DbSet<LibraryOverdueNotification> LibraryOverdueNotifications { get; set; }
     public DbSet<LibraryBarcodeScan> LibraryBarcodeScans { get; set; }
+    public DbSet<LibraryCirculationPolicy> LibraryCirculationPolicies { get; set; }
+    public DbSet<LibraryItemIncident> LibraryItemIncidents { get; set; }
+    public DbSet<LibraryVendor> LibraryVendors { get; set; }
+    public DbSet<LibraryPurchaseOrder> LibraryPurchaseOrders { get; set; }
+    public DbSet<LibraryPurchaseOrderLine> LibraryPurchaseOrderLines { get; set; }
+    public DbSet<LibraryStockVerification> LibraryStockVerifications { get; set; }
+    public DbSet<LibraryStockVerificationItem> LibraryStockVerificationItems { get; set; }
+    public DbSet<LibraryDigitalResource> LibraryDigitalResources { get; set; }
     public DbSet<HostelBlock> HostelBlocks { get; set; }
     public DbSet<HostelRoom> HostelRooms { get; set; }
     public DbSet<HostelBed> HostelBeds { get; set; }
@@ -1861,6 +1869,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
             .HasForeignKey(e => e.LibraryBookIssueId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<LibraryFineRecord>()
             .Property(e => e.Amount).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryFineRecord>().HasOne(e => e.FeeInvoice).WithMany().HasForeignKey(e => e.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict);
 
         modelBuilder.Entity<LibraryReservation>()
             .HasOne(e => e.Branch).WithMany()
@@ -1901,6 +1910,31 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<LibraryBarcodeScan>()
             .HasOne(e => e.LibraryBookCopy).WithMany()
             .HasForeignKey(e => e.LibraryBookCopyId).OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<LibraryCirculationPolicy>().Property(e => e.FinePerDay).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryCirculationPolicy>().Property(e => e.MaximumFine).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryCirculationPolicy>().Property(e => e.LostBookMultiplier).HasPrecision(8, 2);
+        modelBuilder.Entity<LibraryCirculationPolicy>().Property(e => e.DamageChargePercent).HasPrecision(8, 2);
+        modelBuilder.Entity<LibraryCirculationPolicy>().HasIndex(e => new { e.TenantId, e.BranchId, e.MemberType }).IsUnique();
+        modelBuilder.Entity<LibraryItemIncident>().HasOne(e => e.LibraryBookCopy).WithMany().HasForeignKey(e => e.LibraryBookCopyId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryItemIncident>().HasOne(e => e.LibraryMember).WithMany().HasForeignKey(e => e.LibraryMemberId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryItemIncident>().HasOne(e => e.LibraryBookIssue).WithMany().HasForeignKey(e => e.LibraryBookIssueId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryItemIncident>().HasOne(e => e.FeeInvoice).WithMany().HasForeignKey(e => e.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryItemIncident>().Property(e => e.AssessedAmount).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryItemIncident>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<LibraryVendor>().HasIndex(e => new { e.TenantId, e.BranchId, e.Name }).IsUnique();
+        modelBuilder.Entity<LibraryPurchaseOrder>().HasOne(e => e.LibraryVendor).WithMany().HasForeignKey(e => e.LibraryVendorId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryPurchaseOrder>().Property(e => e.TotalAmount).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryPurchaseOrder>().HasIndex(e => new { e.TenantId, e.BranchId, e.OrderNumber }).IsUnique();
+        modelBuilder.Entity<LibraryPurchaseOrderLine>().HasOne(e => e.LibraryPurchaseOrder).WithMany(e => e.Lines).HasForeignKey(e => e.LibraryPurchaseOrderId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LibraryPurchaseOrderLine>().HasOne(e => e.LibraryBook).WithMany().HasForeignKey(e => e.LibraryBookId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryPurchaseOrderLine>().Property(e => e.UnitPrice).HasPrecision(12, 2);
+        modelBuilder.Entity<LibraryStockVerification>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status });
+        modelBuilder.Entity<LibraryStockVerificationItem>().HasOne(e => e.LibraryStockVerification).WithMany(e => e.Items).HasForeignKey(e => e.LibraryStockVerificationId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<LibraryStockVerificationItem>().HasOne(e => e.LibraryBookCopy).WithMany().HasForeignKey(e => e.LibraryBookCopyId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryStockVerificationItem>().HasIndex(e => new { e.TenantId, e.LibraryStockVerificationId, e.ScanCode }).IsUnique();
+        modelBuilder.Entity<LibraryDigitalResource>().HasOne(e => e.LibraryBook).WithMany().HasForeignKey(e => e.LibraryBookId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<LibraryDigitalResource>().HasIndex(e => new { e.TenantId, e.BranchId, e.IsActive });
 
         modelBuilder.Entity<LibraryBook>().HasIndex(e => new { e.TenantId, e.BranchId, e.Isbn });
         modelBuilder.Entity<LibraryBook>().HasIndex(e => new { e.TenantId, e.BranchId, e.Title });

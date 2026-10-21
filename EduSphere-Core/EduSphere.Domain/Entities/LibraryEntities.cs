@@ -64,6 +64,7 @@ public class LibraryBookCopy : TenantEntityBase
     public BookCopyStatus Status { get; set; } = BookCopyStatus.Available;
     public DateOnly? AcquisitionDate { get; set; }
     public decimal? Price { get; set; }
+    public DateTime? LastVerifiedOn { get; set; }
 }
 
 public class LibraryMember : TenantEntityBase
@@ -166,6 +167,8 @@ public class LibraryFineRecord : TenantEntityBase
     public DateTime AssessedOn { get; set; } = DateTime.UtcNow;
     public DateTime? PaidOn { get; set; }
     public DateTime? WaivedOn { get; set; }
+    public Guid? FeeInvoiceId { get; set; }
+    public FeeInvoice? FeeInvoice { get; set; }
 
     [StringLength(500)]
     public string? Notes { get; set; }
@@ -190,6 +193,8 @@ public class LibraryReservation : TenantEntityBase
     public LibraryReservationStatus Status { get; set; } = LibraryReservationStatus.Requested;
     public DateTime? FulfilledOn { get; set; }
     public DateTime? CancelledOn { get; set; }
+    public int QueuePosition { get; set; }
+    public DateTime? AvailabilityNotifiedOn { get; set; }
 
     [StringLength(500)]
     public string? Notes { get; set; }

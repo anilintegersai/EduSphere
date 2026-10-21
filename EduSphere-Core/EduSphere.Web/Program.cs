@@ -84,6 +84,8 @@ builder.Services.AddScoped<IFinanceAccountingService, FinanceAccountingService>(
 builder.Services.AddHostedService<FinanceAutomationWorker>();
 builder.Services.AddScoped<IHostelDepthService, HostelDepthService>();
 builder.Services.AddHostedService<HostelOperationsWorker>();
+builder.Services.AddScoped<ILibraryDepthService, LibraryDepthService>();
+builder.Services.AddHostedService<LibraryAutomationWorker>();
 builder.Services.AddHostedService<AttendanceAlertBackgroundWorker>();
 builder.Services.AddScoped<IAcademicPlanningService, AcademicPlanningService>();
 builder.Services.AddScoped<IAISecretProtector, DataProtectionAISecretProtector>();

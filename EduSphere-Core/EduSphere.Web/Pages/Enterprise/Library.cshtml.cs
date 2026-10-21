@@ -6,6 +6,7 @@ using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Web.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -28,6 +29,7 @@ public class LibraryModel : EnterprisePageModel
     private readonly ICrudService<StudentProfile> _students;
     private readonly ICrudService<TeacherProfile> _teachers;
     private readonly ICrudService<Subject> _subjects;
+    private readonly ILibraryDepthService _libraryDepth;
 
     public LibraryModel(
         ICrudService<LibraryBook> books,
@@ -44,6 +46,7 @@ public class LibraryModel : EnterprisePageModel
         ICrudService<StudentProfile> students,
         ICrudService<TeacherProfile> teachers,
         ICrudService<Subject> subjects,
+        ILibraryDepthService libraryDepth,
         ITenantContext tenant,
         IBranchAccessService branchAccess)
         : base(tenant, branchAccess)
@@ -62,6 +65,7 @@ public class LibraryModel : EnterprisePageModel
         _students = students;
         _teachers = teachers;
         _subjects = subjects;
+        _libraryDepth = libraryDepth;
     }
 
     public IReadOnlyList<LibraryBook> Books { get; private set; } = new List<LibraryBook>();
@@ -138,6 +142,7 @@ public class LibraryModel : EnterprisePageModel
         [Range(0, 100000), Display(Name = "Fine assessed")] public decimal FineAssessed { get; set; }
         [Range(0, 100000), Display(Name = "Fine paid")] public decimal FinePaid { get; set; }
         [StringLength(500), Display(Name = "Condition notes")] public string? ConditionNotes { get; set; }
+        [Display(Name = "Condition")] public LibraryItemCondition Condition { get; set; } = LibraryItemCondition.Good;
     }
 
     public class FineInputModel
@@ -292,15 +297,8 @@ public class LibraryModel : EnterprisePageModel
         if (IssueInput.LibraryMemberId is not Guid memberId || await _members.GetAsync(memberId) is not { } member || member.BranchId != IssueInput.BranchId)
             ModelState.AddModelError("IssueInput.LibraryMemberId", "Selected member was not found for this branch.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
-        await _issues.CreateAsync(new LibraryBookIssue
-        {
-            BranchId = IssueInput.BranchId!.Value,
-            LibraryBookCopyId = IssueInput.LibraryBookCopyId!.Value,
-            LibraryMemberId = IssueInput.LibraryMemberId!.Value,
-            IssueDate = IssueInput.IssueDate,
-            DueDate = IssueInput.DueDate,
-            Status = IssueInput.Status
-        });
+        try { await _libraryDepth.IssueAsync(IssueInput.LibraryBookCopyId!.Value, IssueInput.LibraryMemberId!.Value, IssueInput.IssueDate, HttpContext.RequestAborted); }
+        catch (InvalidOperationException ex) { ModelState.AddModelError(string.Empty, ex.Message); await LoadAsync(); return Page(); }
         return RedirectToPage();
     }
 
@@ -312,21 +310,8 @@ public class LibraryModel : EnterprisePageModel
         if (ReturnInput.LibraryBookIssueId is not Guid issueId || await _issues.GetAsync(issueId) is not { } issue || issue.BranchId != ReturnInput.BranchId)
             ModelState.AddModelError("ReturnInput.LibraryBookIssueId", "Selected issue was not found for this branch.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
-        await _returns.CreateAsync(new LibraryBookReturn
-        {
-            BranchId = ReturnInput.BranchId!.Value,
-            LibraryBookIssueId = ReturnInput.LibraryBookIssueId!.Value,
-            ReturnedOn = DateTime.UtcNow,
-            FineAssessed = ReturnInput.FineAssessed,
-            FinePaid = ReturnInput.FinePaid,
-            ConditionNotes = ReturnInput.ConditionNotes
-        });
-        await _issues.UpdateAsync(ReturnInput.LibraryBookIssueId!.Value, issue =>
-        {
-            issue.ReturnedOn = DateOnly.FromDateTime(DateTime.UtcNow);
-            issue.Status = LibraryIssueStatus.Returned;
-            issue.FineAmount = ReturnInput.FineAssessed;
-        });
+        try { await _libraryDepth.ReturnAsync(ReturnInput.LibraryBookIssueId!.Value, ReturnInput.Condition, ReturnInput.ConditionNotes, HttpContext.RequestAborted); }
+        catch (InvalidOperationException ex) { ModelState.AddModelError(string.Empty, ex.Message); await LoadAsync(); return Page(); }
         return RedirectToPage();
     }
 
@@ -338,7 +323,7 @@ public class LibraryModel : EnterprisePageModel
         if (FineInput.LibraryMemberId is not Guid memberId || await _members.GetAsync(memberId) is not { } member || member.BranchId != FineInput.BranchId)
             ModelState.AddModelError("FineInput.LibraryMemberId", "Selected member was not found for this branch.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
-        await _fines.CreateAsync(new LibraryFineRecord
+        var fine = await _fines.CreateAsync(new LibraryFineRecord
         {
             BranchId = FineInput.BranchId!.Value,
             LibraryMemberId = FineInput.LibraryMemberId!.Value,
@@ -347,6 +332,7 @@ public class LibraryModel : EnterprisePageModel
             Reason = FineInput.Reason,
             Status = FineInput.Status
         });
+        if (fine.Amount > 0 && fine.Status == LibraryFineStatus.Pending) await _libraryDepth.EnsureFineInvoiceAsync(fine.Id, HttpContext.RequestAborted);
         return RedirectToPage();
     }
 
@@ -398,18 +384,8 @@ public class LibraryModel : EnterprisePageModel
             ModelState.AddModelError("ReservationInput.LibraryMemberId", "Selected member was not found for this branch.");
         if (!ModelState.IsValid) { await LoadAsync(); return Page(); }
 
-        await _reservations.CreateAsync(new LibraryReservation
-        {
-            BranchId = ReservationInput.BranchId!.Value,
-            LibraryBookId = ReservationInput.LibraryBookId!.Value,
-            LibraryBookCopyId = ReservationInput.LibraryBookCopyId,
-            LibraryMemberId = ReservationInput.LibraryMemberId!.Value,
-            ExpiresOn = ReservationInput.ExpiresOn,
-            Status = ReservationInput.Status,
-            Notes = ReservationInput.Notes
-        });
-        if (ReservationInput.LibraryBookCopyId is Guid reservedCopyId)
-            await _copies.UpdateAsync(reservedCopyId, c => c.Status = BookCopyStatus.Reserved);
+        try { await _libraryDepth.ReserveAsync(ReservationInput.LibraryBookId!.Value, ReservationInput.LibraryMemberId!.Value, HttpContext.RequestAborted); }
+        catch (InvalidOperationException ex) { ModelState.AddModelError(string.Empty, ex.Message); await LoadAsync(); return Page(); }
         return RedirectToPage();
     }
 
