@@ -178,6 +178,10 @@
                                     <a class="nav-link @(currentPage.StartsWith("/Administration", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Administration/Index">Administration</a>
                                 </li>
                             }
+                            @if (User.IsInRole(EduSphere.Domain.Constants.Roles.SuperAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.TenantAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.BranchAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.Principal) || User.IsInRole(EduSphere.Domain.Constants.Roles.DepartmentAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.ExamController) || User.IsInRole(EduSphere.Domain.Constants.Roles.Accountant))
+                            {
+                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Reporting", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Reporting/Index">Reports</a></li>
+                            }
                             @if ((canManageFinance && financeEnabled) || (canManageTransport && transportEnabled) || (canManageLibrary && libraryEnabled) || (canManageHostel && hostelEnabled) || (canManageCommunications && communicationsEnabled))
                             {
                                 <li class="nav-item dropdown">

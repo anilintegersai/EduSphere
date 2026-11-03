@@ -256,6 +256,12 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<PermissionDefinition> PermissionDefinitions { get; set; }
     public DbSet<RolePermissionGrant> RolePermissionGrants { get; set; }
     public DbSet<UserPermissionGrant> UserPermissionGrants { get; set; }
+    public DbSet<ReportDefinition> ReportDefinitions { get; set; }
+    public DbSet<ReportExecution> ReportExecutions { get; set; }
+    public DbSet<ReportSchedule> ReportSchedules { get; set; }
+    public DbSet<AnalyticsSnapshot> AnalyticsSnapshots { get; set; }
+    public DbSet<DashboardWidgetConfiguration> DashboardWidgetConfigurations { get; set; }
+    public DbSet<BiDashboard> BiDashboards { get; set; }
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -290,6 +296,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         ConfigureExaminations(modelBuilder);
         ConfigureEnterpriseServices(modelBuilder);
         ConfigureAdministration(modelBuilder);
+        ConfigureReporting(modelBuilder);
 
         // Global tenant and soft-delete query filters for tenant-owned domain entities.
         // Identity's UserManager/SignInManager must resolve users (including a host-level
@@ -2260,6 +2267,20 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<UserPermissionGrant>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<UserPermissionGrant>().HasOne(e => e.PermissionDefinition).WithMany().HasForeignKey(e => e.PermissionDefinitionId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<UserPermissionGrant>().HasIndex(e => new { e.TenantId, e.UserId, e.PermissionDefinitionId }).IsUnique();
+    }
+
+    private static void ConfigureReporting(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<ReportDefinition>().HasIndex(x => new { x.TenantId, x.Code }).IsUnique();
+        modelBuilder.Entity<ReportExecution>().HasOne(x => x.ReportDefinition).WithMany().HasForeignKey(x => x.ReportDefinitionId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ReportExecution>().HasIndex(x => new { x.TenantId, x.Status, x.RequestedOn });
+        modelBuilder.Entity<ReportSchedule>().HasOne(x => x.ReportDefinition).WithMany(x => x.Schedules).HasForeignKey(x => x.ReportDefinitionId).OnDelete(DeleteBehavior.Cascade);
+        modelBuilder.Entity<ReportSchedule>().HasIndex(x => new { x.TenantId, x.IsActive, x.NextRunOn });
+        modelBuilder.Entity<AnalyticsSnapshot>().Property(x => x.MetricValue).HasPrecision(18, 4);
+        modelBuilder.Entity<AnalyticsSnapshot>().HasIndex(x => new { x.TenantId, x.BranchId, x.SnapshotDate, x.MetricKey });
+        modelBuilder.Entity<DashboardWidgetConfiguration>().HasIndex(x => new { x.TenantId, x.BranchId, x.RoleName, x.WidgetKey }).IsUnique();
+        modelBuilder.Entity<BiDashboard>().HasOne(x => x.TenantIntegrationSetting).WithMany().HasForeignKey(x => x.TenantIntegrationSettingId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<BiDashboard>().HasIndex(x => new { x.TenantId, x.BranchId, x.Name }).IsUnique();
     }
 
     private void AppendAuditLogs(DateTime now, string userId)

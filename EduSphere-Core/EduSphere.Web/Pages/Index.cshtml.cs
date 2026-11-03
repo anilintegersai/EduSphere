@@ -4,6 +4,8 @@ using EduSphere.Domain.Entities;
 using EduSphere.Domain.Enums;
 using EduSphere.Domain.MultiTenancy;
 using EduSphere.Web.Security;
+using EduSphere.Infrastructure;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc.RazorPages;
 using DomainTimetable = EduSphere.Domain.Entities.Timetable;
@@ -46,6 +48,7 @@ public class IndexModel : PageModel
     private readonly ICrudService<NotificationDeliveryAttempt> _deliveryAttempts;
     private readonly ICrudService<ResultPublicationBatch> _resultPublications;
     private readonly ICrudService<AdmissionInterview> _admissionInterviews;
+    private readonly TenantDbContext _db;
 
     public IndexModel(
         ITenantContext tenant,
@@ -81,7 +84,8 @@ public class IndexModel : PageModel
         ICrudService<HostelMaintenanceRequest> hostelMaintenance,
         ICrudService<NotificationDeliveryAttempt> deliveryAttempts,
         ICrudService<ResultPublicationBatch> resultPublications,
-        ICrudService<AdmissionInterview> admissionInterviews)
+        ICrudService<AdmissionInterview> admissionInterviews,
+        TenantDbContext db)
     {
         _tenant = tenant;
         _tenants = tenants;
@@ -117,6 +121,7 @@ public class IndexModel : PageModel
         _deliveryAttempts = deliveryAttempts;
         _resultPublications = resultPublications;
         _admissionInterviews = admissionInterviews;
+        _db = db;
     }
 
     public bool IsAuthenticated { get; private set; }
@@ -191,6 +196,7 @@ public class IndexModel : PageModel
         if (CanManageTenantWorkspace)
         {
             await BuildAdminMetricsAsync(metrics);
+            await ApplyWidgetConfigurationAsync(metrics, currentUser?.BranchId);
             return;
         }
 
@@ -216,6 +222,7 @@ public class IndexModel : PageModel
             {
                 await BuildTenantSummaryMetricsAsync(metrics, tenantId);
             }
+            await ApplyWidgetConfigurationAsync(metrics, currentUser?.BranchId);
         }
         else
         {
@@ -574,6 +581,19 @@ public class IndexModel : PageModel
     }
 
     private static string FormatCount(int count) => count.ToString("N0");
+
+    private async Task ApplyWidgetConfigurationAsync(List<DashboardMetric> metrics, Guid? branchId)
+    {
+        var role = IsSuper ? Roles.SuperAdmin : IsTenantAdmin ? Roles.TenantAdmin : IsBranchAdmin ? Roles.BranchAdmin : IsPrincipal ? Roles.Principal : IsTeacher ? Roles.Teacher : IsStudent ? Roles.Student : IsAccountant ? Roles.Accountant : IsLibrarian ? Roles.Librarian : IsTransportManager ? Roles.TransportManager : IsHostelManager ? Roles.HostelManager : IsExamController ? Roles.ExamController : IsStaffAdmin ? Roles.StaffAdmin : "User";
+        var settings = await _db.DashboardWidgetConfigurations.Where(x => x.RoleName == role && (x.BranchId == null || x.BranchId == branchId)).OrderByDescending(x => x.BranchId.HasValue).ToListAsync();
+        if (settings.Count == 0) return;
+        for (var index = metrics.Count - 1; index >= 0; index--)
+        {
+            var metric = metrics[index]; var key = metric.Label.Replace(" ", "", StringComparison.OrdinalIgnoreCase); var setting = settings.FirstOrDefault(x => string.Equals(x.WidgetKey.Replace(" ", ""), key, StringComparison.OrdinalIgnoreCase));
+            if (setting is null) continue; if (!setting.IsVisible) metrics.RemoveAt(index); else metrics[index] = metric with { Label = setting.DisplayName };
+        }
+        metrics.Sort((a, b) => { var ak = a.Label.Replace(" ", ""); var bk = b.Label.Replace(" ", ""); var ao = settings.FirstOrDefault(x => x.DisplayName.Replace(" ", "") == ak)?.DisplayOrder ?? int.MaxValue; var bo = settings.FirstOrDefault(x => x.DisplayName.Replace(" ", "") == bk)?.DisplayOrder ?? int.MaxValue; return ao.CompareTo(bo); });
+    }
 
     private static string CalculateAttendanceRate(IReadOnlyList<AttendanceRecord> records)
     {
