@@ -198,6 +198,15 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<VehicleGpsPing> VehicleGpsPings { get; set; }
     public DbSet<TransportMaintenanceRecord> TransportMaintenanceRecords { get; set; }
     public DbSet<TransportDocumentReminder> TransportDocumentReminders { get; set; }
+    public DbSet<TransportGpsProviderSetting> TransportGpsProviderSettings { get; set; }
+    public DbSet<TransportCrewProfile> TransportCrewProfiles { get; set; }
+    public DbSet<VehicleDocument> VehicleDocuments { get; set; }
+    public DbSet<TransportGeofence> TransportGeofences { get; set; }
+    public DbSet<TransportGeofenceEvent> TransportGeofenceEvents { get; set; }
+    public DbSet<VehicleFuelLog> VehicleFuelLogs { get; set; }
+    public DbSet<TransportAttendanceScan> TransportAttendanceScans { get; set; }
+    public DbSet<TransportFeeCharge> TransportFeeCharges { get; set; }
+    public DbSet<RouteOptimizationRun> RouteOptimizationRuns { get; set; }
     public DbSet<LibraryBook> LibraryBooks { get; set; }
     public DbSet<LibraryBookCopy> LibraryBookCopies { get; set; }
     public DbSet<LibraryMember> LibraryMembers { get; set; }
@@ -1801,6 +1810,34 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<VehicleGpsPing>().HasIndex(e => new { e.TenantId, e.VehicleId, e.RecordedOn });
         modelBuilder.Entity<TransportMaintenanceRecord>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status, e.DueOn });
         modelBuilder.Entity<TransportDocumentReminder>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status, e.DueOn });
+        modelBuilder.Entity<TransportGpsProviderSetting>().HasIndex(x => new { x.TenantId, x.Name }).IsUnique();
+        modelBuilder.Entity<TransportGpsProviderSetting>().HasIndex(x => x.WebhookTokenHash).IsUnique();
+        modelBuilder.Entity<TransportCrewProfile>().HasOne(x => x.User).WithMany().HasForeignKey(x => x.UserId).OnDelete(DeleteBehavior.SetNull);
+        modelBuilder.Entity<TransportCrewProfile>().HasIndex(x => new { x.TenantId, x.BranchId, x.EmployeeNumber });
+        modelBuilder.Entity<VehicleDocument>().HasOne(x => x.Vehicle).WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<VehicleDocument>().HasIndex(x => new { x.TenantId, x.VehicleId, x.DocumentType, x.Status });
+        modelBuilder.Entity<TransportGeofence>().Property(x => x.Latitude).HasPrecision(10, 7);
+        modelBuilder.Entity<TransportGeofence>().Property(x => x.Longitude).HasPrecision(10, 7);
+        modelBuilder.Entity<TransportGeofence>().HasIndex(x => new { x.TenantId, x.BranchId, x.IsActive });
+        modelBuilder.Entity<TransportGeofenceEvent>().HasOne(x => x.TransportGeofence).WithMany().HasForeignKey(x => x.TransportGeofenceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportGeofenceEvent>().HasOne(x => x.Vehicle).WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportGeofenceEvent>().HasIndex(x => new { x.TenantId, x.VehicleId, x.OccurredOn });
+        modelBuilder.Entity<VehicleFuelLog>().HasOne(x => x.Vehicle).WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<VehicleFuelLog>().Property(x => x.Litres).HasPrecision(12, 3);
+        modelBuilder.Entity<VehicleFuelLog>().Property(x => x.UnitPrice).HasPrecision(12, 2);
+        modelBuilder.Entity<VehicleFuelLog>().Property(x => x.TotalCost).HasPrecision(12, 2);
+        modelBuilder.Entity<VehicleFuelLog>().HasIndex(x => new { x.TenantId, x.VehicleId, x.FueledOn });
+        modelBuilder.Entity<TransportAttendanceScan>().HasOne(x => x.StudentProfile).WithMany().HasForeignKey(x => x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportAttendanceScan>().HasOne(x => x.Vehicle).WithMany().HasForeignKey(x => x.VehicleId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportAttendanceScan>().HasIndex(x => new { x.TenantId, x.StudentProfileId, x.ScannedOn });
+        modelBuilder.Entity<TransportFeeCharge>().HasOne(x => x.StudentTransportAssignment).WithMany().HasForeignKey(x => x.StudentTransportAssignmentId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportFeeCharge>().HasOne(x => x.FeeInvoice).WithMany().HasForeignKey(x => x.FeeInvoiceId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<TransportFeeCharge>().Property(x => x.Amount).HasPrecision(12, 2);
+        modelBuilder.Entity<TransportFeeCharge>().HasIndex(x => new { x.TenantId, x.StudentTransportAssignmentId, x.PeriodStart, x.PeriodEnd }).IsUnique();
+        modelBuilder.Entity<RouteOptimizationRun>().HasOne(x => x.TransportRoute).WithMany().HasForeignKey(x => x.TransportRouteId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<RouteOptimizationRun>().Property(x => x.OriginalDistanceKm).HasPrecision(12, 2);
+        modelBuilder.Entity<RouteOptimizationRun>().Property(x => x.OptimizedDistanceKm).HasPrecision(12, 2);
+        modelBuilder.Entity<RouteOptimizationRun>().HasIndex(x => new { x.TenantId, x.TransportRouteId, x.RequestedOn });
     }
 
     private static void ConfigureLibrary(ModelBuilder modelBuilder)

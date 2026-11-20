@@ -44,7 +44,7 @@
 </head>
 <body class="app-body" style="@(tenantBranding is null ? null : $"--tenant-primary:{tenantBranding.PrimaryColor};--tenant-secondary:{tenantBranding.SecondaryColor};--tenant-accent:{tenantBranding.AccentColor};--tenant-font:{tenantBranding.FontFamily ?? "inherit"}")">
     <header class="app-header">
-        <nav class="navbar navbar-expand-xl app-navbar">
+        <nav class="navbar navbar-expand-xxl app-navbar">
             <div class="container-fluid px-3 px-lg-4 px-xxl-5">
                 <a class="navbar-brand app-brand" asp-area="" asp-page="/Index" aria-label="EduSphere home">
                     @if (!string.IsNullOrWhiteSpace(tenantBranding?.LogoUrl))
@@ -69,33 +69,34 @@
                     {
                         <ul class="navbar-nav app-nav me-auto mb-3 mb-xl-0">
                             <li class="nav-item">
-                                <a class="nav-link @(currentPage == "/Index" ? "active" : "")" asp-page="/Index">Dashboard</a>
+                                <a class="nav-link @(currentPage == "/Index" ? "active" : "")" asp-page="/Index"><span class="nav-icon icon-dashboard" aria-hidden="true"></span><span>Dashboard</span></a>
                             </li>
                             @if (User.IsInRole(EduSphere.Domain.Constants.Roles.Parent))
                             {
-                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Parent", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Parent/Index">My Children</a></li>
+                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Parent", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Parent/Index"><span class="nav-icon icon-users" aria-hidden="true"></span><span>My Children</span></a></li>
                             }
                             @if (User.IsInRole(EduSphere.Domain.Constants.Roles.Parent) || User.IsInRole(EduSphere.Domain.Constants.Roles.Student))
                             {
-                                <li class="nav-item"><a class="nav-link @(currentPage == "/Examinations/MyResults" ? "active" : "")" asp-page="/Examinations/MyResults">My Results</a></li>
+                                <li class="nav-item"><a class="nav-link @(currentPage == "/Examinations/MyResults" ? "active" : "")" asp-page="/Examinations/MyResults"><span class="nav-icon icon-award" aria-hidden="true"></span><span>My Results</span></a></li>
+                                <li class="nav-item"><a class="nav-link @(currentPage == "/Transport/MyRoute" ? "active" : "")" asp-page="/Transport/MyRoute"><span class="nav-icon icon-branches" aria-hidden="true"></span><span>My Transport</span></a></li>
                             }
                             @if (User.IsInRole(EduSphere.Domain.Constants.Roles.Student) || User.IsInRole(EduSphere.Domain.Constants.Roles.Teacher))
                             {
-                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Library", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Library/Opac">Library</a></li>
+                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Library", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Library/Opac"><span class="nav-icon icon-book" aria-hidden="true"></span><span>Library</span></a></li>
                             }
                             @if (canManageTenants)
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Tenants", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Tenants/Index">Tenants</a>
+                                    <a class="nav-link @(currentPage.StartsWith("/Tenants", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Tenants/Index"><span class="nav-icon icon-building" aria-hidden="true"></span><span>Tenants</span></a>
                                 </li>
                             }
                             @if (canManageTenantWorkspace)
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Branches", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Branches/Index">Branches</a>
+                                    <a class="nav-link @(currentPage.StartsWith("/Branches", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Branches/Index"><span class="nav-icon icon-branches" aria-hidden="true"></span><span>Branches</span></a>
                                 </li>
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Academic", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Academic</a>
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Academic", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span class="nav-icon icon-academic" aria-hidden="true"></span><span>Academic</span></a>
                                     <ul class="dropdown-menu app-dropdown">
                                         <li><a class="dropdown-item" asp-page="/Academic/AcademicYears">Academic Years</a></li>
                                         <li><a class="dropdown-item" asp-page="/Academic/Departments">Departments</a></li>
@@ -112,7 +113,7 @@
                             @if (canManageBranchWorkspace || canManageUsers)
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle @((currentPage.StartsWith("/People", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Users", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">People</a>
+                                    <a class="nav-link dropdown-toggle @((currentPage.StartsWith("/People", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Users", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span class="nav-icon icon-users" aria-hidden="true"></span><span>People</span></a>
                                     <ul class="dropdown-menu app-dropdown">
                                         @if (canManageBranchWorkspace)
                                         {
@@ -142,14 +143,14 @@
                             @if (canManageBranchWorkspace)
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown">Admissions</a>
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Admissions", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown"><span class="nav-icon icon-admissions" aria-hidden="true"></span><span>Admissions</span></a>
                                     <ul class="dropdown-menu app-dropdown"><li><a class="dropdown-item" asp-page="/Admissions/Applications">Applications</a></li><li><a class="dropdown-item" asp-page="/Admissions/Refinements">Refinements & reports</a></li></ul>
                                 </li>
                             }
                             @if (canMarkAttendance || canManageBranchWorkspace || (canManageAIQuestionPapers && aiEnabled))
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle @((currentPage.StartsWith("/Attendance", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Timetable", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/AI", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Operations</a>
+                                    <a class="nav-link dropdown-toggle @((currentPage.StartsWith("/Attendance", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Timetable", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/Examinations", StringComparison.OrdinalIgnoreCase) || currentPage.StartsWith("/AI", StringComparison.OrdinalIgnoreCase)) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span class="nav-icon icon-calendar" aria-hidden="true"></span><span>Operations</span></a>
                                     <ul class="dropdown-menu app-dropdown">
                                         @if (canMarkAttendance)
                                         {
@@ -175,17 +176,17 @@
                             @if (canViewAdministration)
                             {
                                 <li class="nav-item">
-                                    <a class="nav-link @(currentPage.StartsWith("/Administration", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Administration/Index">Administration</a>
+                                    <a class="nav-link @(currentPage.StartsWith("/Administration", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Administration/Index"><span class="nav-icon icon-settings" aria-hidden="true"></span><span>Administration</span></a>
                                 </li>
                             }
                             @if (User.IsInRole(EduSphere.Domain.Constants.Roles.SuperAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.TenantAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.BranchAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.Principal) || User.IsInRole(EduSphere.Domain.Constants.Roles.DepartmentAdmin) || User.IsInRole(EduSphere.Domain.Constants.Roles.ExamController) || User.IsInRole(EduSphere.Domain.Constants.Roles.Accountant))
                             {
-                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Reporting", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Reporting/Index">Reports</a></li>
+                                <li class="nav-item"><a class="nav-link @(currentPage.StartsWith("/Reporting", StringComparison.OrdinalIgnoreCase) ? "active" : "")" asp-page="/Reporting/Index"><span class="nav-icon icon-chart" aria-hidden="true"></span><span>Reports</span></a></li>
                             }
                             @if ((canManageFinance && financeEnabled) || (canManageTransport && transportEnabled) || (canManageLibrary && libraryEnabled) || (canManageHostel && hostelEnabled) || (canManageCommunications && communicationsEnabled))
                             {
                                 <li class="nav-item dropdown">
-                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Enterprise", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">Enterprise</a>
+                                    <a class="nav-link dropdown-toggle @(currentPage.StartsWith("/Enterprise", StringComparison.OrdinalIgnoreCase) ? "active" : "")" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false"><span class="nav-icon icon-enterprise" aria-hidden="true"></span><span>Enterprise</span></a>
                                     <ul class="dropdown-menu app-dropdown">
                                         @if (canManageFinance && financeEnabled)
                                         {

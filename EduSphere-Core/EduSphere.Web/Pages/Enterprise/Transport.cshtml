@@ -12,7 +12,7 @@
     </div>
     @if (Model.HasTenant)
     {
-        <span class="count-pill">@Model.Routes.Count routes</span>
+        <div class="d-flex gap-2 align-items-center"><span class="count-pill">@Model.Routes.Count routes</span><a asp-page="TransportDepth" class="btn btn-primary">Fleet intelligence</a></div>
     }
 </section>
 

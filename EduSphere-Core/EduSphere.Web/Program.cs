@@ -47,6 +47,7 @@ if (builder.Environment.IsDevelopment() || !string.IsNullOrWhiteSpace(dataProtec
 
 // ---- Presentation ----
 builder.Services.AddRazorPages();
+builder.Services.AddSignalR();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
@@ -87,6 +88,9 @@ builder.Services.AddHostedService<HostelOperationsWorker>();
 builder.Services.AddScoped<ILibraryDepthService, LibraryDepthService>();
 builder.Services.AddHostedService<LibraryAutomationWorker>();
 builder.Services.AddScoped<IReportingService, ReportingService>();
+builder.Services.AddScoped<ITransportDepthService, TransportDepthService>();
+builder.Services.AddScoped<TransportSecretProtector>();
+builder.Services.AddHostedService<TransportAutomationWorker>();
 builder.Services.AddHostedService<ReportingAutomationWorker>();
 builder.Services.AddHostedService<AttendanceAlertBackgroundWorker>();
 builder.Services.AddScoped<IAcademicPlanningService, AcademicPlanningService>();
@@ -265,6 +269,7 @@ app.UseAuthorization();
 
 app.MapRazorPages();
 app.MapControllers();
+app.MapHub<TransportLiveHub>("/hubs/transport-live");
 
 // Optional first-run seeding (roles + a SuperAdmin). Off by default and guarded so a
 // missing database never blocks startup; enable with "SeedData": true and a reachable DB.
