@@ -123,7 +123,7 @@ a:hover {
 }
 
 .app-navbar {
-  width: min(100% - 1.5rem, 1800px);
+  width: min(100% - 1.5rem, 2400px);
   margin: 0 auto;
   border: 1px solid rgba(255, 255, 255, .22);
   border-radius: var(--edu-radius);
@@ -1410,13 +1410,16 @@ textarea.form-control {
   content: "";
 }
 
-@media (min-width: 1600px) {
+@media (min-width: 2400px) {
   .app-navbar > .container-fluid { align-items: flex-start; }
   .app-brand { padding-top: .55rem; }
   .app-nav .nav-link { min-height: 2.65rem; }
 }
 
-@media (min-width: 1400px) and (max-width: 1599.98px) {
+/* The authenticated header contains both a large role-aware menu and account
+   tools. Keep it in compact mode until there is genuinely enough horizontal
+   room for every item, rather than allowing the account menu to be clipped. */
+@media (min-width: 1400px) and (max-width: 2399.98px) {
   .navbar-expand-xxl { flex-wrap: wrap; }
   .navbar-expand-xxl .navbar-toggler { display: block; }
   .navbar-expand-xxl .navbar-collapse { flex-basis: 100%; flex-grow: 1; }
@@ -1424,7 +1427,7 @@ textarea.form-control {
   .navbar-expand-xxl .navbar-collapse.show { display: block !important; }
 }
 
-@media (max-width: 1599.98px) {
+@media (max-width: 2399.98px) {
   .navbar-collapse {
     max-height: calc(100vh - 5.75rem);
     overflow-y: auto;
@@ -1446,6 +1449,23 @@ textarea.form-control {
     grid-column: 1 / -1;
     max-height: 18rem;
     overflow-y: auto;
+  }
+
+  .navbar-tools {
+    width: 100%;
+    flex-wrap: wrap;
+    padding: .65rem 0 .8rem;
+    justify-content: flex-start;
+  }
+
+  .tenant-switcher {
+    flex: 1 1 18rem;
+    width: min(100%, 24rem);
+  }
+
+  .user-menu {
+    flex: 0 1 auto;
+    margin-left: auto;
   }
 }
 
