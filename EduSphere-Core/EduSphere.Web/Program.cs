@@ -22,6 +22,9 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http.Features;
+using Microsoft.AspNetCore.RateLimiting;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -51,6 +54,24 @@ builder.Services.AddSignalR();
 builder.Services.AddControllers()
     .AddJsonOptions(options =>
         options.JsonSerializerOptions.Converters.Add(new System.Text.Json.Serialization.JsonStringEnumConverter()));
+builder.Services.AddMemoryCache();
+builder.Services.Configure<FormOptions>(options => options.MultipartBodyLengthLimit = 20 * 1024 * 1024);
+builder.WebHost.ConfigureKestrel(options => options.Limits.MaxRequestBodySize = 25 * 1024 * 1024);
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("api", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.User.FindFirst("sub")?.Value ?? context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 120, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
+    options.AddPolicy("public-applicant", context => RateLimitPartition.GetFixedWindowLimiter(
+        context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+        _ => new FixedWindowRateLimiterOptions { PermitLimit = 20, Window = TimeSpan.FromMinutes(1), QueueLimit = 0, AutoReplenishment = true }));
+    options.OnRejected = async (rejection, token) =>
+    {
+        rejection.HttpContext.Response.ContentType = "application/json";
+        await rejection.HttpContext.Response.WriteAsJsonAsync(ApiResponse<object>.Fail("Too many requests. Please retry later.", rejection.HttpContext.TraceIdentifier), token);
+    };
+});
 
 // Wrap model-state validation failures in the standard ApiResponse envelope.
 builder.Services.Configure<ApiBehaviorOptions>(options =>
@@ -61,7 +82,7 @@ builder.Services.Configure<ApiBehaviorOptions>(options =>
             .Where(kvp => kvp.Value?.Errors.Count > 0)
             .SelectMany(kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage))
             .ToList();
-        return new BadRequestObjectResult(ApiResponse<object>.Fail(errors));
+        return new BadRequestObjectResult(ApiResponse<object>.Fail(errors, context.HttpContext.TraceIdentifier));
     };
 });
 
@@ -235,6 +256,7 @@ builder.Services.AddSwaggerGen(options =>
     options.AddSecurityDefinition("Bearer", bearerScheme);
     options.AddSecurityRequirement(new OpenApiSecurityRequirement { { bearerScheme, Array.Empty<string>() } });
     options.OperationFilter<TenantHeaderOperationFilter>();
+    options.OperationFilter<ApiConventionsOperationFilter>();
 });
 
 var app = builder.Build();
@@ -262,17 +284,21 @@ app.UseHttpsRedirection();
 app.UseStaticFiles();
 
 app.UseRouting();
+app.UseMiddleware<ApiExceptionEnvelopeMiddleware>();
+app.UseMiddleware<ApiStatusCodeEnvelopeMiddleware>();
+app.UseRateLimiter();
 
 app.UseAuthentication();
 
 // Resolve the tenant once per request (after auth, before authorization).
 app.UseMiddleware<TenantResolutionMiddleware>();
 app.UseMiddleware<TenantFeatureGateMiddleware>();
+app.UseMiddleware<IdempotencyMiddleware>();
 
 app.UseAuthorization();
 
 app.MapRazorPages();
-app.MapControllers();
+app.MapControllers().RequireRateLimiting("api");
 app.MapHub<TransportLiveHub>("/hubs/transport-live");
 
 // Optional first-run seeding (roles + a SuperAdmin). Off by default and guarded so a

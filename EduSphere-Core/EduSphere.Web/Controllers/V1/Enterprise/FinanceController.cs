@@ -6,6 +6,7 @@ using EduSphere.Domain.Common;
 using EduSphere.Domain.Entities;
 using EduSphere.Web.Authorization;
 using EduSphere.Web.Security;
+using EduSphere.Web.Middleware;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -245,6 +246,7 @@ public class FinanceController : EnterpriseControllerBase
         => Ok(ApiResponse<IEnumerable<FeePaymentDto>>.Ok((await FilterByBranchAsync(_payments, x => x.BranchId, branchId)).Select(x => x.Map())));
 
     [HttpPost("payments")]
+    [Idempotent]
     public async Task<IActionResult> CreatePayment([FromBody] CreateFeePaymentRequest request)
     {
         if (await ValidateInvoiceChildAsync(request.FeeInvoiceId, request.BranchId) is { } invalid) return invalid;

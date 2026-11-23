@@ -274,6 +274,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<LookupItem> LookupItems { get; set; }
     public DbSet<AuditLog> AuditLogs { get; set; }
     public DbSet<BackgroundJobLog> BackgroundJobLogs { get; set; }
+    public DbSet<ApiIdempotencyRecord> ApiIdempotencyRecords { get; set; }
     public DbSet<PermissionDefinition> PermissionDefinitions { get; set; }
     public DbSet<RolePermissionGrant> RolePermissionGrants { get; set; }
     public DbSet<UserPermissionGrant> UserPermissionGrants { get; set; }
@@ -2334,6 +2335,8 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<AuditLog>().HasIndex(e => new { e.EntityType, e.EntityId });
         modelBuilder.Entity<BackgroundJobLog>().HasIndex(e => new { e.TenantId, e.Status, e.ScheduledOn });
         modelBuilder.Entity<BackgroundJobLog>().HasIndex(e => new { e.TenantId, e.JobKey });
+        modelBuilder.Entity<ApiIdempotencyRecord>().HasIndex(e => new { e.TenantId, e.UserId, e.HttpMethod, e.RequestPath, e.IdempotencyKey }).IsUnique();
+        modelBuilder.Entity<ApiIdempotencyRecord>().HasIndex(e => e.ExpiresOn);
         modelBuilder.Entity<PermissionDefinition>().HasIndex(e => e.Key).IsUnique();
         modelBuilder.Entity<RolePermissionGrant>().HasOne(e => e.Role).WithMany().HasForeignKey(e => e.RoleId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<RolePermissionGrant>().HasOne(e => e.PermissionDefinition).WithMany().HasForeignKey(e => e.PermissionDefinitionId).OnDelete(DeleteBehavior.Restrict);

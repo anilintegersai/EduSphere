@@ -30,20 +30,25 @@ public sealed class AdministrationController(TenantDbContext db, ITenantContext 
     }
 
     [HttpGet("audit")]
-    public async Task<ActionResult<ApiResponse<IReadOnlyList<AuditLog>>>> Audit([FromQuery] string? entityType, [FromQuery] int take = 100, CancellationToken cancellationToken = default)
+    public async Task<ActionResult<ApiResponse<PagedResult<AuditLog>>>> Audit([FromQuery] string? entityType, [FromQuery] ApiQueryOptions options, CancellationToken cancellationToken = default)
     {
-        if (!tenant.TenantId.HasValue) return BadRequest(ApiResponse<IReadOnlyList<AuditLog>>.Fail("Select a tenant."));
+        if (!tenant.TenantId.HasValue) return BadRequest(ApiResponse<PagedResult<AuditLog>>.Fail("Select a tenant."));
         var query = db.AuditLogs.AsNoTracking().Where(a => a.TenantId == tenant.TenantId);
         if (!string.IsNullOrWhiteSpace(entityType)) query = query.Where(a => a.EntityType == entityType);
-        var rows = await query.OrderByDescending(a => a.OccurredOn).Take(Math.Clamp(take, 1, 500)).ToListAsync(cancellationToken);
-        return Ok(ApiResponse<IReadOnlyList<AuditLog>>.Ok(rows));
+        if (!string.IsNullOrWhiteSpace(options.Search)) query = query.Where(a => a.EntityType.Contains(options.Search) || a.EntityId.Contains(options.Search) || (a.ActorEmail != null && a.ActorEmail.Contains(options.Search)));
+        var total = await query.CountAsync(cancellationToken);
+        var rows = await query.OrderByDescending(a => a.OccurredOn).Skip((options.Page - 1) * options.PageSize).Take(options.PageSize).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<PagedResult<AuditLog>>.Ok(new(rows, options.Page, options.PageSize, total)));
     }
 
     [HttpGet("jobs")]
-    public async Task<ActionResult<ApiResponse<IReadOnlyList<BackgroundJobLog>>>> Jobs([FromQuery] BackgroundJobStatus? status, CancellationToken cancellationToken)
+    public async Task<ActionResult<ApiResponse<PagedResult<BackgroundJobLog>>>> Jobs([FromQuery] BackgroundJobStatus? status, [FromQuery] ApiQueryOptions options, CancellationToken cancellationToken)
     {
         var query = db.BackgroundJobLogs.AsNoTracking(); if (status.HasValue) query = query.Where(j => j.Status == status);
-        return Ok(ApiResponse<IReadOnlyList<BackgroundJobLog>>.Ok(await query.OrderByDescending(j => j.ScheduledOn).Take(200).ToListAsync(cancellationToken)));
+        if (!string.IsNullOrWhiteSpace(options.Search)) query = query.Where(j => j.JobType.Contains(options.Search) || j.JobKey.Contains(options.Search));
+        var total = await query.CountAsync(cancellationToken);
+        var rows = await query.OrderByDescending(j => j.ScheduledOn).Skip((options.Page - 1) * options.PageSize).Take(options.PageSize).ToListAsync(cancellationToken);
+        return Ok(ApiResponse<PagedResult<BackgroundJobLog>>.Ok(new(rows, options.Page, options.PageSize, total)));
     }
 
     [HttpPut("features/{featureKey}")]

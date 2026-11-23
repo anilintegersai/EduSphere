@@ -167,6 +167,19 @@ public class BackgroundJobLog : TenantEntityBase
     [StringLength(100)] public string? CorrelationId { get; set; }
 }
 
+public class ApiIdempotencyRecord : TenantEntityBase
+{
+    public Guid UserId { get; set; }
+    [Required, StringLength(100)] public string IdempotencyKey { get; set; } = null!;
+    [Required, StringLength(10)] public string HttpMethod { get; set; } = null!;
+    [Required, StringLength(500)] public string RequestPath { get; set; } = null!;
+    [Required, StringLength(64)] public string RequestHash { get; set; } = null!;
+    public int StatusCode { get; set; }
+    [StringLength(150)] public string ContentType { get; set; } = "application/json";
+    public byte[] ResponseBody { get; set; } = [];
+    public DateTime ExpiresOn { get; set; }
+}
+
 public class PermissionDefinition : EntityBase
 {
     [Required, StringLength(120)] public string Key { get; set; } = null!;
