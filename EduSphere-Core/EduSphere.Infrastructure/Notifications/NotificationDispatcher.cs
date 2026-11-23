@@ -48,14 +48,49 @@ public sealed class NotificationDispatcher : INotificationDispatcher
         var failures = new List<string>();
         foreach (var recipient in recipients)
         {
+            var preferenceBlocked = recipient.UserId.HasValue && await _dbContext.UserCommunicationPreferences
+                .IgnoreQueryFilters().AnyAsync(x => x.TenantId == message.TenantId && x.UserId == recipient.UserId &&
+                    x.Channel == message.Channel && (!x.IsEnabled || x.Frequency == CommunicationPreferenceFrequency.Never), cancellationToken);
+            var consentWithdrawn = recipient.UserId.HasValue && await _dbContext.CommunicationConsents
+                .IgnoreQueryFilters().AnyAsync(x => x.TenantId == message.TenantId && x.UserId == recipient.UserId &&
+                    x.Channel == message.Channel && x.Status == CommunicationConsentStatus.Withdrawn, cancellationToken);
+            var unsubscribed = await _dbContext.CommunicationUnsubscribes.IgnoreQueryFilters()
+                .AnyAsync(x => x.TenantId == message.TenantId && x.Channel == message.Channel && x.IsActive &&
+                    x.DestinationAddress == recipient.DestinationAddress, cancellationToken);
+            if (preferenceBlocked || consentWithdrawn || unsubscribed)
+            {
+                recipient.Status = NotificationStatus.Cancelled;
+                recipient.ErrorMessage = unsubscribed ? "Recipient unsubscribed." : consentWithdrawn ? "Consent was withdrawn." : "Blocked by communication preferences.";
+                _dbContext.NotificationDeliveryAttempts.Add(new NotificationDeliveryAttempt
+                {
+                    TenantId=message.TenantId, BranchId=recipient.BranchId??message.BranchId, NotificationMessageId=message.Id,
+                    NotificationRecipientId=recipient.Id, Channel=message.Channel, Status=NotificationAttemptStatus.Skipped,
+                    AttemptedOn=DateTime.UtcNow, ErrorMessage=recipient.ErrorMessage
+                });
+                continue;
+            }
+            var localizedSubject = message.Subject;
+            var localizedBody = message.Body;
+            if (recipient.UserId.HasValue && message.NotificationTemplateId.HasValue)
+            {
+                var locale = await _dbContext.UserCommunicationPreferences.IgnoreQueryFilters()
+                    .Where(x => x.TenantId == message.TenantId && x.UserId == recipient.UserId && x.Channel == message.Channel)
+                    .Select(x => x.Locale).FirstOrDefaultAsync(cancellationToken);
+                if (!string.IsNullOrWhiteSpace(locale))
+                {
+                    var localization = await _dbContext.NotificationTemplateLocalizations.IgnoreQueryFilters()
+                        .FirstOrDefaultAsync(x => x.TenantId == message.TenantId && x.NotificationTemplateId == message.NotificationTemplateId && x.Locale == locale && x.IsActive, cancellationToken);
+                    if (localization is not null) { localizedSubject = localization.SubjectTemplate ?? localizedSubject; localizedBody = localization.BodyTemplate; }
+                }
+            }
             var dispatchMessage = new NotificationDispatchMessage(
                 message.Id,
                 recipient.Id,
                 message.Channel,
                 recipient.DestinationAddress,
                 recipient.DisplayName,
-                message.Subject,
-                message.Body,
+                localizedSubject,
+                localizedBody,
                 message.ProviderKey);
 
             NotificationDispatchResult result;

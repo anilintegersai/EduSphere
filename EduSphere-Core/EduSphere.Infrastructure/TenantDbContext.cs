@@ -248,6 +248,18 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
     public DbSet<NotificationRecipient> NotificationRecipients { get; set; }
     public DbSet<Announcement> Announcements { get; set; }
     public DbSet<CommunicationLog> CommunicationLogs { get; set; }
+    public DbSet<UserCommunicationPreference> UserCommunicationPreferences { get; set; }
+    public DbSet<CommunicationConsent> CommunicationConsents { get; set; }
+    public DbSet<InAppNotification> InAppNotifications { get; set; }
+    public DbSet<PushSubscription> PushSubscriptions { get; set; }
+    public DbSet<CommunicationCampaign> CommunicationCampaigns { get; set; }
+    public DbSet<ParentTeacherMeeting> ParentTeacherMeetings { get; set; }
+    public DbSet<Circular> Circulars { get; set; }
+    public DbSet<NotificationProviderWebhookEvent> NotificationProviderWebhookEvents { get; set; }
+    public DbSet<NotificationDeadLetter> NotificationDeadLetters { get; set; }
+    public DbSet<NotificationTemplateVersion> NotificationTemplateVersions { get; set; }
+    public DbSet<NotificationTemplateLocalization> NotificationTemplateLocalizations { get; set; }
+    public DbSet<CommunicationUnsubscribe> CommunicationUnsubscribes { get; set; }
     public DbSet<NotificationDeliveryAttempt> NotificationDeliveryAttempts { get; set; }
     public DbSet<SubscriptionPlan> SubscriptionPlans { get; set; }
     public DbSet<TenantSubscription> TenantSubscriptions { get; set; }
@@ -2180,6 +2192,31 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<CommunicationLog>().HasIndex(e => new { e.TenantId, e.BranchId, e.Channel, e.OccurredOn });
         modelBuilder.Entity<NotificationDeliveryAttempt>().HasIndex(e => new { e.TenantId, e.NotificationMessageId, e.NotificationRecipientId, e.AttemptNumber });
         modelBuilder.Entity<NotificationDeliveryAttempt>().HasIndex(e => new { e.TenantId, e.BranchId, e.Status, e.NextRetryOn });
+        modelBuilder.Entity<UserCommunicationPreference>().HasOne(x=>x.User).WithMany().HasForeignKey(x=>x.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<UserCommunicationPreference>().HasIndex(x=>new{x.TenantId,x.UserId,x.Channel}).IsUnique();
+        modelBuilder.Entity<CommunicationConsent>().HasOne(x=>x.User).WithMany().HasForeignKey(x=>x.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CommunicationConsent>().HasIndex(x=>new{x.TenantId,x.UserId,x.Channel,x.Purpose,x.Status});
+        modelBuilder.Entity<InAppNotification>().HasOne(x=>x.User).WithMany().HasForeignKey(x=>x.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InAppNotification>().HasOne(x=>x.NotificationMessage).WithMany().HasForeignKey(x=>x.NotificationMessageId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<InAppNotification>().HasIndex(x=>new{x.TenantId,x.UserId,x.ReadOn,x.IsDismissed});
+        modelBuilder.Entity<PushSubscription>().HasOne(x=>x.User).WithMany().HasForeignKey(x=>x.UserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<PushSubscription>().HasIndex(x=>new{x.TenantId,x.UserId,x.Endpoint}).IsUnique();
+        modelBuilder.Entity<CommunicationCampaign>().HasOne(x=>x.NotificationTemplate).WithMany().HasForeignKey(x=>x.NotificationTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<CommunicationCampaign>().HasIndex(x=>new{x.TenantId,x.Status,x.ScheduledOn});
+        modelBuilder.Entity<ParentTeacherMeeting>().HasOne(x=>x.StudentProfile).WithMany().HasForeignKey(x=>x.StudentProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentTeacherMeeting>().HasOne(x=>x.TeacherProfile).WithMany().HasForeignKey(x=>x.TeacherProfileId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentTeacherMeeting>().HasOne(x=>x.ParentUser).WithMany().HasForeignKey(x=>x.ParentUserId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<ParentTeacherMeeting>().HasIndex(x=>new{x.TenantId,x.TeacherProfileId,x.StartsOn,x.EndsOn});
+        modelBuilder.Entity<Circular>().HasIndex(x=>new{x.TenantId,x.BranchId,x.Status,x.PublishOn});
+        modelBuilder.Entity<NotificationProviderWebhookEvent>().HasIndex(x=>new{x.TenantId,x.ProviderKey,x.ProviderMessageId,x.EventType}).IsUnique();
+        modelBuilder.Entity<NotificationDeadLetter>().HasOne(x=>x.NotificationMessage).WithMany().HasForeignKey(x=>x.NotificationMessageId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationDeadLetter>().HasOne(x=>x.NotificationRecipient).WithMany().HasForeignKey(x=>x.NotificationRecipientId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationDeadLetter>().HasIndex(x=>new{x.TenantId,x.Status,x.DeadLetteredOn});
+        modelBuilder.Entity<NotificationTemplateVersion>().HasOne(x=>x.NotificationTemplate).WithMany().HasForeignKey(x=>x.NotificationTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationTemplateVersion>().HasIndex(x=>new{x.NotificationTemplateId,x.Version}).IsUnique();
+        modelBuilder.Entity<NotificationTemplateLocalization>().HasOne(x=>x.NotificationTemplate).WithMany().HasForeignKey(x=>x.NotificationTemplateId).OnDelete(DeleteBehavior.Restrict);
+        modelBuilder.Entity<NotificationTemplateLocalization>().HasIndex(x=>new{x.NotificationTemplateId,x.Locale}).IsUnique();
+        modelBuilder.Entity<CommunicationUnsubscribe>().HasIndex(x=>new{x.TenantId,x.Channel,x.DestinationAddress,x.Purpose,x.IsActive});
     }
 
     public override int SaveChanges()

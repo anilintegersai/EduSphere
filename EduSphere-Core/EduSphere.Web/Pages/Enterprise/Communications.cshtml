@@ -12,7 +12,7 @@
     </div>
     @if (Model.HasTenant)
     {
-        <span class="count-pill">@Model.Messages.Count messages</span>
+        <div class="d-flex gap-2 align-items-center"><span class="count-pill">@Model.Messages.Count messages</span><a asp-page="CommunicationDepth" class="btn btn-primary">Communication operations</a></div>
     }
 </section>
 

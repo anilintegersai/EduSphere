@@ -108,6 +108,10 @@ builder.Services.AddSingleton<IDocumentVirusScanner, BuiltInDocumentVirusScanner
 builder.Services.AddInfrastructureServices(builder.Configuration);
 builder.Services.AddScoped<INotificationChannelSender, TwilioSmsNotificationSender>();
 builder.Services.AddScoped<INotificationChannelSender, TwilioWhatsAppNotificationSender>();
+builder.Services.AddScoped<INotificationChannelSender, TelegramNotificationSender>();
+builder.Services.AddScoped<INotificationChannelSender, PushNotificationSender>();
+builder.Services.AddScoped<INotificationChannelSender, InAppNotificationSender>();
+builder.Services.AddHostedService<CommunicationAutomationWorker>();
 builder.Services.AddApplicationServices();
 
 // ---- Validation ----

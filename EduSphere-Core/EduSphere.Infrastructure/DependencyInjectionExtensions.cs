@@ -77,11 +77,6 @@ public static class DependencyInjectionExtensions
         // Notification delivery stays extensible by channel; SMTP email is the first concrete sender.
         services.AddScoped<INotificationDispatcher, NotificationDispatcher>();
         services.AddScoped<INotificationChannelSender, SmtpEmailNotificationChannelSender>();
-        services.AddScoped<INotificationChannelSender, WhatsAppNotificationChannelSender>();
-        services.AddScoped<INotificationChannelSender, TelegramNotificationChannelSender>();
-        services.AddScoped<INotificationChannelSender, SmsNotificationChannelSender>();
-        services.AddScoped<INotificationChannelSender, PushNotificationChannelSender>();
-        services.AddScoped<INotificationChannelSender, InAppNotificationChannelSender>();
 
         services.AddScoped<IAIQuestionPaperProvider, OpenAIQuestionPaperProvider>();
         services.AddScoped<IAIQuestionPaperProvider, AzureOpenAIQuestionPaperProvider>();
