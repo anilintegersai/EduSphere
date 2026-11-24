@@ -48,7 +48,10 @@ public static class DependencyInjectionExtensions
         services.AddSingleton(databaseOptions);
 
         // Request-scoped ambient tenant, populated by the tenant resolution middleware.
-        services.AddScoped<ITenantContext, TenantContext>();
+        // Background workers resolve the concrete TenantContext to call SetTenant, so register it
+        // directly and map the interface to the same scoped instance (TenantDbContext must see it).
+        services.AddScoped<TenantContext>();
+        services.AddScoped<ITenantContext>(sp => sp.GetRequiredService<TenantContext>());
 
         // Register DbContext (scoped) so repositories and the unit of work share one instance per request.
         // The provider is chosen from configuration to keep persistence database-agnostic; provider-specific

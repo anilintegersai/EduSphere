@@ -690,6 +690,39 @@ a:hover {
   font-weight: 650;
 }
 
+/* Compact tiles written as <div class="metric-card"><span>label</span>
+   <strong>value</strong><small>hint</small></div> (no .card-body). */
+.metric-card:not(.card) {
+  min-height: 0;
+  padding: 1.1rem;
+}
+
+.metric-card:not(.card) > span {
+  display: block;
+  color: var(--edu-muted);
+  font-size: .75rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.metric-card:not(.card) > strong {
+  display: block;
+  margin-top: .35rem;
+  color: var(--edu-ink);
+  font-size: 1.9rem;
+  font-weight: 900;
+  line-height: 1.1;
+  overflow-wrap: anywhere;
+}
+
+.metric-card:not(.card) > small {
+  display: block;
+  margin-top: .45rem;
+  color: var(--edu-muted);
+  font-size: .86rem;
+  font-weight: 650;
+}
+
 .metric-card-teal {
   --metric-accent: var(--edu-teal);
 }
@@ -1381,16 +1414,18 @@ textarea.form-control {
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .5);
 }
 
+/* Tile icon: a trend glyph in the tile's accent colour. (The previous empty
+   box with a diagonal stripe read as a broken image.) */
 .metric-card .card-body::after {
   position: absolute;
-  top: 1rem;
-  right: 1rem;
-  width: 2.6rem;
-  height: 2.6rem;
-  border: 1px solid color-mix(in srgb, var(--metric-accent, var(--edu-primary)) 24%, #fff);
-  border-radius: 6px;
-  background:
-    linear-gradient(135deg, transparent 46%, color-mix(in srgb, var(--metric-accent, var(--edu-primary)) 18%, transparent) 47%, color-mix(in srgb, var(--metric-accent, var(--edu-primary)) 18%, transparent) 53%, transparent 54%);
+  top: 1.1rem;
+  right: 1.1rem;
+  width: 1.9rem;
+  height: 1.9rem;
+  background-color: var(--metric-accent, var(--edu-primary));
+  opacity: .55;
+  -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v18h18'/%3E%3Cpath d='m7 16 4-5 4 3 5-7'/%3E%3C/svg%3E") center / contain no-repeat;
+  mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3 3v18h18'/%3E%3Cpath d='m7 16 4-5 4 3 5-7'/%3E%3C/svg%3E") center / contain no-repeat;
   content: "";
 }
 
@@ -1398,6 +1433,12 @@ textarea.form-control {
 
 .alert {
   border-left: .3rem solid currentColor;
+}
+
+/* Validation summaries styled as alerts render as an empty red box until there
+   are errors; hide them while valid (ASP.NET swaps in validation-summary-errors). */
+.alert.validation-summary-valid {
+  display: none;
 }
 
 .empty-state::before {
@@ -1425,6 +1466,10 @@ textarea.form-control {
   .navbar-expand-xxl .navbar-collapse { flex-basis: 100%; flex-grow: 1; }
   .navbar-expand-xxl .navbar-collapse.collapse:not(.show) { display: none !important; }
   .navbar-expand-xxl .navbar-collapse.show { display: block !important; }
+  /* Bootstrap floats drop-downs from 1400px up, but the collapsed panel
+     scrolls (overflow-y: auto) and would clip them; open them inline instead,
+     as Bootstrap already does below 1400px. */
+  .navbar-expand-xxl .navbar-nav .dropdown-menu { position: static; }
 }
 
 @media (max-width: 2399.98px) {
