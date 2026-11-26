@@ -29,6 +29,11 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
 
     public DbSet<Tenant> Tenants { get; set; }
     public DbSet<Branch> Branches { get; set; }
+    public DbSet<InstitutionProfile> InstitutionProfiles => Set<InstitutionProfile>();
+    public DbSet<OrganizationUnit> OrganizationUnits => Set<OrganizationUnit>();
+    public DbSet<TenantAffiliation> TenantAffiliations => Set<TenantAffiliation>();
+    public DbSet<OrganizationPermission> OrganizationPermissions => Set<OrganizationPermission>();
+    public DbSet<InstitutionPolicyVersion> InstitutionPolicyVersions => Set<InstitutionPolicyVersion>();
 
     // Academic structure (Module 3)
     public DbSet<AcademicYear> AcademicYears { get; set; }
@@ -319,6 +324,7 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         ConfigureEnterpriseServices(modelBuilder);
         ConfigureAdministration(modelBuilder);
         ConfigureReporting(modelBuilder);
+        ConfigureInstitutions(modelBuilder);
 
         // Global tenant and soft-delete query filters for tenant-owned domain entities.
         // Identity's UserManager/SignInManager must resolve users (including a host-level
@@ -2344,6 +2350,19 @@ public class TenantDbContext : IdentityDbContext<ApplicationUser, ApplicationRol
         modelBuilder.Entity<UserPermissionGrant>().HasOne(e => e.User).WithMany().HasForeignKey(e => e.UserId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<UserPermissionGrant>().HasOne(e => e.PermissionDefinition).WithMany().HasForeignKey(e => e.PermissionDefinitionId).OnDelete(DeleteBehavior.Restrict);
         modelBuilder.Entity<UserPermissionGrant>().HasIndex(e => new { e.TenantId, e.UserId, e.PermissionDefinitionId }).IsUnique();
+    }
+
+    private static void ConfigureInstitutions(ModelBuilder model)
+    {
+        model.Entity<InstitutionProfile>().HasIndex(x => x.TenantId).IsUnique();
+        model.Entity<OrganizationUnit>().HasAlternateKey(x => new { x.TenantId, x.Id });
+        model.Entity<OrganizationUnit>().HasOne<OrganizationUnit>().WithMany()
+            .HasForeignKey(x => new { x.TenantId, x.ParentId }).HasPrincipalKey(x => new { x.TenantId, x.Id }).OnDelete(DeleteBehavior.Restrict);
+        model.Entity<OrganizationUnit>().HasOne<Branch>().WithMany().HasForeignKey(x => x.BranchId).OnDelete(DeleteBehavior.Restrict);
+        model.Entity<TenantAffiliation>().HasOne<Tenant>().WithMany().HasForeignKey(x => x.AffiliateTenantId).OnDelete(DeleteBehavior.Restrict);
+        model.Entity<TenantAffiliation>().HasIndex(x => new { x.TenantId, x.AffiliateTenantId, x.Capability });
+        model.Entity<OrganizationPermission>().HasIndex(x => new { x.TenantId, x.OrganizationUnitId, x.UserId, x.Permission }).IsUnique();
+        model.Entity<InstitutionPolicyVersion>().HasIndex(x => new { x.TenantId, x.OrganizationUnitId, x.PolicyKey, x.Version }).IsUnique();
     }
 
     private static void ConfigureReporting(ModelBuilder modelBuilder)

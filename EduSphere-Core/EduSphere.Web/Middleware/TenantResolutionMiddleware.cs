@@ -4,6 +4,8 @@ using EduSphere.Domain.Entities;
 using EduSphere.Domain.Interfaces;
 using EduSphere.Domain.MultiTenancy;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using EduSphere.Infrastructure;
 using Microsoft.EntityFrameworkCore;
 
@@ -45,6 +47,13 @@ public class TenantResolutionMiddleware
         UserManager<ApplicationUser> userManager,
         TenantDbContext dbContext)
     {
+        if (context.Request.Path.StartsWithSegments("/api") &&
+            context.Request.Headers.Authorization.ToString().StartsWith("Bearer ", StringComparison.OrdinalIgnoreCase))
+        {
+            var bearer = await context.AuthenticateAsync(JwtBearerDefaults.AuthenticationScheme);
+            if (bearer.Succeeded && bearer.Principal is not null)
+                context.User = bearer.Principal;
+        }
         var host = context.Request.Host.Host;
         Tenant? tenant = IsAuthenticatedNonSuperAdmin(context)
             ? await ResolveAssignedTenantAsync(context, tenantRepository, userManager)

@@ -17468,6 +17468,214 @@ BEGIN
     VALUES (N'20261123222441_ApiCompleteness', N'9.0.0');
 END;
 
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE TABLE [InstitutionPolicyVersions] (
+        [Id] uniqueidentifier NOT NULL,
+        [OrganizationUnitId] uniqueidentifier NOT NULL,
+        [PolicyKey] nvarchar(80) NOT NULL,
+        [Version] int NOT NULL,
+        [EffectiveFrom] date NOT NULL,
+        [DefinitionJson] nvarchar(max) NOT NULL,
+        [CreatedBy] nvarchar(128) NULL,
+        [CreatedOn] datetime2 NOT NULL,
+        [ModifiedBy] nvarchar(128) NULL,
+        [ModifiedOn] datetime2 NULL,
+        [IsDeleted] bit NOT NULL,
+        [DeletedBy] nvarchar(max) NULL,
+        [DeletedOn] datetime2 NULL,
+        [ConcurrencyToken] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        CONSTRAINT [PK_InstitutionPolicyVersions] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE TABLE [InstitutionProfiles] (
+        [Id] uniqueidentifier NOT NULL,
+        [DisplayName] nvarchar(200) NOT NULL,
+        [Kind] int NOT NULL,
+        [Jurisdiction] nvarchar(100) NULL,
+        [CreatedBy] nvarchar(128) NULL,
+        [CreatedOn] datetime2 NOT NULL,
+        [ModifiedBy] nvarchar(128) NULL,
+        [ModifiedOn] datetime2 NULL,
+        [IsDeleted] bit NOT NULL,
+        [DeletedBy] nvarchar(max) NULL,
+        [DeletedOn] datetime2 NULL,
+        [ConcurrencyToken] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        CONSTRAINT [PK_InstitutionProfiles] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE TABLE [OrganizationPermissions] (
+        [Id] uniqueidentifier NOT NULL,
+        [OrganizationUnitId] uniqueidentifier NOT NULL,
+        [UserId] uniqueidentifier NOT NULL,
+        [Permission] nvarchar(80) NOT NULL,
+        [IsActive] bit NOT NULL,
+        [CreatedBy] nvarchar(128) NULL,
+        [CreatedOn] datetime2 NOT NULL,
+        [ModifiedBy] nvarchar(128) NULL,
+        [ModifiedOn] datetime2 NULL,
+        [IsDeleted] bit NOT NULL,
+        [DeletedBy] nvarchar(max) NULL,
+        [DeletedOn] datetime2 NULL,
+        [ConcurrencyToken] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        CONSTRAINT [PK_OrganizationPermissions] PRIMARY KEY ([Id])
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE TABLE [OrganizationUnits] (
+        [Id] uniqueidentifier NOT NULL,
+        [ParentId] uniqueidentifier NULL,
+        [BranchId] uniqueidentifier NULL,
+        [Name] nvarchar(200) NOT NULL,
+        [Kind] int NOT NULL,
+        [CreatedBy] nvarchar(128) NULL,
+        [CreatedOn] datetime2 NOT NULL,
+        [ModifiedBy] nvarchar(128) NULL,
+        [ModifiedOn] datetime2 NULL,
+        [IsDeleted] bit NOT NULL,
+        [DeletedBy] nvarchar(max) NULL,
+        [DeletedOn] datetime2 NULL,
+        [ConcurrencyToken] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        CONSTRAINT [PK_OrganizationUnits] PRIMARY KEY ([Id]),
+        CONSTRAINT [AK_OrganizationUnits_TenantId_Id] UNIQUE ([TenantId], [Id]),
+        CONSTRAINT [FK_OrganizationUnits_Branches_BranchId] FOREIGN KEY ([BranchId]) REFERENCES [Branches] ([Id]) ON DELETE NO ACTION,
+        CONSTRAINT [FK_OrganizationUnits_OrganizationUnits_TenantId_ParentId] FOREIGN KEY ([TenantId], [ParentId]) REFERENCES [OrganizationUnits] ([TenantId], [Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE TABLE [TenantAffiliations] (
+        [Id] uniqueidentifier NOT NULL,
+        [AffiliateTenantId] uniqueidentifier NOT NULL,
+        [Capability] int NOT NULL,
+        [AcceptedOn] datetime2 NULL,
+        [RevokedOn] datetime2 NULL,
+        [CreatedBy] nvarchar(128) NULL,
+        [CreatedOn] datetime2 NOT NULL,
+        [ModifiedBy] nvarchar(128) NULL,
+        [ModifiedOn] datetime2 NULL,
+        [IsDeleted] bit NOT NULL,
+        [DeletedBy] nvarchar(max) NULL,
+        [DeletedOn] datetime2 NULL,
+        [ConcurrencyToken] uniqueidentifier NOT NULL,
+        [TenantId] uniqueidentifier NOT NULL,
+        CONSTRAINT [PK_TenantAffiliations] PRIMARY KEY ([Id]),
+        CONSTRAINT [FK_TenantAffiliations_Tenants_AffiliateTenantId] FOREIGN KEY ([AffiliateTenantId]) REFERENCES [Tenants] ([Id]) ON DELETE NO ACTION
+    );
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_InstitutionPolicyVersions_TenantId_OrganizationUnitId_PolicyKey_Version] ON [InstitutionPolicyVersions] ([TenantId], [OrganizationUnitId], [PolicyKey], [Version]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_InstitutionProfiles_TenantId] ON [InstitutionProfiles] ([TenantId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE UNIQUE INDEX [IX_OrganizationPermissions_TenantId_OrganizationUnitId_UserId_Permission] ON [OrganizationPermissions] ([TenantId], [OrganizationUnitId], [UserId], [Permission]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE INDEX [IX_OrganizationUnits_BranchId] ON [OrganizationUnits] ([BranchId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE INDEX [IX_OrganizationUnits_TenantId_ParentId] ON [OrganizationUnits] ([TenantId], [ParentId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE INDEX [IX_TenantAffiliations_AffiliateTenantId] ON [TenantAffiliations] ([AffiliateTenantId]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    CREATE INDEX [IX_TenantAffiliations_TenantId_AffiliateTenantId_Capability] ON [TenantAffiliations] ([TenantId], [AffiliateTenantId], [Capability]);
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    INSERT INTO [InstitutionProfiles] ([Id], [TenantId], [DisplayName], [Kind], [CreatedOn], [CreatedBy], [IsDeleted], [ConcurrencyToken])
+    SELECT NEWID(), [Id], [Name], 0, SYSUTCDATETIME(), N'migration', 0, NEWID()
+    FROM [Tenants] WHERE [IsDeleted] = 0;
+
+    INSERT INTO [OrganizationUnits] ([Id], [TenantId], [Name], [Kind], [CreatedOn], [CreatedBy], [IsDeleted], [ConcurrencyToken])
+    SELECT [Id], [Id], [Name], 0, SYSUTCDATETIME(), N'migration', 0, NEWID()
+    FROM [Tenants] WHERE [IsDeleted] = 0;
+
+    INSERT INTO [OrganizationUnits] ([Id], [TenantId], [ParentId], [BranchId], [Name], [Kind], [CreatedOn], [CreatedBy], [IsDeleted], [ConcurrencyToken])
+    SELECT NEWID(), b.[TenantId], b.[TenantId], b.[Id], b.[Name], 2, SYSUTCDATETIME(), N'migration', 0, NEWID()
+    FROM [Branches] b INNER JOIN [Tenants] t ON t.[Id] = b.[TenantId]
+    WHERE b.[IsDeleted] = 0 AND t.[IsDeleted] = 0;
+END;
+
+IF NOT EXISTS (
+    SELECT * FROM [__EFMigrationsHistory]
+    WHERE [MigrationId] = N'20261126220332_InstitutionFoundation'
+)
+BEGIN
+    INSERT INTO [__EFMigrationsHistory] ([MigrationId], [ProductVersion])
+    VALUES (N'20261126220332_InstitutionFoundation', N'9.0.0');
+END;
+
 COMMIT;
 GO
 
